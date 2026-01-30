@@ -70,4 +70,63 @@ document.addEventListener('DOMContentLoaded', () => {
         slotDisplay.textContent = `Turno seleccionado: ${dateInput.value} a las ${time}hs`;
         submitBtn.disabled = false;
     }
+
+    // --- EMAIL JS INTEGRATION ---
+    // REEMPLAZAR CON TUS CLAVES:
+    const EMAILJS_PUBLIC_KEY = "TU_PUBLIC_KEY"; // Ej: "user_123456"
+    const EMAILJS_SERVICE_ID = "TU_SERVICE_ID"; // Ej: "service_gmail"
+    const EMAILJS_TEMPLATE_ID = "TU_TEMPLATE_ID"; // Ej: "template_confirmation"
+
+    // Inicializar EmailJS si está cargado
+    if (typeof emailjs !== 'undefined') {
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+    }
+
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function (event) {
+            // Si NO están configuradas las claves, dejamos que Netlify maneje el submit normal
+            if (EMAILJS_PUBLIC_KEY === "TU_PUBLIC_KEY") {
+                return; // Submit normal
+            }
+
+            event.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+
+            const formData = new FormData(form);
+
+            // 1. Enviar a Netlify (para que quede en el dashboard)
+            fetch('/', {
+                method: 'POST',
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams(formData).toString()
+            })
+                .then(() => {
+                    // 2. Enviar mail al usuario con EmailJS
+                    const doctorName = document.querySelector('h1').textContent.includes('Ginecología') ? 'Dra. Secondi' : 'Dr. Capparelli';
+
+                    const templateParams = {
+                        to_email: form.email.value,
+                        to_name: form.nombre.value + ' ' + form.apellido.value,
+                        doctor_name: doctorName,
+                        date_time: selectedSlotInput.value,
+                        reply_to: 'consultoriodelgado@gmail.com' // Ajustar si es necesario
+                    };
+
+                    return emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
+                })
+                .then(() => {
+                    // 3. Redirigir
+                    window.location.href = 'gracias.html';
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    // Si falla el mail, igual redirigimos porque Netlify ya guardó el dato
+                    window.location.href = 'gracias.html';
+                });
+        });
+    }
 });
