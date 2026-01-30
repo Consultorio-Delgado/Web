@@ -521,6 +521,17 @@ header.scrolled {
     cursor: default;
 }
 
+.insurance-item.highlight-red {
+    border-color: #ef4444;
+    color: #ef4444;
+    font-weight: 600;
+}
+
+.insurance-item sup {
+    font-size: 0.7em;
+    vertical-align: super;
+}
+
 /* Contact */
 .contact-section {
     background-color: white;
