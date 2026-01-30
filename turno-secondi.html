@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turno Dra. Secondi | Consultorio Delgado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-header {
+            background-color: var(--primary-dark);
+            padding: 8rem 0 4rem;
+            text-align: center;
+            color: white;
+        }
+
+        .booking-container {
+            max-width: 900px;
+            margin: 4rem auto;
+            background: white;
+            padding: 3rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .booking-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header id="navbar" class="scrolled">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Consultorio<span>Delgado</span></a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html#inicio">Inicio</a></li>
+                    <li><a href="index.html#profesionales">Profesionales</a></li>
+                    <li><a href="turnos.html" class="btn-nav">Volver</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-header">
+        <div class="container">
+            <h1>Turno Ginecología</h1>
+            <p>Dra. Ma. Verónica Secondi</p>
+        </div>
+    </div>
+
+    <section class="container">
+        <div class="booking-container">
+            <!-- Columna Izquierda: Selección de Fecha y Hora -->
+            <div>
+                <h3 style="margin-bottom: 1.5rem;">1. Seleccione Fecha y Hora</h3>
+                <div class="form-group">
+                    <label>Fecha del Turno</label>
+                    <input type="date" id="date-picker">
+                    <p class="section-subtitle" style="font-size: 0.85rem; margin-top: 0.5rem;">Horarios: Lunes a
+                        Viernes, 8:00 a 17:00</p>
+                </div>
+
+                <div id="slots-container" class="booking-grid">
+                    <!-- Slots generados por JS -->
+                    <p style="grid-column: 1/-1; color: var(--text-muted); text-align: center; margin-top: 2rem;">
+                        Seleccione una fecha para ver horarios disponibles.
+                    </p>
+                </div>
+                <div id="slot-display" class="selected-summary"></div>
+            </div>
+
+            <!-- Columna Derecha: Datos del Paciente -->
+            <div>
+                <h3 style="margin-bottom: 1.5rem;">2. Sus Datos</h3>
+                <form name="turno-secondi" method="POST" data-netlify="true" action="/gracias.html">
+                    <input type="hidden" name="form-name" value="turno-secondi">
+                    <input type="hidden" name="turno_seleccionado" id="selected-slot" required>
+
+                    <div class="form-group">
+                        <label>Nombre *</label>
+                        <input type="text" name="nombre" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Apellido *</label>
+                        <input type="text" name="apellido" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Obra Social / Prepaga *</label>
+                        <select name="cobertura" required>
+                            <option value="">Seleccione...</option>
+                            <option value="Particular">Particular</option>
+                            <option value="OSDE">OSDE</option>
+                            <option value="Swiss Medical">Swiss Medical</option>
+                            <option value="Galeno">Galeno</option>
+                            <option value="Omint">Omint</option>
+                            <option value="Otra">Otra</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Teléfono de Contacto *</label>
+                        <input type="tel" name="telefono" required>
+                    </div>
+
+                    <div class="alert-box" style="padding: 1rem; font-size: 0.9rem;">
+                        <i class="fas fa-info-circle"></i> Al enviar la solicitud, confirmaremos la disponibilidad del
+                        turno vía email o WhatsApp.
+                    </div>
+
+                    <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%;"
+                        disabled>Confirmar Solicitud</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container footer-content">
+            <div class="footer-col">
+                <p>&copy; 2026 Consultorio Delgado. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="booking.js"></script>
+</body>
+
+</html>
