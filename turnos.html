@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitar Turno | Consultorio Delgado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .page-header {
+            background-color: var(--primary-dark);
+            padding: 8rem 0 4rem;
+            text-align: center;
+            color: white;
+        }
+
+        .booking-options {
+            max-width: 800px;
+            margin: 4rem auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .booking-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
+        }
+
+        .booking-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+    </style>
+</head>
+
+<body>
+    <header id="navbar" class="scrolled">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Consultorio<span>Delgado</span></a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html#inicio">Inicio</a></li>
+                    <li><a href="index.html#especialidades">Especialidades</a></li>
+                    <li><a href="index.html#profesionales">Profesionales</a></li>
+                    <li><a href="index.html#coberturas">Coberturas</a></li>
+                    <li><a href="index.html#contacto" class="btn-nav">Solicitar Turno</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-header">
+        <div class="container">
+            <h1>Reservar Turno Online</h1>
+            <p style="margin-top: 1rem; opacity: 0.9;">Seleccione el profesional con el que desea atenderse</p>
+        </div>
+    </div>
+
+    <section class="container">
+        <div class="booking-options">
+            <div class="booking-card">
+                <div class="icon-box" style="margin: 0 auto 1.5rem auto;"><i class="fas fa-venus-mars"></i></div>
+                <h3>Dra. Ma. Verónica Secondi</h3>
+                <p>Ginecología y Obstetricia</p>
+                <a href="https://consultoriodelgado.wiri.la" target="_blank" class="btn btn-primary">Reservar Cita</a>
+            </div>
+
+            <div class="booking-card">
+                <div class="icon-box" style="margin: 0 auto 1.5rem auto;"><i class="fas fa-stethoscope"></i></div>
+                <h3>Dr. Germán Capparelli</h3>
+                <p>Clínica Médica</p>
+                <a href="https://consultoriodelgado.wiri.la" target="_blank" class="btn btn-primary">Reservar Cita</a>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 4rem; color: var(--text-muted);">
+            <p>Será redirigido a nuestra plataforma segura de turnos (Wiri Salud).</p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container footer-content">
+            <div class="footer-col">
+                <h3>Consultorio Delgado</h3>
+                <p>Medicina con compromiso y excelencia.</p>
+            </div>
+            <div class="footer-col">
+                <p>&copy; 2026 Consultorio Delgado. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+
+</html>
