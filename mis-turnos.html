@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Turnos | Consultorio Delgado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .dashboard-container {
+            max-width: 900px;
+            margin: 4rem auto;
+            background: white;
+            padding: 3rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            min-height: 500px;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .appt-card {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+            transition: 0.2s;
+        }
+
+        .appt-card:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border-color: #ddd;
+        }
+
+        .appt-info h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .appt-meta {
+            color: #666;
+            font-size: 0.95rem;
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .appt-meta i {
+            color: var(--primary-light);
+            width: 20px;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-confirmed {
+            background: #ecfdf5;
+            color: #047857;
+        }
+
+        .status-cancelled {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #888;
+        }
+    </style>
+</head>
+
+<body>
+    <header id="navbar" class="scrolled">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Consultorio<span>Delgado</span></a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Inicio</a></li>
+                    <li><a href="turnos.html" class="btn-nav">Solicitar Nuevo Turno</a></li>
+                    <li><a href="#" id="logout-btn" style="color:#666;"><i class="fas fa-sign-out-alt"></i> Salir</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div style="background-color: var(--light-bg); min-height: 100vh; padding-top: 5rem;">
+        <div class="container">
+            <div class="dashboard-container">
+                <div class="dashboard-header">
+                    <h2 id="patient-greeting">Mis Turnos</h2>
+                    <div style="font-size: 0.9rem; color: #666;" id="patient-email-display"></div>
+                </div>
+
+                <h3 style="margin-bottom: 1.5rem; font-size: 1.2rem;">Próximos Turnos</h3>
+                <div id="upcoming-list">
+                    <div style="text-align:center;">Cargando...</div>
+                </div>
+
+                <h3 style="margin-top: 3rem; margin-bottom: 1.5rem; font-size: 1.2rem; color: #666;">Historial</h3>
+                <div id="history-list">
+                    <!-- Loaded via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic -->
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const greeting = document.getElementById('patient-greeting');
+        const emailDisplay = document.getElementById('patient-email-display');
+        const upcomingList = document.getElementById('upcoming-list');
+        const historyList = document.getElementById('history-list');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.href = 'login-paciente.html';
+                return;
+            }
+
+            // Display Info
+            greeting.textContent = `Hola, ${user.displayName || 'Paciente'}`;
+            emailDisplay.textContent = user.email;
+
+            // Fetch Appointments
+            loadAppointments(user.email);
+        });
+
+        logoutBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await signOut(auth);
+            window.location.href = 'index.html';
+        });
+
+        async function loadAppointments(email) {
+            try {
+                // Determine today
+                const todayStr = new Date().toISOString().split('T')[0];
+
+                // Query by email
+                // Note: Requires index on email + date if we sort. 
+                // For now, simple query + in-memory sort is safer for small data if index missing.
+                const q = query(
+                    collection(db, "appointments"),
+                    where("patientEmail", "==", email)
+                );
+
+                const snap = await getDocs(q);
+                let appts = [];
+                snap.forEach(doc => appts.push({ id: doc.id, ...doc.data() }));
+
+                // Sort
+                appts.sort((a, b) => {
+                    if (a.date === b.date) return a.time.localeCompare(b.time);
+                    return a.date.localeCompare(b.date);
+                });
+
+                const upcoming = appts.filter(a => a.date >= todayStr);
+                const past = appts.filter(a => a.date < todayStr).reverse(); // Newest first
+
+                renderList(upcomingList, upcoming, true);
+                renderList(historyList, past, false);
+
+            } catch (e) {
+                console.error(e);
+                upcomingList.innerHTML = `<div style="color:red">Error al cargar turnos.</div>`;
+            }
+        }
+
+        function renderList(container, items, isUpcoming) {
+            if (items.length === 0) {
+                container.innerHTML = `<div class="empty-state">No tienes turnos ${isUpcoming ? 'próximos' : 'pasados'}.</div>`;
+                return;
+            }
+
+            container.innerHTML = items.map(appt => {
+                const dateObj = new Date(appt.date + 'T00:00:00');
+                const dateStr = dateObj.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+                const doctorName = appt.doctor === 'secondi' ? 'Dra. Ma. Verónica Secondi' : 'Dr. Guillermo Capparelli';
+                const statusClass = appt.status === 'blocked' ? 'status-cancelled' : 'status-confirmed';
+                const statusText = appt.status === 'blocked' ? 'Cancelado / Bloqueado' : 'Confirmado';
+
+                return `
+                    <div class="appt-card">
+                        <div class="appt-info">
+                            <h4>${doctorName}</h4>
+                            <div class="appt-meta">
+                                <span><i class="far fa-calendar"></i> ${capitalize(dateStr)}</span>
+                                <span><i class="far fa-clock"></i> ${appt.time} hs</span>
+                            </div>
+                        </div>
+                        <div>
+                             <span class="status-badge ${statusClass}">${statusText}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+    </script>
+</body>
+
+</html>

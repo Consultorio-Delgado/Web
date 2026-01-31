@@ -1,18 +1,51 @@
 /* Booking Logic with Firebase - Weekly View */
-import { db } from './firebase-config.js';
-import { collection, query, where, getDocs, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { db, auth } from './firebase-config.js';
+import {
+    collection,
+    query,
+    where,
+    getDocs,
+    addDoc,
+    doc,
+    getDoc,
+    setDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+// DOM Elements
+const calendarGrid = document.getElementById('calendar-grid');
+const currentWeekLabel = document.getElementById('current-week-label');
+const prevWeekBtn = document.getElementById('prev-week');
+const nextWeekBtn = document.getElementById('next-week');
+const selectedSlotDisplay = document.getElementById('slot-display');
+const selectedSlotInput = document.getElementById('selected-slot');
+const submitBtn = document.getElementById('submit-btn');
+const form = document.forms['turno-secondi'] || document.forms['turno-capparelli'];
+
+// Auth State
+let currentUser = null;
+
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        currentUser = user;
+        // Pre-fill Form
+        try {
+            const docSnap = await getDoc(doc(db, "patients", user.uid));
+            if (docSnap.exists() && form) {
+                const data = docSnap.data();
+                if (form.nombre) form.nombre.value = data.firstName || '';
+                if (form.apellido) form.apellido.value = data.lastName || '';
+                if (form.email) form.email.value = data.email || user.email || '';
+                if (form.telefono) form.telefono.value = data.phone || '';
+                if (form.cobertura) form.cobertura.value = data.insurance || '';
+            }
+        } catch (e) {
+            console.error("Error auto-filling form", e);
+        }
+    }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
-    const calendarGrid = document.getElementById('calendar-grid');
-    const selectedSlotInput = document.getElementById('selected-slot');
-    const slotDisplay = document.getElementById('slot-display');
-    const submitBtn = document.getElementById('submit-btn');
-    const form = document.querySelector('form');
-    const prevWeekBtn = document.getElementById('prev-week');
-    const nextWeekBtn = document.getElementById('next-week');
-    const currentWeekLabel = document.getElementById('current-week-label');
-
     // Identify Doctor
     const formName = form ? form.name : '';
     const doctorId = formName.includes('secondi') ? 'secondi' : 'capparelli';
@@ -320,7 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     patientPhone: formData.get('telefono'),
                     insurance: formData.get('cobertura'),
                     status: 'confirmed',
-                    timestamp: new Date()
+                    timestamp: new Date(),
+                    patientUid: currentUser ? currentUser.uid : null
                 });
 
                 // 2. SEND EMAIL

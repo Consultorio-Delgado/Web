@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Pacientes | Consultorio Delgado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .auth-container {
+            max-width: 500px;
+            margin: 4rem auto;
+            background: white;
+            padding: 3rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+
+        .auth-tabs {
+            display: flex;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 2rem;
+        }
+
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 1rem;
+            font-weight: 600;
+            color: #888;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .auth-tab.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: -2px;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .google-btn {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+            width: 100%;
+            padding: 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            transition: 0.2s;
+        }
+
+        .google-btn:hover {
+            background: #f8f9fa;
+            border-color: #ccc;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .divider:before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: #eee;
+            z-index: 0;
+        }
+
+        .divider span {
+            background: white;
+            padding: 0 1rem;
+            position: relative;
+            z-index: 1;
+            color: #999;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <header id="navbar" class="scrolled">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Consultorio<span>Delgado</span></a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Inicio</a></li>
+                    <li><a href="index.html#profesionales">Profesionales</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div style="background-color: var(--light-bg); min-height: 100vh; padding-top: 5rem;">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-tabs">
+                    <div class="auth-tab active" data-target="login">Iniciar Sesión</div>
+                    <div class="auth-tab" data-target="register">Registrarme</div>
+                </div>
+
+                <!-- LOGIN SEARCH -->
+                <div id="form-login" class="auth-form active">
+                    <h3 style="text-align: center; margin-bottom: 1.5rem; color: var(--primary);">Bienvenido Paciente
+                    </h3>
+
+                    <button id="google-login-btn" class="google-btn">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"
+                            width="20">
+                        Continuar con Google
+                    </button>
+
+                    <div class="divider"><span>O ingresa con tu email</span></div>
+
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="login-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Contraseña</label>
+                            <input type="password" id="login-password" required>
+                        </div>
+                        <div style="color: red;margin-bottom: 1rem; display: none;" id="login-error"></div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Ingresar</button>
+                    </form>
+                    <p style="text-align: center; margin-top: 1rem; font-size: 0.9rem;">
+                        ¿No tienes cuenta? <a href="#" class="switch-to-register"
+                            style="color: var(--primary);">Regístrate</a>
+                    </p>
+                </div>
+
+                <!-- REGISTER FORM -->
+                <div id="form-register" class="auth-form">
+                    <h3 style="text-align: center; margin-bottom: 1.5rem; color: var(--primary);">Crear Cuenta</h3>
+                    <p style="text-align:center; font-size: 0.9rem; color: #666; margin-bottom: 1.5rem;">
+                        Ingresa tus datos una sola vez y agiliza tus reservas.
+                    </p>
+
+                    <form id="register-form">
+                        <div class="form-group">
+                            <label>Nombre *</label>
+                            <input type="text" id="reg-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Apellido *</label>
+                            <input type="text" id="reg-lastname" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Obra Social / Prepaga *</label>
+                            <select id="reg-insurance" required>
+                                <option value="">Seleccione...</option>
+                                <option value="Particular">Particular</option>
+                                <option value="OSDE">OSDE</option>
+                                <option value="Swiss Medical">Swiss Medical</option>
+                                <option value="Galeno">Galeno</option>
+                                <option value="Omint">Omint</option>
+                                <option value="Otra">Otra</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono (WhatsApp) *</label>
+                            <input type="tel" id="reg-phone" required placeholder="Ej: 11 1234 5678">
+                        </div>
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" id="reg-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Contraseña *</label>
+                            <input type="password" id="reg-password" required minlength="6">
+                        </div>
+                        <div style="color: red;margin-bottom: 1rem; display: none;" id="reg-error"></div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Crear Cuenta</button>
+                    </form>
+                    <p style="text-align: center; margin-top: 1rem; font-size: 0.9rem;">
+                        ¿Ya tienes cuenta? <a href="#" class="switch-to-login" style="color: var(--primary);">Inicia
+                            Sesión</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase -->
+    <script type="module" src="patient-auth.js"></script>
+</body>
+
+</html>
