@@ -63,22 +63,26 @@
 
     <section class="container">
         <div class="booking-container">
-            <!-- Columna Izquierda: Selección de Fecha y Hora -->
-            <div>
-                <h3 style="margin-bottom: 1.5rem;">1. Seleccione Fecha y Hora</h3>
-                <div class="form-group">
-                    <label>Fecha del Turno</label>
-                    <input type="date" id="date-picker">
-                    <p class="section-subtitle" style="font-size: 0.85rem; margin-top: 0.5rem;">Horarios: Lunes a
-                        Viernes, 8:00 a 17:00</p>
+            <!-- Columna Izquierda: Calendario Semanal -->
+            <div style="grid-column: 1 / -1;">
+                <h3 style="margin-bottom: 1.5rem;">1. Seleccione un Turno</h3>
+
+                <div class="calendar-controls">
+                    <button id="prev-week" class="btn btn-outline btn-sm"><i class="fas fa-chevron-left"></i> Semana
+                        Anterior</button>
+                    <span id="current-week-label" style="font-weight: 600; font-size: 1.1rem;">Cargando...</span>
+                    <button id="next-week" class="btn btn-outline btn-sm">Siguiente Semana <i
+                            class="fas fa-chevron-right"></i></button>
                 </div>
 
-                <div id="slots-container" class="booking-grid">
-                    <!-- Slots generados por JS -->
-                    <p style="grid-column: 1/-1; color: var(--text-muted); text-align: center; margin-top: 2rem;">
-                        Seleccione una fecha para ver horarios disponibles.
-                    </p>
+                <div class="calendar-wrapper">
+                    <div id="calendar-grid" class="calendar-grid">
+                        <!-- Generado por JS -->
+                        <div style="padding: 2rem; text-align: center; grid-column: 1/-1;">Cargando disponibilidad...
+                        </div>
+                    </div>
                 </div>
+
                 <div id="slot-display" class="selected-summary"></div>
             </div>
 

@@ -768,3 +768,94 @@ input[type="date"] {
     border-radius: var(--radius-sm);
     width: 100%;
 }
+
+/* Weekly Calendar Grid */
+.calendar-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.calendar-wrapper {
+    overflow-x: auto;
+    background: #f8f9fa;
+    border-radius: var(--radius-md);
+    border: 1px solid #eee;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    min-width: 600px;
+    /* Ensure readablity on mobile */
+}
+
+.day-column {
+    border-right: 1px solid #e0e0e0;
+}
+
+.day-column:last-child {
+    border-right: none;
+}
+
+.day-header {
+    background: var(--primary-dark);
+    color: white;
+    padding: 1rem 0.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+    position: sticky;
+    top: 0;
+}
+
+.day-header span {
+    display: block;
+    font-weight: 600;
+}
+
+.day-header small {
+    display: block;
+    font-weight: 400;
+    opacity: 0.8;
+    margin-top: 0.2rem;
+}
+
+.slots-column {
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.time-slot {
+    width: 100%;
+    padding: 0.6rem;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-align: center;
+    transition: all 0.2s;
+    color: var(--text-dark);
+}
+
+.time-slot:hover:not(:disabled) {
+    border-color: var(--primary);
+    background: #f0f7ff;
+}
+
+.time-slot.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.time-slot.taken {
+    background: #e9ecef;
+    color: #adb5bd;
+    border-color: #dee2e6;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
