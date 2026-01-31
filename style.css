@@ -883,3 +883,38 @@ input[type="date"] {
     z-index: 2;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
+
+/* Admin View Tabs Overrides */
+.view-tabs .btn {
+    border-radius: 99px;
+    padding: 0.5rem 1.5rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border: 1px solid #e2e8f0;
+}
+
+/* Inactive State: White background, Black text */
+.view-tabs .btn-outline {
+    background: white;
+    color: #1e293b;
+    /* Slate-800 */
+    border-color: #cbd5e1;
+    /* Slate-300 */
+}
+
+.view-tabs .btn-outline:hover {
+    background: #f1f5f9;
+    /* Slate-100 */
+    color: #0f172a;
+}
+
+/* Active State: Grey background, Black text */
+.view-tabs .btn.active {
+    background: #e2e8f0;
+    /* Slate-200 */
+    color: #0f172a;
+    /* Slate-900 */
+    border-color: #cbd5e1;
+    font-weight: 700;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
