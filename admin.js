@@ -625,10 +625,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Generate dates
+            // Generate dates (Mon-Sat = 6 days)
             const weekDates = [];
             let tempDate = new Date(mondayDate);
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 6; i++) {
                 weekDates.push(tempDate.toISOString().split('T')[0]);
                 tempDate.setDate(tempDate.getDate() + 1);
             }
@@ -677,6 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         const slotDiv = document.createElement('div');
                         slotDiv.className = 'time-slot';
+                        slotDiv.style.cursor = 'pointer'; // Make clickable
 
                         const appt = appointmentsMap[dateStr] && appointmentsMap[dateStr][timeStr];
 
@@ -692,15 +693,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             slotDiv.innerHTML = `
                                 <strong>${timeStr}</strong><br>
-                                ${isBlocked ? 'BLOQUEADO' : appt.patientName.split(' ')[0]}
+                                ${isBlocked ? 'BLOQUEADO' : (appt.patientName ? appt.patientName.split(' ')[0] : 'Ocupado')}
                             `;
 
-                            // For admin, we might want to edit even from weekly view? 
-                            // Currently sticking to simple details or no-op
-                            // Let's allow editing by reusing openEditModal logic if simple
-                            // Or just text. The renderDailyView is better for management.
+                            // CLICK: Open Details/Edit
+                            slotDiv.onclick = () => openEditModal(appt);
                         } else {
                             slotDiv.textContent = timeStr;
+                            // CLICK: Open Add
+                            slotDiv.onclick = () => openAddModal(timeStr, dateStr);
                         }
 
                         slotsContainer.appendChild(slotDiv);
