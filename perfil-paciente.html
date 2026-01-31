@@ -208,6 +208,7 @@
         const successMsg = document.getElementById('success-msg');
 
         let currentUser = null;
+        let docAlreadyExists = false;
 
         // Make enableEdit available globally
         window.enableEdit = function (fieldId) {
@@ -241,6 +242,7 @@
             try {
                 const docRef = doc(db, "patients", user.uid);
                 const docSnap = await getDoc(docRef);
+                docAlreadyExists = docSnap.exists();
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
@@ -341,7 +343,7 @@
             successMsg.style.display = 'none';
 
             try {
-                await setDoc(doc(db, "patients", currentUser.uid), {
+                const payload = {
                     firstName: firstNameInput.value,
                     lastName: lastNameInput.value,
                     dni: dniInput.value,
@@ -349,8 +351,18 @@
                     insurance: insuranceInput.value,
                     phone: phoneInput.value,
                     email: currentUser.email,
-                    updatedAt: new Date()
-                }, { merge: true });
+                    updatedAt: new Date(),
+                    role: 'patient'
+                };
+
+                if (!docAlreadyExists) {
+                    payload.createdAt = new Date();
+                }
+
+                await setDoc(doc(db, "patients", currentUser.uid), payload, { merge: true });
+
+                // Update state so next save doesn't overwrite creation date logic (though merge handles it well)
+                docAlreadyExists = true;
 
                 successMsg.style.display = 'block';
                 setTimeout(() => successMsg.style.display = 'none', 3000);
