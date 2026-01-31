@@ -97,25 +97,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tabDaily.addEventListener('click', () => switchView('daily'));
     tabWeekly.addEventListener('click', () => switchView('weekly'));
-    tabSchedule.addEventListener('click', () => switchView('schedule'));
+    tabRecurrence.addEventListener('click', () => switchView('recurrence'));
+    tabConfig.addEventListener('click', () => switchView('config'));
 
     doctorSelect.addEventListener('change', () => {
         if (viewDaily.style.display !== 'none') updateDailyView();
         else if (viewWeekly.style.display !== 'none') renderAdminWeek(currentMonday);
-        else if (viewSchedule.style.display !== 'none') loadScheduleConfig();
+        else if (viewRecurrence.style.display !== 'none') loadScheduleConfig();
+        else if (viewConfig.style.display !== 'none') loadScheduleConfig();
     });
 
     function switchView(viewName) {
         // Reset ALL
         viewDaily.style.display = 'none';
         viewWeekly.style.display = 'none';
-        viewSchedule.style.display = 'none';
-        tabDaily.classList.remove('active', 'btn-primary'); // removing btn-primary just in case
-        tabDaily.classList.add('btn-outline');
-        tabWeekly.classList.remove('active');
-        tabWeekly.classList.add('btn-outline');
-        tabSchedule.classList.remove('active');
-        tabSchedule.classList.add('btn-outline');
+        viewRecurrence.style.display = 'none';
+        viewConfig.style.display = 'none';
+
+        [tabDaily, tabWeekly, tabRecurrence, tabConfig].forEach(t => {
+            t.classList.remove('active', 'btn-primary');
+            t.classList.add('btn-outline');
+        });
 
         if (viewName === 'daily') {
             viewDaily.style.display = 'block';
@@ -127,10 +129,15 @@ document.addEventListener('DOMContentLoaded', () => {
             tabWeekly.classList.add('active');
             tabWeekly.classList.remove('btn-outline');
             renderAdminWeek(currentMonday);
-        } else if (viewName === 'schedule') {
-            viewSchedule.style.display = 'block';
-            tabSchedule.classList.add('active');
-            tabSchedule.classList.remove('btn-outline');
+        } else if (viewName === 'recurrence') {
+            viewRecurrence.style.display = 'block';
+            tabRecurrence.classList.add('active');
+            tabRecurrence.classList.remove('btn-outline');
+            loadScheduleConfig();
+        } else if (viewName === 'config') {
+            viewConfig.style.display = 'block';
+            tabConfig.classList.add('active');
+            tabConfig.classList.remove('btn-outline');
             loadScheduleConfig();
         }
     }
@@ -138,17 +145,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- SCHEDULE CONFIG LOGIC ---
 
     async function loadScheduleConfig() {
+        // If we are already loading, maybe skip? But simple is fine.
         const doctorId = doctorSelect.value;
-        scheduleContainer.innerHTML = '<div style="text-align: center; padding: 2rem;">Cargando configuración...</div>';
+        const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-        // Mock default
+        // Default Data
         let schedule = {
-            1: { active: true, start: "14:00", end: "18:00" }, // Mon
-            2: { active: true, start: "14:00", end: "18:00" }, // Tue
-            3: { active: true, start: "14:00", end: "18:00" }, // Wed
-            4: { active: true, start: "14:00", end: "18:00" }, // Thu
-            5: { active: true, start: "14:00", end: "18:00" },  // Fri
-            6: { active: false, start: "09:00", end: "13:00" }   // Sat
+            1: { active: true, start: "14:00", end: "18:00" },
+            2: { active: true, start: "14:00", end: "18:00" },
+            3: { active: true, start: "14:00", end: "18:00" },
+            4: { active: true, start: "14:00", end: "18:00" },
+            5: { active: true, start: "14:00", end: "18:00" },
+            6: { active: false, start: "09:00", end: "13:00" }
         };
         let maxBookingDays = 15;
 
@@ -158,19 +166,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                if (data.schedule) {
-                    schedule = { ...schedule, ...data.schedule };
-                }
-                if (data.maxBookingDays) {
-                    maxBookingDays = data.maxBookingDays;
-                }
+                if (data.schedule) schedule = { ...schedule, ...data.schedule };
+                if (data.maxBookingDays) maxBookingDays = data.maxBookingDays;
             }
         } catch (e) {
             console.error("Error loading schedule:", e);
         }
 
         doctorScheduleConfig = schedule;
-        maxBookingDaysInput.value = maxBookingDays;
+        if (maxBookingDaysInput) maxBookingDaysInput.value = maxBookingDays;
+
+        // Render Recurrence Editor only if container exists (it does)
         renderScheduleEditor(schedule);
     }
 
@@ -233,42 +239,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    saveScheduleBtn.addEventListener('click', async () => {
-        saveScheduleBtn.disabled = true;
-        saveScheduleBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    // SAVE RECURRENCE
+    if (saveRecurrenceBtn) {
+        saveRecurrenceBtn.addEventListener('click', async () => {
+            saveRecurrenceBtn.disabled = true;
+            saveRecurrenceBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
 
-        const config = {};
-        const rows = document.querySelectorAll('.schedule-row');
-        rows.forEach(row => {
-            const toggle = row.querySelector('.day-toggle');
-            const day = toggle.dataset.day;
-            const start = row.querySelector('.start-time').value;
-            const end = row.querySelector('.end-time').value;
+            const config = {};
+            const rows = document.querySelectorAll('.schedule-row');
+            rows.forEach(row => {
+                const toggle = row.querySelector('.day-toggle');
+                const day = toggle.dataset.day;
+                const start = row.querySelector('.start-time').value;
+                const end = row.querySelector('.end-time').value;
 
-            config[day] = {
-                active: toggle.checked,
-                start: start,
-                end: end
-            };
-        });
-
-        const maxBookingDays = parseInt(maxBookingDaysInput.value) || 15;
-
-        try {
-            await setDoc(doc(db, "doctor_schedules", doctorSelect.value), {
-                schedule: config,
-                maxBookingDays: maxBookingDays
+                config[day] = {
+                    active: toggle.checked,
+                    start: start,
+                    end: end
+                };
             });
-            doctorScheduleConfig = config; // Update local cache
-            alert("Configuración guardada correctamente.");
-        } catch (e) {
-            console.error(e);
-            alert("Error al guardar: " + e.message);
-        } finally {
-            saveScheduleBtn.disabled = false;
-            saveScheduleBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
-        }
-    });
+
+            try {
+                // Merge Schedule
+                await setDoc(doc(db, "doctor_schedules", doctorSelect.value), { schedule: config }, { merge: true });
+                doctorScheduleConfig = config;
+                alert("Horarios guardados correctamente.");
+            } catch (e) {
+                console.error(e);
+                alert("Error al guardar: " + e.message);
+            } finally {
+                saveRecurrenceBtn.disabled = false;
+                saveRecurrenceBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Horarios';
+            }
+        });
+    }
+
+    // SAVE CONFIG
+    if (saveConfigBtn) {
+        saveConfigBtn.addEventListener('click', async () => {
+            saveConfigBtn.disabled = true;
+            saveConfigBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+            const maxBookingDays = parseInt(maxBookingDaysInput.value) || 15;
+
+            try {
+                // Merge Config
+                await setDoc(doc(db, "doctor_schedules", doctorSelect.value), { maxBookingDays: maxBookingDays }, { merge: true });
+                alert("Configuración guardada correctamente.");
+            } catch (e) {
+                console.error(e);
+                alert("Error al guardar: " + e.message);
+            } finally {
+                saveConfigBtn.disabled = false;
+                saveConfigBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Configuración';
+            }
+        });
+    }
 
     // --- DAILY VIEW LOGIC ---
 
@@ -569,6 +596,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         calendarGrid.innerHTML = '<div style="padding: 2rem; text-align: center; grid-column: 1/-1;">Cargando turnos...</div>';
 
+        // 1. Fetch Schedule Config first
+        let scheduleRules = {
+            // Default Fallback
+            1: { active: true, start: "14:00", end: "18:00" },
+            2: { active: true, start: "14:00", end: "18:00" },
+            3: { active: true, start: "14:00", end: "18:00" },
+            4: { active: true, start: "14:00", end: "18:00" },
+            5: { active: true, start: "14:00", end: "18:00" }
+        };
+
+        try {
+            const docSnap = await getDoc(doc(db, "doctor_schedules", doctorId));
+            if (docSnap.exists() && docSnap.data().schedule) {
+                scheduleRules = { ...scheduleRules, ...docSnap.data().schedule };
+            }
+        } catch (e) {
+            console.warn("Could not load dynamic schedule in weekly view, using default.", e);
+        }
+
         try {
             // Generate dates
             const weekDates = [];
@@ -588,6 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dateObj = new Date(dateStr + 'T00:00:00');
                 const dayName = dateObj.toLocaleDateString('es-AR', { weekday: 'long' });
                 const dayNum = dateObj.getDate();
+                const dayOfWeek = dateObj.getDay(); // 1=Mon
 
                 const col = document.createElement('div');
                 col.className = 'day-column';
@@ -600,34 +647,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 const slotsContainer = document.createElement('div');
                 slotsContainer.className = 'slots-column';
 
-                let slotTime = new Date(dateStr + 'T00:00:00');
-                slotTime.setHours(startHour, 0, 0, 0);
-                const slotEndTime = new Date(dateStr + 'T00:00:00');
-                slotEndTime.setHours(endHour, 0, 0, 0);
+                const rule = scheduleRules[dayOfWeek];
 
-                while (slotTime < slotEndTime) {
-                    const timeStr = slotTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                if (!rule || !rule.active) {
+                    slotsContainer.innerHTML = '<div style="padding:1rem; text-align:center; color:#ccc; font-size:0.9rem;">No atiende</div>';
+                } else {
+                    const [startH, startM] = rule.start.split(':').map(Number);
+                    const [endH, endM] = rule.end.split(':').map(Number);
 
-                    const slotDiv = document.createElement('div');
-                    slotDiv.className = 'time-slot';
+                    let slotTime = new Date(dateStr + 'T00:00:00');
+                    slotTime.setHours(startH, startM, 0, 0);
+                    const slotEndTime = new Date(dateStr + 'T00:00:00');
+                    slotEndTime.setHours(endH, endM, 0, 0);
 
-                    const appt = appointmentsMap[dateStr] && appointmentsMap[dateStr][timeStr];
+                    // Safety break loop
+                    let safetyCount = 0;
+                    while (slotTime < slotEndTime && safetyCount < 50) {
+                        safetyCount++;
+                        const timeStr = slotTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-                    if (appt) {
-                        slotDiv.classList.add('taken');
-                        slotDiv.style.minHeight = '60px';
-                        slotDiv.innerHTML = `
-                            <strong>${timeStr}</strong><br>
-                            ${appt.patientName.split(' ')[0]}
-                        `;
-                        slotDiv.onclick = () => showAppointmentDetails(appt);
-                    } else {
-                        slotDiv.textContent = timeStr;
+                        const slotDiv = document.createElement('div');
+                        slotDiv.className = 'time-slot';
+
+                        const appt = appointmentsMap[dateStr] && appointmentsMap[dateStr][timeStr];
+
+                        if (appt) {
+                            const isBlocked = appt.status === 'blocked';
+                            slotDiv.classList.add('taken');
+                            if (isBlocked) {
+                                slotDiv.style.background = '#fee2e2';
+                                slotDiv.style.color = '#b91c1c';
+                            }
+
+                            slotDiv.style.minHeight = '60px'; // Make room for content
+
+                            slotDiv.innerHTML = `
+                                <strong>${timeStr}</strong><br>
+                                ${isBlocked ? 'BLOQUEADO' : appt.patientName.split(' ')[0]}
+                            `;
+
+                            // For admin, we might want to edit even from weekly view? 
+                            // Currently sticking to simple details or no-op
+                            // Let's allow editing by reusing openEditModal logic if simple
+                            // Or just text. The renderDailyView is better for management.
+                        } else {
+                            slotDiv.textContent = timeStr;
+                        }
+
+                        slotsContainer.appendChild(slotDiv);
+                        slotTime.setMinutes(slotTime.getMinutes() + intervalMinutes);
                     }
-
-                    slotsContainer.appendChild(slotDiv);
-                    slotTime.setMinutes(slotTime.getMinutes() + intervalMinutes);
                 }
+
                 col.appendChild(slotsContainer);
                 calendarGrid.appendChild(col);
             });
