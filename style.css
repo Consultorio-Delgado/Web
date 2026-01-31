@@ -188,16 +188,16 @@ header.scrolled {
 }
 
 .logo {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--text-main);
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    text-decoration: none;
 }
 
-.logo span {
-    color: var(--primary);
+.logo img {
+    height: 50px;
+    /* Adjustable based on preference */
+    width: auto;
 }
 
 .nav-links {

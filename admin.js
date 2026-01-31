@@ -1,7 +1,7 @@
 /* Admin Dashboard Logic - Dual View */
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, addDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, addDoc, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     // Auth Elements
@@ -637,6 +637,108 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function blockDay(dateStr, doctorId) {
+        if (!confirm(`¿Bloquear todos los horarios libres del ${dateStr}?`)) return;
+
+        try {
+            // 1. Get schedule for that day
+            const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
+            const docSnap = await getDoc(doc(db, "doctor_schedules", doctorId));
+            const rules = docSnap.exists() ? docSnap.data().schedule : null;
+
+            if (!rules || !rules[dayOfWeek] || !rules[dayOfWeek].active) {
+                alert("No hay horarios configurados para este día.");
+                return;
+            }
+
+            const rule = rules[dayOfWeek];
+            const [startH, startM] = rule.start.split(':').map(Number);
+            const [endH, endM] = rule.end.split(':').map(Number);
+
+            // 2. Get existing appointments
+            const q = query(collection(db, "appointments"),
+                where("doctor", "==", doctorId),
+                where("date", "==", dateStr)
+            );
+            const querySnapshot = await getDocs(q);
+            const existingTimes = new Set();
+            querySnapshot.forEach(doc => existingTimes.add(doc.data().time));
+
+            // 3. Batched Write
+            const batch = writeBatch(db);
+            let count = 0;
+
+            let slotTime = new Date(dateStr + 'T00:00:00');
+            slotTime.setHours(startH, startM, 0, 0);
+            const slotEndTime = new Date(dateStr + 'T00:00:00');
+            slotEndTime.setHours(endH, endM, 0, 0);
+
+            while (slotTime < slotEndTime) {
+                const timeStr = slotTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+                if (!existingTimes.has(timeStr)) {
+                    const newRef = doc(collection(db, "appointments"));
+                    batch.set(newRef, {
+                        doctor: doctorId,
+                        date: dateStr,
+                        time: timeStr,
+                        status: 'blocked',
+                        patientName: 'Bloqueado (Admin)',
+                        createdAt: new Date()
+                    });
+                    count++;
+                }
+                slotTime.setMinutes(slotTime.getMinutes() + 20);
+            }
+
+            if (count > 0) {
+                await batch.commit();
+                updateDailyView();
+                renderAdminWeek(currentMonday);
+            } else {
+                alert("No hay horarios libres para bloquear.");
+            }
+
+        } catch (e) {
+            console.error("Error blocking day:", e);
+            alert("Error al bloquear el día.");
+        }
+    }
+
+    async function unblockDay(dateStr, doctorId) {
+        if (!confirm(`¿Desbloquear todos los bloqueos manuales del ${dateStr}?`)) return;
+
+        try {
+            const q = query(collection(db, "appointments"),
+                where("doctor", "==", doctorId),
+                where("date", "==", dateStr),
+                where("status", "==", "blocked")
+            );
+
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                alert("No hay bloqueos manuales para eliminar en este día.");
+                return;
+            }
+
+            const batch = writeBatch(db);
+            querySnapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+
+            await batch.commit();
+            renderAdminWeek(currentMonday);
+
+        } catch (e) {
+            console.error("Error unblocking day:", e);
+            alert("Error al desbloquear el día.");
+        }
+    }
+
+    window.blockDay = blockDay;
+    window.unblockDay = unblockDay;
+
     async function renderAdminWeek(mondayDate) {
         if (!mondayDate || isNaN(mondayDate.getTime())) {
             console.error("Invalid mondayDate passed to renderAdminWeek");
@@ -707,9 +809,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const col = document.createElement('div');
                 col.className = 'day-column';
 
+                const controlsDiv = `<div style="display:flex; gap:5px; justify-content:center; margin-bottom:5px;">
+                    <button class="btn-icon-sm" onclick="blockDay('${dateStr}', '${doctorId}')" title="Bloquear día"><i class="fas fa-lock" style="font-size:0.8rem; color:#666;"></i></button>
+                    <button class="btn-icon-sm" onclick="unblockDay('${dateStr}', '${doctorId}')" title="Desbloquear día"><i class="fas fa-unlock" style="font-size:0.8rem; color:#666;"></i></button>
+                </div>`;
+
                 const header = document.createElement('div');
                 header.className = 'day-header';
-                header.innerHTML = `<span>${capitalize(dayName)}</span><small>${dayNum}</small>`;
+                header.innerHTML = `${controlsDiv}<span>${capitalize(dayName)}</span><small>${dayNum}</small>`;
                 col.appendChild(header);
 
                 const slotsContainer = document.createElement('div');
