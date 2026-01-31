@@ -102,10 +102,11 @@
                 <div class="daily-row header"
                     style="background: #f8f9fa; font-weight: 600; color: #666; font-size: 0.9rem; display:flex; padding:0.8rem; border-bottom:1px solid #eee;">
                     <div style="width: 80px;">Hora</div>
-                    <div style="flex: 1;">Paciente</div>
+                    <div style="width: 200px;">Paciente</div>
+                    <div style="width: 150px;">Contacto</div>
                     <div style="width: 150px;">Cobertura</div>
-                    <div style="width: 120px;">Estado</div>
-                    <div style="width: 50px;"></div>
+                    <div style="width: 100px;">Estado</div>
+                    <div style="flex: 1; text-align: right;">Acciones</div>
                 </div>
 
                 <!-- Content -->
@@ -129,6 +130,73 @@
                 <div id="calendar-grid" class="calendar-grid admins-grid">
                     <div style="padding: 2rem; text-align: center; grid-column: 1/-1;">Cargando turnos...</div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit/Add Appointment Modal -->
+    <div id="edit-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:white; width:90%; max-width:500px; padding:2rem; border-radius:8px; position:relative;">
+            <h3 id="edit-modal-title" style="margin-bottom:1rem;">Editar Turno</h3>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                <input type="hidden" id="edit-time">
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-size:0.9rem;">Paciente Name</label>
+                    <input type="text" id="edit-name"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;" required>
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-size:0.9rem;">Email</label>
+                    <input type="email" id="edit-email"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-size:0.9rem;">Teléfono</label>
+                    <input type="tel" id="edit-phone"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-size:0.9rem;">Cobertura</label>
+                    <select id="edit-insurance"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                        <option value="Particular">Particular</option>
+                        <option value="OSDE">OSDE</option>
+                        <option value="Swiss Medical">Swiss Medical</option>
+                        <option value="Galeno">Galeno</option>
+                        <option value="Omint">Omint</option>
+                        <option value="Otra">Otra</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-size:0.9rem;">Estado</label>
+                    <select id="edit-status"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                        <option value="Confirmado">Confirmado</option>
+                        <option value="Reservado">Reservado</option>
+                        <option value="Atendido">Atendido</option>
+                        <option value="Ausente">Ausente</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:2rem;">
+                    <button type="button" id="edit-cancel" class="btn btn-outline"
+                        style="color:#666; border-color:#ccc;">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1100; align-items:center; justify-content:center;">
+        <div style="background:white; width:90%; max-width:400px; padding:2rem; border-radius:8px; text-align:center;">
+            <p id="confirm-msg" style="margin-bottom:2rem; font-size:1.1rem;">¿Está seguro?</p>
+            <div style="display:flex; gap:1rem; justify-content:center;">
+                <button id="confirm-no" class="btn btn-outline" style="color:#666; border-color:#ccc;">Cancelar</button>
+                <button id="confirm-yes" class="btn btn-primary"
+                    style="background:#dc2626; border-color:#dc2626;">Confirmar</button>
             </div>
         </div>
     </div>

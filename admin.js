@@ -1,7 +1,7 @@
 /* Admin Dashboard Logic - Dual View */
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     // Auth Elements
@@ -27,15 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const dailyPrev = document.getElementById('daily-prev');
     const dailyNext = document.getElementById('daily-next');
 
-    // Weekly View Elements
-    const calendarGrid = document.getElementById('calendar-grid');
-    const prevWeekBtn = document.getElementById('prev-week');
-    const nextWeekBtn = document.getElementById('next-week');
-    const currentWeekLabel = document.getElementById('current-week-label');
-
-    // Modal
-    const modal = document.getElementById('appt-modal');
-    const modalContent = document.getElementById('modal-content');
+    // Modals
+    const editModal = document.getElementById('edit-modal');
+    const editForm = document.getElementById('edit-form');
+    const editCancel = document.getElementById('edit-cancel');
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmYes = document.getElementById('confirm-yes');
+    const confirmNo = document.getElementById('confirm-no');
 
     // Config
     const startHour = 14;
@@ -44,8 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // State
     let currentUser = null;
-    let currentMonday = getStartOfWeek(new Date()); // For weekly view
-    let currentDailyDate = getNextBusinessDay(new Date()); // For daily view
+    let currentMonday = getStartOfWeek(new Date());
+    let currentDailyDate = getNextBusinessDay(new Date());
+    let pendingDeleteId = null;
 
     // --- AUTHENTICATION ---
     onAuthStateChanged(auth, (user) => {
@@ -54,11 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
             loginSection.style.display = 'none';
             dashboardSection.style.display = 'block';
 
-            // Auto-select doctor
             if (user.email.includes('secondi')) doctorSelect.value = 'secondi';
             if (user.email.includes('capparelli')) doctorSelect.value = 'capparelli';
 
-            // Init Default View (Daily)
             updateDailyView();
         } else {
             currentUser = null;
@@ -123,24 +120,19 @@ document.addEventListener('DOMContentLoaded', () => {
     dailyPrev.addEventListener('click', () => changeDailyDate(-1));
     dailyNext.addEventListener('click', () => changeDailyDate(1));
     dailyDatePicker.addEventListener('change', (e) => {
-        // e.target.value is YYYY-MM-DD. Need to force local timezone handling.
         currentDailyDate = new Date(e.target.value + 'T00:00:00');
         updateDailyView();
     });
 
     function getNextBusinessDay(date) {
         let d = new Date(date);
-        // Start from today. If today is Sat(6), skip to Mon (+2). If Sun(0), skip to Mon (+1).
-        if (d.getDay() === 6) d.setDate(d.getDate() + 2);
-        else if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+        if (d.getDay() === 6) d.setDate(d.getDate() + 2); // Sat -> Mon
+        else if (d.getDay() === 0) d.setDate(d.getDate() + 1); // Sun -> Mon
         return d;
     }
 
     function changeDailyDate(offset) {
         currentDailyDate.setDate(currentDailyDate.getDate() + offset);
-        // Skip weekend if navigating
-        // If landed on Sun(0), go to Mon(+1) if forward, or Fri(-2) if back? 
-        // Simple logic: if Sun or Sat, keep moving in same direction until Mon-Fri
         while (currentDailyDate.getDay() === 0 || currentDailyDate.getDay() === 6) {
             currentDailyDate.setDate(currentDailyDate.getDate() + (offset > 0 ? 1 : -1));
         }
@@ -149,20 +141,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function updateDailyView() {
         if (!currentUser) return;
-
-        // UI Updates
         dailyDatePicker.value = currentDailyDate.toISOString().split('T')[0];
         const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
         dailyLabel.textContent = capitalize(currentDailyDate.toLocaleDateString('es-AR', options));
-
-        // Setup container
         dailyList.innerHTML = '<div style="padding: 2rem; text-align: center; color: #888;">Cargando turnos...</div>';
 
         const doctorId = doctorSelect.value;
         const dateStr = currentDailyDate.toISOString().split('T')[0];
 
         try {
-            // Fetch appointments for this specific day
             const q = query(
                 collection(db, "appointments"),
                 where("doctor", "==", doctorId),
@@ -174,7 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
             snapshot.forEach(doc => appointments.push({ id: doc.id, ...doc.data() }));
 
             renderDailyList(appointments, dateStr);
-
         } catch (e) {
             console.error("Daily view error:", e);
             dailyList.innerHTML = `<div style="color:red; padding:1rem;">Error al cargar: ${e.message}</div>`;
@@ -202,44 +188,165 @@ document.addEventListener('DOMContentLoaded', () => {
             row.style.padding = '0.75rem 1rem';
             row.style.borderBottom = '1px solid #f3f4f6';
             row.style.fontSize = '0.9rem';
-            row.style.transition = 'background 0.2s';
 
             if (appt) {
-                // Occupied
+                // Occupied / Blocked
+                const isBlocked = appt.status === 'blocked';
+                row.style.backgroundColor = isBlocked ? '#fef2f2' : '#fff';
+
                 row.innerHTML = `
                     <div style="width: 80px; font-weight:bold; color: #334155;">${timeStr}</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight:600; color:#1e293b;">${appt.patientName}</div>
-                        <div style="font-size:0.8rem; color:#64748b;">${appt.patientPhone || 'Sin teléfono'}</div>
+                    <div style="width: 200px; font-weight:600; color:#1e293b;">
+                        ${isBlocked ? '<span style="color:#dc2626;">BLOQUEADO</span>' : appt.patientName}
                     </div>
-                    <div style="width: 150px; color: #334155;">${appt.insurance || 'Particular'}</div>
-                    <div style="width: 120px;">
-                        <span style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 600;">
-                            Reservado
-                        </span>
+                    <div style="width: 150px; font-size:0.8rem; color:#64748b;">
+                        ${isBlocked ? '-' : (appt.patientPhone || 'Sin contacto')}
                     </div>
-                    <div style="width: 50px; text-align:right;">
-                        <button class="btn-icon-details" style="border:none; background:none; color:#94a3b8; cursor:pointer; font-size:1rem;"><i class="fas fa-info-circle"></i></button>
+                    <div style="width: 150px; color: #334155;">
+                        ${isBlocked ? '-' : (appt.insurance || 'Particular')}
+                    </div>
+                    <div style="width: 100px;">
+                        ${isBlocked
+                        ? '<span style="background:#fee2e2; color:#b91c1c; padding:2px 8px; border-radius:10px; font-size:0.75rem;">Bloqueado</span>'
+                        : `<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:10px; font-size:0.75rem;">${appt.status || 'Reservado'}</span>`
+                    }
+                    </div>
+                    <div style="flex: 1; text-align:right; display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button class="btn-icon edit-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="btn-icon delete-btn" title="Eliminar" style="color:#dc2626;"><i class="fas fa-trash"></i></button>
                     </div>
                 `;
-                row.querySelector('.btn-icon-details').onclick = () => showAppointmentDetails(appt);
-                row.style.backgroundColor = '#fff';
+
+                // Handlers
+                row.querySelector('.edit-btn').onclick = () => openEditModal(appt);
+                row.querySelector('.delete-btn').onclick = () => requestDelete(appt.id);
+
             } else {
                 // Empty
+                row.classList.add('daily-row-empty');
                 row.innerHTML = `
                     <div style="width: 80px; color:#cbd5e1;">${timeStr}</div>
-                    <div style="flex: 1; color:#94a3b8; font-style:italic;">Disponible</div>
-                    <div style="width: 150px;"></div>
-                    <div style="width: 120px;"></div>
-                    <div style="width: 50px;"></div>
+                    <div style="width: 200px; color:#94a3b8; font-style:italic;">Disponible</div>
+                    <div style="flex: 1;"></div>
+                    <div style="display:flex; gap:0.5rem;">
+                         <button class="btn-icon add-btn" title="Agregar Turno" style="color:#16a34a;"><i class="fas fa-plus-circle"></i> Agregar</button>
+                         <button class="btn-icon block-btn" title="Bloquear Horario" style="color:#dc2626;"><i class="fas fa-ban"></i> Bloquear</button>
+                    </div>
                 `;
-                row.classList.add('daily-row-empty'); // for potential styling
+
+                // Handlers
+                row.querySelector('.add-btn').onclick = () => openAddModal(timeStr, dateStr);
+                row.querySelector('.block-btn').onclick = () => createBlock(timeStr, dateStr);
             }
 
             dailyList.appendChild(row);
             slotTime.setMinutes(slotTime.getMinutes() + intervalMinutes);
         }
     }
+
+    // --- ACTIONS ---
+
+    // 1. DELETE
+    window.requestDelete = function (id) {
+        pendingDeleteId = id;
+        confirmModal.style.display = 'flex';
+    }
+
+    confirmYes.addEventListener('click', async () => {
+        if (pendingDeleteId) {
+            try {
+                await deleteDoc(doc(db, "appointments", pendingDeleteId));
+                confirmModal.style.display = 'none';
+                updateDailyView();
+            } catch (e) {
+                console.error("Delete failed", e);
+                alert("Error al eliminar turno");
+            }
+        }
+    });
+
+    confirmNo.addEventListener('click', () => {
+        confirmModal.style.display = 'none';
+        pendingDeleteId = null;
+    });
+
+    // 2. BLOCK
+    async function createBlock(time, date) {
+        try {
+            await addDoc(collection(db, "appointments"), {
+                doctor: doctorSelect.value,
+                date: date,
+                time: time,
+                status: 'blocked',
+                patientName: 'Bloqueado',
+                createdAt: new Date()
+            });
+            updateDailyView();
+        } catch (e) {
+            console.error("Block failed", e);
+        }
+    }
+
+    // 3. EDIT / ADD
+    function openEditModal(appt) {
+        document.getElementById('edit-modal-title').textContent = "Editar Turno";
+        document.getElementById('edit-id').value = appt.id;
+        document.getElementById('edit-time').value = appt.time;
+        document.getElementById('edit-name').value = appt.patientName || '';
+        document.getElementById('edit-email').value = appt.patientEmail || '';
+        document.getElementById('edit-phone').value = appt.patientPhone || '';
+        document.getElementById('edit-insurance').value = appt.insurance || 'Particular';
+        document.getElementById('edit-status').value = appt.status || 'Confirmado';
+
+        editModal.style.display = 'flex';
+    }
+
+    function openAddModal(time, date) {
+        document.getElementById('edit-modal-title').textContent = `Nuevo Turno (${time} hrs)`;
+        document.getElementById('edit-id').value = ""; // Empty ID = New
+        document.getElementById('edit-time').value = time;
+        document.getElementById('edit-name').value = "";
+        document.getElementById('edit-email').value = "";
+        document.getElementById('edit-phone').value = "";
+        document.getElementById('edit-insurance').value = "Particular";
+        document.getElementById('edit-status').value = "Confirmado";
+
+        editModal.style.display = 'flex';
+    }
+
+    editCancel.addEventListener('click', () => editModal.style.display = 'none');
+
+    editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-id').value;
+        const time = document.getElementById('edit-time').value;
+        const data = {
+            patientName: document.getElementById('edit-name').value,
+            patientEmail: document.getElementById('edit-email').value,
+            patientPhone: document.getElementById('edit-phone').value,
+            insurance: document.getElementById('edit-insurance').value,
+            status: document.getElementById('edit-status').value,
+            doctor: doctorSelect.value,
+            date: currentDailyDate.toISOString().split('T')[0],
+            time: time
+        };
+
+        try {
+            if (id) {
+                // Update
+                await updateDoc(doc(db, "appointments", id), data);
+            } else {
+                // Create
+                data.createdAt = new Date();
+                await addDoc(collection(db, "appointments"), data);
+            }
+            editModal.style.display = 'none';
+            updateDailyView();
+        } catch (e) {
+            console.error("Save failed", e);
+            alert("Error al guardar");
+        }
+    });
 
     // --- WEEKLY VIEW LOGIC (Existing functionality preserved) ---
 
