@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     </div>
                     <div style="flex: 1; text-align:right; display:flex; gap:0.5rem; justify-content:flex-end;">
-                        ${!isBlocked ? `<button class="btn-icon edit-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>` : ''}
+                        <button class="btn-icon edit-btn" title="Editar"><i class="fas fa-pencil-alt"></i></button>
                         <button class="btn-icon delete-btn" title="${isBlocked ? 'Desbloquear' : 'Eliminar'}" style="color:#dc2626;">
                             <i class="fas ${isBlocked ? 'fa-lock-open' : 'fa-trash'}"></i>
                         </button>
@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
 
                 // Handlers
-                if (!isBlocked) row.querySelector('.edit-btn').onclick = () => openEditModal(appt);
+                row.querySelector('.edit-btn').onclick = () => openEditModal(appt);
                 row.querySelector('.delete-btn').onclick = () => requestDelete(appt);
 
             } else {
@@ -307,11 +307,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('edit-modal-title').textContent = "Editar Turno";
         document.getElementById('edit-id').value = appt.id;
         document.getElementById('edit-time').value = appt.time;
-        document.getElementById('edit-name').value = appt.patientName || '';
-        document.getElementById('edit-email').value = appt.patientEmail || '';
-        document.getElementById('edit-phone').value = appt.patientPhone || '';
-        document.getElementById('edit-insurance').value = appt.insurance || 'Particular';
-        document.getElementById('edit-status').value = appt.status || 'Confirmado';
+
+        // If it's a blocked slot, we clear fields to allow easy conversion to appointment
+        if (appt.status === 'blocked') {
+            document.getElementById('edit-name').value = '';
+            document.getElementById('edit-email').value = '';
+            document.getElementById('edit-phone').value = '';
+            document.getElementById('edit-insurance').value = 'Particular';
+            document.getElementById('edit-status').value = 'Confirmado';
+        } else {
+            document.getElementById('edit-name').value = appt.patientName || '';
+            document.getElementById('edit-email').value = appt.patientEmail || '';
+            document.getElementById('edit-phone').value = appt.patientPhone || '';
+            document.getElementById('edit-insurance').value = appt.insurance || 'Particular';
+            document.getElementById('edit-status').value = appt.status || 'Confirmado';
+        }
 
         editModal.style.display = 'flex';
     }
