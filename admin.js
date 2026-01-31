@@ -577,8 +577,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- WEEKLY VIEW LOGIC (Existing functionality preserved) ---
 
+    // --- WEEKLY VIEW LOGIC ---
+    const weeklyTodayBtn = document.getElementById('weekly-today');
+    const weeklyDatePicker = document.getElementById('weekly-date-picker');
+
     prevWeekBtn.addEventListener('click', () => changeWeek(-1));
     nextWeekBtn.addEventListener('click', () => changeWeek(1));
+
+    if (weeklyTodayBtn) {
+        weeklyTodayBtn.addEventListener('click', () => {
+            currentMonday = getStartOfWeek(new Date());
+            renderAdminWeek(currentMonday);
+        });
+    }
+
+    if (weeklyDatePicker) {
+        weeklyDatePicker.addEventListener('change', (e) => {
+            if (e.target.value) {
+                // When picking a date, jump to the Monday of that week
+                const selected = new Date(e.target.value + 'T00:00:00'); // Local time
+                currentMonday = getStartOfWeek(selected);
+                renderAdminWeek(currentMonday);
+            }
+        });
+    }
 
     function getStartOfWeek(d) {
         d = new Date(d);
@@ -592,6 +614,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function changeWeek(offset) {
         currentMonday.setDate(currentMonday.getDate() + (offset * 7));
         renderAdminWeek(currentMonday);
+    }
+
+    // Update DatePicker when rendering
+    function updateWeeklyPicker(date) {
+        if (weeklyDatePicker) {
+            weeklyDatePicker.value = date.toISOString().split('T')[0];
+        }
     }
 
     async function renderAdminWeek(mondayDate) {
@@ -608,6 +637,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("DOM elements for weekly view missing");
             return;
         }
+
+        updateWeeklyPicker(mondayDate);
+
+
 
         // Label
         const saturdayDate = new Date(mondayDate);

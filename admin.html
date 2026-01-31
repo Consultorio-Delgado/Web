@@ -138,12 +138,14 @@
 
         <!-- VIEW 2: Weekly Grid -->
         <div id="view-weekly" class="view-section" style="display: none;">
-            <div class="calendar-controls">
-                <button id="prev-week" class="btn btn-outline btn-sm"><i class="fas fa-chevron-left"></i>
-                    Anterior</button>
-                <span id="current-week-label" style="font-weight: 600;">Cargando...</span>
-                <button id="next-week" class="btn btn-outline btn-sm">Siguiente <i
-                        class="fas fa-chevron-right"></i></button>
+            <div class="calendar-controls"
+                style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; justify-content: flex-start; gap: 1rem;">
+                <button id="weekly-today" class="btn btn-outline btn-sm" style="font-weight:600;">Hoy</button>
+                <button id="prev-week" class="btn btn-outline btn-sm"><i class="fas fa-chevron-left"></i></button>
+                <input type="date" id="weekly-date-picker"
+                    style="padding: 0.4rem; border: 1px solid #ddd; border-radius: 4px;">
+                <button id="next-week" class="btn btn-outline btn-sm"><i class="fas fa-chevron-right"></i></button>
+                <span id="current-week-label" style="font-weight: 600; margin-left: auto;">Cargando...</span>
             </div>
 
             <div class="calendar-wrapper" style="background: white; padding: 1rem;">
