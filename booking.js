@@ -259,14 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     timestamp: new Date()
                 });
 
-                // 2. SEND TO NETLIFY
-                await fetch('/', {
-                    method: 'POST',
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams(formData).toString()
-                });
-
-                // 3. SEND EMAIL
+                // 2. SEND EMAIL
                 const EMAILJS_PUBLIC_KEY = "yp2cTT12Ti6VmL4iN";
                 const EMAILJS_SERVICE_ID = "service_0wgkq1l";
                 const EMAILJS_TEMPLATE_ID = "template_zkapdb6";
