@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const doctorId = doctorSelect.value;
         scheduleContainer.innerHTML = '<div style="text-align: center; padding: 2rem;">Cargando configuración...</div>';
 
+        // Mock default
         let schedule = {
             1: { active: true, start: "14:00", end: "18:00" }, // Mon
             2: { active: true, start: "14:00", end: "18:00" }, // Tue
@@ -148,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             5: { active: true, start: "14:00", end: "18:00" },  // Fri
             6: { active: false, start: "09:00", end: "13:00" }   // Sat
         };
+        let maxBookingDays = 15;
 
         try {
             const docRef = doc(db, "doctor_schedules", doctorId);
@@ -158,12 +160,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.schedule) {
                     schedule = { ...schedule, ...data.schedule };
                 }
+                if (data.maxBookingDays) {
+                    maxBookingDays = data.maxBookingDays;
+                }
             }
         } catch (e) {
             console.error("Error loading schedule:", e);
         }
 
-        doctorScheduleConfig = schedule; // Cache
+        doctorScheduleConfig = schedule;
+        maxBookingDaysInput.value = maxBookingDays;
         renderScheduleEditor(schedule);
     }
 
@@ -245,8 +251,13 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
 
+        const maxBookingDays = parseInt(maxBookingDaysInput.value) || 15;
+
         try {
-            await setDoc(doc(db, "doctor_schedules", doctorSelect.value), { schedule: config });
+            await setDoc(doc(db, "doctor_schedules", doctorSelect.value), {
+                schedule: config,
+                maxBookingDays: maxBookingDays
+            });
             doctorScheduleConfig = config; // Update local cache
             alert("Configuración guardada correctamente.");
         } catch (e) {

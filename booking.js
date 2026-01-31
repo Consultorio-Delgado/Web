@@ -80,46 +80,47 @@ document.addEventListener('DOMContentLoaded', () => {
         const options = { day: 'numeric', month: 'numeric' };
         currentWeekLabel.textContent = `Semana del ${mondayDate.toLocaleDateString('es-AR', options)} al ${fridayDate.toLocaleDateString('es-AR', options)}`;
 
-        // Calculate Max Date (11 days from today)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const maxDate = new Date(today);
-        maxDate.setDate(today.getDate() + 11);
-        const maxDateStr = maxDate.toISOString().split('T')[0];
-
-        // Hide/Disable Buttons based on limits
-        prevWeekBtn.style.visibility = mondayDate <= minDate ? 'hidden' : 'visible';
-
-        // Disable next if next Monday is beyond maxDate (or reasonably close)
-        // If the start of next week is > maxDate, block logic
-        const nextMonday = new Date(mondayDate);
-        nextMonday.setDate(nextMonday.getDate() + 7);
-        if (nextMonday > maxDate) {
-            nextWeekBtn.style.visibility = 'hidden';
-        } else {
-            nextWeekBtn.style.visibility = 'visible';
-        }
-
         // Clear Grid
         calendarGrid.innerHTML = '<div style="padding: 2rem; text-align: center; grid-column: 1/-1;">Cargando disponibilidad...</div>';
 
         // 1. Fetch Doctor Schedule Rules
         let scheduleRules = {
-            // Default Fallback (Monday=1, Sunday=0)
+            // Default Fallback
             1: { active: true, start: "14:00", end: "18:00" },
             2: { active: true, start: "14:00", end: "18:00" },
             3: { active: true, start: "14:00", end: "18:00" },
             4: { active: true, start: "14:00", end: "18:00" },
             5: { active: true, start: "14:00", end: "18:00" }
         };
+        let maxDaysLimit = 15;
 
         try {
             const docSnap = await getDoc(doc(db, "doctor_schedules", doctorId));
-            if (docSnap.exists() && docSnap.data().schedule) {
-                scheduleRules = { ...scheduleRules, ...docSnap.data().schedule };
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.schedule) scheduleRules = { ...scheduleRules, ...data.schedule };
+                if (data.maxBookingDays) maxDaysLimit = parseInt(data.maxBookingDays);
             }
         } catch (e) {
             console.warn("Could not load dynamic schedule, using default.", e);
+        }
+
+        // Calculate Max Date based on dynamic limit
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const maxDate = new Date(today);
+        maxDate.setDate(today.getDate() + maxDaysLimit);
+        const maxDateStr = maxDate.toISOString().split('T')[0];
+
+        // Hide/Disable Buttons using the new maxDate
+        prevWeekBtn.style.visibility = mondayDate <= minDate ? 'hidden' : 'visible';
+
+        const nextMonday = new Date(mondayDate);
+        nextMonday.setDate(nextMonday.getDate() + 7);
+        if (nextMonday > maxDate) {
+            nextWeekBtn.style.visibility = 'hidden';
+        } else {
+            nextWeekBtn.style.visibility = 'visible';
         }
 
         try {
