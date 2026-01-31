@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil | Consultorio Delgado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .dashboard-container {
+            max-width: 600px;
+            margin: 4rem auto;
+            background: white;
+            padding: 3rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+        .btn-save {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-save:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .success-msg {
+            background: #ecfdf5;
+            color: #047857;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <header id="navbar" class="scrolled">
+        <div class="container nav-container">
+            <a href="index.html" class="logo">Consultorio<span>Delgado</span></a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="perfil-paciente.html" class="btn-nav btn-outline"
+                            style="background:white; color:var(--primary); border:1px solid white;">Mi Perfil</a></li>
+                    <li><a href="mis-turnos.html" class="btn-nav btn-outline"
+                            style="background:white; color:var(--primary); border:1px solid white; margin-left:0.5rem;">Mis
+                            Turnos</a></li>
+                    <li><a href="turnos.html" class="btn-nav">Solicitar Turno</a></li>
+                    <li><a href="#" id="logout-btn" style="color:#666;"><i class="fas fa-sign-out-alt"></i> Salir</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div style="background-color: var(--light-bg); min-height: 100vh; padding-top: 5rem;">
+        <div class="container">
+            <div class="dashboard-container">
+                <div class="dashboard-header">
+                    <h2>Mi Perfil</h2>
+                </div>
+
+                <div id="success-msg" class="success-msg">
+                    <i class="fas fa-check-circle"></i> Datos guardados correctamente.
+                </div>
+
+                <form id="profile-form">
+                    <div class="form-group">
+                        <label>Correo Electrónico (No editable)</label>
+                        <input type="email" id="email" disabled style="background:#f3f4f6; color:#666;">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nombre</label>
+                        <input type="text" id="firstName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Apellido</label>
+                        <input type="text" id="lastName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>DNI</label>
+                        <input type="number" id="dni" placeholder="Sin puntos">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sexo</label>
+                        <select id="gender">
+                            <option value="">Seleccione...</option>
+                            <option value="Femenino">Femenino</option>
+                            <option value="Masculino">Masculino</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Obra Social / Prepaga</label>
+                        <select id="insurance" required>
+                            <option value="">Seleccione...</option>
+                            <option value="Particular">Particular</option>
+                            <option value="OSDE">OSDE</option>
+                            <option value="Swiss Medical">Swiss Medical</option>
+                            <option value="Galeno">Galeno</option>
+                            <option value="Omint">Omint</option>
+                            <option value="Otra">Otra</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Teléfono de Contacto</label>
+                        <input type="tel" id="phone" required>
+                    </div>
+
+                    <button type="submit" id="save-btn" class="btn-save">
+                        Guardar Cambios
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic -->
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const form = document.getElementById('profile-form');
+        const emailInput = document.getElementById('email');
+        const firstNameInput = document.getElementById('firstName');
+        const lastNameInput = document.getElementById('lastName');
+        const dniInput = document.getElementById('dni');
+        const genderInput = document.getElementById('gender');
+        const insuranceInput = document.getElementById('insurance');
+        const phoneInput = document.getElementById('phone');
+        const logoutBtn = document.getElementById('logout-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const successMsg = document.getElementById('success-msg');
+
+        let currentUser = null;
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                // Not logged in -> Redirect to login with proper return URL
+                window.location.href = 'login-paciente.html?redirect=perfil-paciente.html';
+                return;
+            }
+
+            currentUser = user;
+            emailInput.value = user.email;
+
+            // Load Profile Data
+            try {
+                const docRef = doc(db, "patients", user.uid);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    firstNameInput.value = data.firstName || '';
+                    lastNameInput.value = data.lastName || '';
+                    dniInput.value = data.dni || '';
+                    genderInput.value = data.gender || '';
+                    insuranceInput.value = data.insurance || 'Particular';
+                    phoneInput.value = data.phone || '';
+                } else {
+                    // Start fresh or use display name if available
+                    if (user.displayName) {
+                        const parts = user.displayName.split(' ');
+                        firstNameInput.value = parts[0] || '';
+                        lastNameInput.value = parts.slice(1).join(' ') || '';
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading profile", e);
+            }
+        });
+
+        logoutBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await signOut(auth);
+            window.location.href = 'index.html';
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const originalText = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            successMsg.style.display = 'none';
+
+            try {
+                await setDoc(doc(db, "patients", currentUser.uid), {
+                    firstName: firstNameInput.value,
+                    lastName: lastNameInput.value,
+                    dni: dniInput.value,
+                    gender: genderInput.value,
+                    insurance: insuranceInput.value,
+                    phone: phoneInput.value,
+                    email: currentUser.email,
+                    updatedAt: new Date()
+                }, { merge: true });
+
+                successMsg.style.display = 'block';
+                setTimeout(() => successMsg.style.display = 'none', 3000);
+
+            } catch (error) {
+                console.error("Error saving profile:", error);
+                alert("Error al guardar: " + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
+            }
+        });
+    </script>
+</body>
+
+</html>

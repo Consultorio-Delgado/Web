@@ -21,11 +21,14 @@
             <a href="#" class="logo">Consultorio<span>Delgado</span></a>
             <nav>
                 <ul class="nav-links">
-                    <li><a href="#inicio">Inicio</a></li>
                     <li><a href="#especialidades">Especialidades</a></li>
                     <li><a href="#profesionales">Profesionales</a></li>
                     <li><a href="#coberturas">Coberturas</a></li>
-                    <li><a href="mis-turnos.html" id="nav-mis-turnos">Mis Turnos</a></li>
+                    <li><a href="perfil-paciente.html" id="nav-mi-perfil" class="btn-nav btn-outline"
+                            style="background:white; color:var(--primary); border:1px solid white;">Mi Perfil</a></li>
+                    <li><a href="mis-turnos.html" id="nav-mis-turnos" class="btn-nav btn-outline"
+                            style="background:white; color:var(--primary); border:1px solid white; margin-left:0.5rem;">Mis
+                            Turnos</a></li>
                     <li><a href="turnos.html" id="nav-sacar-turno" class="btn-nav">Solicitar Turno</a></li>
                     <li><a href="#" id="nav-logout" style="display:none; color: #666;"><i
                                 class="fas fa-sign-out-alt"></i></a></li>
@@ -145,9 +148,6 @@
         </div>
     </section>
 
-    allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-    </div>
-    </div>
     </div>
     </section>
 
@@ -160,7 +160,7 @@
             <div class="footer-col">
                 <h4>Enlaces Rápidos</h4>
                 <ul>
-                    <li><a href="#inicio">Inicio</a></li>
+                    <li><a href="#especialidades">Especialidades</a></li>
                     <li><a href="#profesionales">Profesionales</a></li>
                     <li><a href="#coberturas">Coberturas</a></li>
                 </ul>
@@ -172,6 +172,45 @@
     </footer>
 
     <script src="main.js"></script>
+    <script type="module">
+        import { auth } from './firebase-config.js';
+        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const navMisTurnos = document.getElementById('nav-mis-turnos');
+        const navMiPerfil = document.getElementById('nav-mi-perfil');
+        const navSacarTurno = document.getElementById('nav-sacar-turno');
+        const navLogout = document.getElementById('nav-logout');
+
+        let currentUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                navLogout.style.display = 'inline-block';
+            } else {
+                navLogout.style.display = 'none';
+            }
+        });
+
+        function handleNavClick(e, targetUrl) {
+            if (!currentUser) {
+                e.preventDefault();
+                window.location.href = `login-paciente.html?redirect=${targetUrl}`;
+            }
+        }
+
+        if (navMisTurnos) navMisTurnos.addEventListener('click', (e) => handleNavClick(e, 'mis-turnos.html'));
+        if (navMiPerfil) navMiPerfil.addEventListener('click', (e) => handleNavClick(e, 'perfil-paciente.html'));
+        if (navSacarTurno) navSacarTurno.addEventListener('click', (e) => handleNavClick(e, 'turnos.html'));
+
+        if (navLogout) {
+            navLogout.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await signOut(auth);
+                window.location.reload();
+            });
+        }
+    </script>
 </body>
 
 </html>

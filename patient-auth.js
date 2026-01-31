@@ -14,6 +14,21 @@ import {
 
 const googleProvider = new GoogleAuthProvider();
 
+// Auto-redirect if already logged in
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // If user is already on login page, redirect them.
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirect = urlParams.get('redirect');
+        if (redirect) {
+            window.location.href = redirect;
+        } else {
+            window.location.href = 'mis-turnos.html';
+        }
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     // Tabs
     const tabs = document.querySelectorAll('.auth-tab');
@@ -51,6 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const name = document.getElementById('reg-name').value;
         const lastname = document.getElementById('reg-lastname').value;
+        const dni = document.getElementById('reg-dni').value;
+        const gender = document.getElementById('reg-gender').value;
         const insurance = document.getElementById('reg-insurance').value;
         const phone = document.getElementById('reg-phone').value;
         const email = document.getElementById('reg-email').value;
@@ -70,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
             await setDoc(doc(db, "patients", user.uid), {
                 firstName: name,
                 lastName: lastname,
+                dni: dni,
+                gender: gender,
                 phone: phone,
                 email: email,
                 insurance: insurance,
@@ -152,8 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (redirect) {
             window.location.href = redirect;
         } else {
-            // Default to 'Mis Turnos' (not created yet) or Index
-            window.location.href = 'index.html';
+            // Default to 'Mis Turnos' if no specific redirect asked
+            window.location.href = 'mis-turnos.html';
         }
     }
 
