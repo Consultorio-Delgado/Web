@@ -80,6 +80,7 @@
                 <button id="tab-daily" class="btn btn-sm active" style="border-radius: 20px;">Agenda Diaria</button>
                 <button id="tab-weekly" class="btn btn-outline btn-sm" style="border-radius: 20px;">Calendario
                     Semanal</button>
+                <button id="tab-schedule" class="btn btn-outline btn-sm" style="border-radius: 20px;">Horarios</button>
             </div>
 
             <button id="logout-btn" class="btn btn-outline btn-sm">Salir <i class="fas fa-sign-out-alt"></i></button>
@@ -129,6 +130,26 @@
             <div class="calendar-wrapper" style="background: white; padding: 1rem;">
                 <div id="calendar-grid" class="calendar-grid admins-grid">
                     <div style="padding: 2rem; text-align: center; grid-column: 1/-1;">Cargando turnos...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: Schedule Config -->
+        <div id="view-schedule" class="view-section" style="display: none;">
+            <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 800px; margin: 0 auto;">
+                <h3 style="margin-bottom: 1.5rem; color: var(--primary);">Configuración de Horarios</h3>
+                <p style="color: #666; margin-bottom: 2rem;">Seleccione los días y horarios de atención. Los días
+                    deshabilitados figurarán como no disponibles.</p>
+
+                <div id="schedule-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- JS will generate rows here -->
+                    <div style="text-align: center; padding: 2rem;">Cargando configuración...</div>
+                </div>
+
+                <div style="margin-top: 2rem; text-align: right; padding-top: 1rem; border-top: 1px solid #eee;">
+                    <button id="save-schedule-btn" class="btn btn-primary" style="padding: 0.75rem 2rem;">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
                 </div>
             </div>
         </div>

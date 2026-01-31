@@ -1,7 +1,7 @@
 /* Admin Dashboard Logic - Dual View */
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, setDoc, addDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     // Auth Elements
@@ -17,8 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // View Tabs & Containers
     const viewDaily = document.getElementById('view-daily');
     const viewWeekly = document.getElementById('view-weekly');
+    const viewSchedule = document.getElementById('view-schedule');
     const tabDaily = document.getElementById('tab-daily');
     const tabWeekly = document.getElementById('tab-weekly');
+    const tabSchedule = document.getElementById('tab-schedule');
 
     // Daily View Elements
     const dailyDatePicker = document.getElementById('daily-date-picker');
@@ -26,6 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const dailyList = document.getElementById('daily-agenda-list');
     const dailyPrev = document.getElementById('daily-prev');
     const dailyNext = document.getElementById('daily-next');
+
+    // Schedule Elements
+    const scheduleContainer = document.getElementById('schedule-container');
+    const saveScheduleBtn = document.getElementById('save-schedule-btn');
 
     // Modals
     const editModal = document.getElementById('edit-modal');
@@ -45,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentMonday = getStartOfWeek(new Date());
     let currentDailyDate = getNextBusinessDay(new Date());
     let pendingDeleteId = null;
+    let doctorScheduleConfig = null; // Store loaded config
 
     // --- AUTHENTICATION ---
     onAuthStateChanged(auth, (user) => {
@@ -89,31 +96,167 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tabDaily.addEventListener('click', () => switchView('daily'));
     tabWeekly.addEventListener('click', () => switchView('weekly'));
+    tabSchedule.addEventListener('click', () => switchView('schedule'));
 
     doctorSelect.addEventListener('change', () => {
         if (viewDaily.style.display !== 'none') updateDailyView();
-        else renderAdminWeek(currentMonday);
+        else if (viewWeekly.style.display !== 'none') renderAdminWeek(currentMonday);
+        else if (viewSchedule.style.display !== 'none') loadScheduleConfig();
     });
 
     function switchView(viewName) {
+        // Reset ALL
+        viewDaily.style.display = 'none';
+        viewWeekly.style.display = 'none';
+        viewSchedule.style.display = 'none';
+        tabDaily.classList.remove('active', 'btn-primary'); // removing btn-primary just in case
+        tabDaily.classList.add('btn-outline');
+        tabWeekly.classList.remove('active');
+        tabWeekly.classList.add('btn-outline');
+        tabSchedule.classList.remove('active');
+        tabSchedule.classList.add('btn-outline');
+
         if (viewName === 'daily') {
             viewDaily.style.display = 'block';
-            viewWeekly.style.display = 'none';
             tabDaily.classList.add('active');
             tabDaily.classList.remove('btn-outline');
-            tabWeekly.classList.remove('active');
-            tabWeekly.classList.add('btn-outline');
             updateDailyView();
-        } else {
-            viewDaily.style.display = 'none';
+        } else if (viewName === 'weekly') {
             viewWeekly.style.display = 'block';
-            tabDaily.classList.remove('active');
-            tabDaily.classList.add('btn-outline');
             tabWeekly.classList.add('active');
             tabWeekly.classList.remove('btn-outline');
             renderAdminWeek(currentMonday);
+        } else if (viewName === 'schedule') {
+            viewSchedule.style.display = 'block';
+            tabSchedule.classList.add('active');
+            tabSchedule.classList.remove('btn-outline');
+            loadScheduleConfig();
         }
     }
+
+    // --- SCHEDULE CONFIG LOGIC ---
+
+    async function loadScheduleConfig() {
+        const doctorId = doctorSelect.value;
+        scheduleContainer.innerHTML = '<div style="text-align: center; padding: 2rem;">Cargando configuración...</div>';
+
+        let schedule = {
+            1: { active: true, start: "14:00", end: "18:00" }, // Mon
+            2: { active: true, start: "14:00", end: "18:00" }, // Tue
+            3: { active: true, start: "14:00", end: "18:00" }, // Wed
+            4: { active: true, start: "14:00", end: "18:00" }, // Thu
+            5: { active: true, start: "14:00", end: "18:00" },  // Fri
+            6: { active: false, start: "09:00", end: "13:00" }   // Sat
+        };
+
+        try {
+            const docRef = doc(db, "doctor_schedules", doctorId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.schedule) {
+                    schedule = { ...schedule, ...data.schedule };
+                }
+            }
+        } catch (e) {
+            console.error("Error loading schedule:", e);
+        }
+
+        doctorScheduleConfig = schedule; // Cache
+        renderScheduleEditor(schedule);
+    }
+
+    function renderScheduleEditor(schedule) {
+        scheduleContainer.innerHTML = '';
+        const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+        // We iterate 1 (Mon) to 5 (Fri). Maybe 6 (Sat). User screenshot had Sat/Sun.
+        // Let's support 1-6.
+        for (let i = 1; i <= 6; i++) {
+            const dayConfig = schedule[i] || { active: false, start: "14:00", end: "18:00" };
+            const isChecked = dayConfig.active ? 'checked' : '';
+            const opacity = dayConfig.active ? '1' : '0.5';
+            const pointerEvents = dayConfig.active ? 'auto' : 'none';
+
+            const row = document.createElement('div');
+            row.className = 'schedule-row';
+            row.style.display = 'flex';
+            row.style.alignItems = 'center';
+            row.style.padding = '1rem';
+            row.style.background = '#f8f9fa';
+            row.style.borderRadius = '8px';
+            row.style.justifyContent = 'space-between';
+            row.style.border = '1px solid #eee';
+
+            row.innerHTML = `
+                <div style="display:flex; align-items:center; gap:1rem;">
+                    <label class="switch" style="position:relative; display:inline-block; width:60px; height:34px;">
+                        <input type="checkbox" class="day-toggle" data-day="${i}" ${isChecked}>
+                        <span class="slider round" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
+                        <style>
+                            .switch input:checked + .slider { background-color: var(--primary); }
+                            .switch input:checked + .slider:before { transform: translateX(26px); }
+                            .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+                        </style>
+                    </label>
+                    <span style="font-weight:600; font-size:1.1rem; width:100px;">${days[i]}</span>
+                </div>
+                
+                <div class="time-inputs" style="display:flex; align-items:center; gap:0.5rem; opacity: ${opacity}; pointer-events: ${pointerEvents}; transition: 0.3s;">
+                    <input type="time" class="start-time" value="${dayConfig.start}" style="padding:0.5rem; border:1px solid #ddd; border-radius:4px;">
+                    <span style="color:#666;">a</span>
+                    <input type="time" class="end-time" value="${dayConfig.end}" style="padding:0.5rem; border:1px solid #ddd; border-radius:4px;">
+                </div>
+            `;
+
+            // Toggle Handler
+            row.querySelector('.day-toggle').addEventListener('change', (e) => {
+                const inputs = row.querySelector('.time-inputs');
+                if (e.target.checked) {
+                    inputs.style.opacity = '1';
+                    inputs.style.pointerEvents = 'auto';
+                } else {
+                    inputs.style.opacity = '0.5';
+                    inputs.style.pointerEvents = 'none';
+                }
+            });
+
+            scheduleContainer.appendChild(row);
+        }
+    }
+
+    saveScheduleBtn.addEventListener('click', async () => {
+        saveScheduleBtn.disabled = true;
+        saveScheduleBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+        const config = {};
+        const rows = document.querySelectorAll('.schedule-row');
+        rows.forEach(row => {
+            const toggle = row.querySelector('.day-toggle');
+            const day = toggle.dataset.day;
+            const start = row.querySelector('.start-time').value;
+            const end = row.querySelector('.end-time').value;
+
+            config[day] = {
+                active: toggle.checked,
+                start: start,
+                end: end
+            };
+        });
+
+        try {
+            await setDoc(doc(db, "doctor_schedules", doctorSelect.value), { schedule: config });
+            doctorScheduleConfig = config; // Update local cache
+            alert("Configuración guardada correctamente.");
+        } catch (e) {
+            console.error(e);
+            alert("Error al guardar: " + e.message);
+        } finally {
+            saveScheduleBtn.disabled = false;
+            saveScheduleBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
+        }
+    });
 
     // --- DAILY VIEW LOGIC ---
 

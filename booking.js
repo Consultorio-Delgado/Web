@@ -1,6 +1,6 @@
 /* Booking Logic with Firebase - Weekly View */
 import { db } from './firebase-config.js';
-import { collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, query, where, getDocs, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function renderWeek(mondayDate) {
-        // Update Navigation UI
+        // Update Label
         const fridayDate = new Date(mondayDate);
         fridayDate.setDate(mondayDate.getDate() + 4);
 
@@ -81,11 +81,30 @@ document.addEventListener('DOMContentLoaded', () => {
             prevWeekBtn.style.visibility = 'visible';
         }
 
-        // Show Loading
+        // Clear Grid
         calendarGrid.innerHTML = '<div style="padding: 2rem; text-align: center; grid-column: 1/-1;">Cargando disponibilidad...</div>';
 
+        // 1. Fetch Doctor Schedule Rules
+        let scheduleRules = {
+            // Default Fallback (Monday=1, Sunday=0)
+            1: { active: true, start: "14:00", end: "18:00" },
+            2: { active: true, start: "14:00", end: "18:00" },
+            3: { active: true, start: "14:00", end: "18:00" },
+            4: { active: true, start: "14:00", end: "18:00" },
+            5: { active: true, start: "14:00", end: "18:00" }
+        };
+
         try {
-            // Generate dates
+            const docSnap = await getDoc(doc(db, "doctor_schedules", doctorId));
+            if (docSnap.exists() && docSnap.data().schedule) {
+                scheduleRules = { ...scheduleRules, ...docSnap.data().schedule };
+            }
+        } catch (e) {
+            console.warn("Could not load dynamic schedule, using default.", e);
+        }
+
+        try {
+            // 2. Generate dates
             const weekDates = [];
             let tempDate = new Date(mondayDate);
             for (let i = 0; i < 5; i++) {
@@ -93,18 +112,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 tempDate.setDate(tempDate.getDate() + 1);
             }
 
-            // Fetch taken slots
+            // 3. Fetch taken slots
             const takenSlotsMap = await getTakenSlotsForWeek(weekDates);
 
-            // Clear Loading
+            // 4. Clear Loading
             calendarGrid.innerHTML = '';
 
             const todayStr = new Date().toISOString().split('T')[0];
 
+            // 5. Render Columns
             weekDates.forEach(dateStr => {
                 const dateObj = new Date(dateStr + 'T00:00:00');
                 const dayName = dateObj.toLocaleDateString('es-AR', { weekday: 'long' });
                 const dayNum = dateObj.getDate();
+                const dayOfWeek = dateObj.getDay(); // 1=Mon, 5=Fri
 
                 const col = document.createElement('div');
                 col.className = 'day-column';
@@ -119,31 +140,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 const slotsContainer = document.createElement('div');
                 slotsContainer.className = 'slots-column';
 
-                // Generate Slots
-                let slotTime = new Date(dateStr + 'T00:00:00');
-                slotTime.setHours(startHour, 0, 0, 0);
-                const slotEndTime = new Date(dateStr + 'T00:00:00');
-                slotEndTime.setHours(endHour, 0, 0, 0);
+                const rule = scheduleRules[dayOfWeek];
 
-                const isPast = dateStr < todayStr;
+                if (!rule || !rule.active) {
+                    // Closed/Inactive Day
+                    slotsContainer.innerHTML = '<div style="padding:1rem; text-align:center; color:#ccc; font-size:0.9rem;">No atiende</div>';
+                } else {
+                    // Generate Slots based on Rule
+                    const [startH, startM] = rule.start.split(':').map(Number);
+                    const [endH, endM] = rule.end.split(':').map(Number);
 
-                while (slotTime < slotEndTime) {
-                    const timeStr = slotTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                    let slotTime = new Date(dateStr + 'T00:00:00');
+                    slotTime.setHours(startH, startM, 0, 0);
 
-                    const btn = document.createElement('div');
-                    btn.className = 'time-slot';
-                    btn.textContent = timeStr;
+                    const slotEndTime = new Date(dateStr + 'T00:00:00');
+                    slotEndTime.setHours(endH, endM, 0, 0);
 
-                    const isTaken = takenSlotsMap[dateStr] && takenSlotsMap[dateStr].includes(timeStr);
+                    const isPast = dateStr < todayStr; // Simplified past check (whole day)
 
-                    if (isPast || isTaken) {
-                        btn.classList.add('taken');
-                    } else {
-                        btn.addEventListener('click', () => selectWeekSlot(btn, dateStr, timeStr));
+                    while (slotTime < slotEndTime) {
+                        const timeStr = slotTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+                        const btn = document.createElement('div');
+                        btn.className = 'time-slot';
+                        btn.textContent = timeStr;
+
+                        const isTaken = takenSlotsMap[dateStr] && takenSlotsMap[dateStr].includes(timeStr);
+
+                        // Specific logic for today timestamps could be added here
+
+                        if (isPast || isTaken) {
+                            btn.classList.add('taken');
+                        } else {
+                            btn.addEventListener('click', () => selectWeekSlot(btn, dateStr, timeStr));
+                        }
+
+                        slotsContainer.appendChild(btn);
+                        slotTime.setMinutes(slotTime.getMinutes() + intervalMinutes);
                     }
-
-                    slotsContainer.appendChild(btn);
-                    slotTime.setMinutes(slotTime.getMinutes() + intervalMinutes);
                 }
 
                 col.appendChild(slotsContainer);
