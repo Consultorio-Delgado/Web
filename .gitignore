@@ -1,0 +1,16 @@
+# OS Files
+.DS_Store
+Thumbs.db
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# Node
+node_modules/
+package-lock.json
+
+# Optional: If you want to hide credentials, uncomment the line below.
+# WARNING: If you hide firebase-config.js, your GitHub Pages site WILL NOT WORK (it won't find the database keys).
+# firebase-config.js
