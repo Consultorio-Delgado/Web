@@ -337,13 +337,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isBlocked = appt.status === 'blocked';
                 row.style.backgroundColor = isBlocked ? '#fef2f2' : '#fff';
 
+                // Format CreatedAt
+                let createdStr = '';
+                if (appt.createdAt && !isBlocked) {
+                    try {
+                        const dateObj = appt.createdAt.seconds ? new Date(appt.createdAt.seconds * 1000) : new Date(appt.createdAt);
+                        createdStr = dateObj.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                    } catch (e) { }
+                }
+
                 row.innerHTML = `
                     <div style="width: 80px; font-weight:bold; color: #334155;">${timeStr}</div>
-                    <div style="width: 200px; font-weight:600; color:#1e293b;">
-                        ${isBlocked ? '<span style="color:#dc2626;">BLOQUEADO</span>' : appt.patientName}
+                    <div style="width: 200px; font-weight:600; color:#1e293b; display:flex; flex-direction:column;">
+                        <span>${isBlocked ? '<span style="color:#dc2626;">BLOQUEADO</span>' : appt.patientName}</span>
+                        ${createdStr ? `<span style="font-size:0.75rem; color:#94a3b8; font-weight:400; margin-top:2px;">Creado: ${createdStr}</span>` : ''}
                     </div>
-                    <div style="width: 150px; font-size:0.8rem; color:#64748b;">
-                        ${isBlocked ? '-' : (appt.patientPhone || 'Sin contacto')}
+                    <div style="width: 200px; font-size:0.8rem; color:#64748b; display:flex; flex-direction:column;">
+                        <span>${isBlocked ? '-' : (appt.patientPhone || 'Sin tel')}</span>
+                        ${!isBlocked && appt.patientEmail ? `<a href="mailto:${appt.patientEmail}" style="color:#0ea5e9; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;" title="${appt.patientEmail}">${appt.patientEmail}</a>` : ''}
                     </div>
                     <div style="width: 150px; color: #334155;">
                         ${isBlocked ? '-' : (appt.insurance || 'Particular')}
