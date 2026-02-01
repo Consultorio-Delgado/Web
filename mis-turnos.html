@@ -279,13 +279,13 @@
                 });
 
                 // Logic:
-                // Upcoming: Date >= Today AND status != 'cancelled'
-                // History: Date < Today OR status == 'cancelled'
+                // Upcoming: Date >= Today AND status != 'cancelled' AND status != 'attended'
+                // History: Date < Today OR status == 'cancelled' OR status == 'attended'
 
-                const upcoming = appts.filter(a => a.date >= todayStr && a.status !== 'cancelled');
+                const upcoming = appts.filter(a => a.date >= todayStr && a.status !== 'cancelled' && a.status !== 'attended');
 
-                // History includes past appointments OR any cancelled appointment (even if future)
-                const past = appts.filter(a => a.date < todayStr || a.status === 'cancelled').sort((a, b) => {
+                // History includes past appointments OR any cancelled appointment OR attended
+                const past = appts.filter(a => a.date < todayStr || a.status === 'cancelled' || a.status === 'attended').sort((a, b) => {
                     // Sort history by date descending (newest first)
                     if (a.date === b.date) return b.time.localeCompare(a.time);
                     return b.date.localeCompare(a.date);
@@ -377,6 +377,8 @@
                 let statusBadge = '';
                 if (isCancelled) {
                     statusBadge = `<span class="status-badge status-cancelled">Cancelado</span>`;
+                } else if (appt.status === 'attended') {
+                    statusBadge = `<span class="status-badge" style="background:#dcfce7; color:#166534;">Atendido</span>`;
                 } else if (appt.date < new Date().toISOString().split('T')[0]) {
                     statusBadge = `<span class="status-badge" style="background:#eee; color:#666;">Finalizado</span>`;
                 } else {

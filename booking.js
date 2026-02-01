@@ -483,7 +483,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 4. Booking
                 try {
-                    console.log("4. Checking slot availability...");
+                    console.log("4. Checking active appointments limit...");
+                    const activeApptsCount = await checkActiveAppointmentsLimit(currentUser.email);
+                    if (activeApptsCount >= 3) {
+                        console.warn("❌ Limit reached:", activeApptsCount);
+                        alert("Ya tenés 3 turnos vigentes. Cancelá alguno antes de sacar otro.");
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                        return;
+                    }
+
+                    console.log("5. Checking slot availability...");
                     const isTaken = await checkSlotTaken(cleanDate, cleanTime);
                     if (isTaken) {
                         console.warn("❌ Slot taken");
@@ -545,6 +555,38 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.error("❌ Submit button or Form NOT found in DOM. Button:", localSubmitBtn, "Form:", form);
         }
+    }
+
+    async function checkActiveAppointmentsLimit(email) {
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Query user's appointments
+        // Ideally compound query: where email==email AND date>=today AND status!=cancelled
+        // But Firestore requires index. We fetch by email and filter locally which is safe for this scale.
+        const q = query(
+            collection(db, "appointments"),
+            where("patientEmail", "==", email)
+        );
+
+        const snap = await getDocs(q);
+        let activeCount = 0;
+
+        snap.forEach(doc => {
+            const data = doc.data();
+            // Check if "active":
+            // 1. Not cancelled
+            // 2. Not attended (future proofing as requested)
+            // 3. Date is today or future
+
+            const isActiveStatus = data.status !== 'cancelled' && data.status !== 'attended';
+            const isFutureOrToday = data.date >= todayStr;
+
+            if (isActiveStatus && isFutureOrToday) {
+                activeCount++;
+            }
+        });
+
+        return activeCount;
     }
 
     async function checkSlotTaken(date, time) {
