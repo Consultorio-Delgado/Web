@@ -47,7 +47,7 @@
             <h1>Cuidado Médico de Excelencia y Calidez Humana</h1>
             <p>Especialistas en Ginecología y Clínica Médica dedicados a su bienestar integral.</p>
             <div class="hero-btns">
-                <a href="#" class="btn btn-primary hero-cta-turno">Reservar Turno</a>
+                <a href="#" id="hero-cta" class="btn btn-primary hero-cta-turno">Reservar Turno</a>
                 <a href="#especialidades" class="btn btn-outline">Nuestros Servicios</a>
             </div>
         </div>
@@ -203,6 +203,11 @@
         if (navMisTurnos) navMisTurnos.addEventListener('click', (e) => handleNavClick(e, 'mis-turnos.html'));
         if (navMiPerfil) navMiPerfil.addEventListener('click', (e) => handleNavClick(e, 'perfil-paciente.html'));
         if (navSacarTurno) navSacarTurno.addEventListener('click', (e) => handleNavClick(e, 'turnos.html'));
+
+        const heroCta = document.getElementById('hero-cta');
+        if (heroCta) {
+            heroCta.addEventListener('click', (e) => handleNavClick(e, 'turnos.html'));
+        }
 
         if (navLogout) {
             navLogout.addEventListener('click', async (e) => {
