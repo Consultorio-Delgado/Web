@@ -1176,75 +1176,69 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(e);
             alert("Error al actualizar.");
         }
-        const dayOfWeek = dateObj.getDay(); // 1=Mon
+    });
 
-        const col = document.createElement('div');
-        col.className = 'day-column';
+});
 
-        const controlsDiv = `<div style="display:flex; gap:5px; justify-content:center; margin-bottom:5px;">
-                    <button class="btn-icon-sm" onclick="blockDay('${dateStr}', '${doctorId}')" title="Bloquear día"><i class="fas fa-lock" style="font-size:0.8rem; color:#666;"></i></button>
-                    <button class="btn-icon-sm" onclick="unblockDay('${dateStr}', '${doctorId}')" title="Desbloquear día"><i class="fas fa-unlock" style="font-size:0.8rem; color:#666;"></i></button>
-                </div>`;
+const header = document.createElement('div');
+header.className = 'day-header';
+header.innerHTML = `${controlsDiv}<span>${capitalize(dayName)}</span><small>${dayNum}</small>`;
+col.appendChild(header);
 
-        const header = document.createElement('div');
-        header.className = 'day-header';
-        header.innerHTML = `${controlsDiv}<span>${capitalize(dayName)}</span><small>${dayNum}</small>`;
-        col.appendChild(header);
+const slotsContainer = document.createElement('div');
+slotsContainer.className = 'slots-column';
 
-        const slotsContainer = document.createElement('div');
-        slotsContainer.className = 'slots-column';
+const rule = scheduleRules[dayOfWeek];
 
-        const rule = scheduleRules[dayOfWeek];
+if (!rule || !rule.active || !rule.start || !rule.end) {
+    slotsContainer.innerHTML = '<div style="padding:1rem; text-align:center; color:#ccc; font-size:0.9rem;">No atiende</div>';
+} else {
+    const [startH, startM] = rule.start.split(':').map(Number);
+    const [endH, endM] = rule.end.split(':').map(Number);
 
-        if (!rule || !rule.active || !rule.start || !rule.end) {
-            slotsContainer.innerHTML = '<div style="padding:1rem; text-align:center; color:#ccc; font-size:0.9rem;">No atiende</div>';
-        } else {
-            const [startH, startM] = rule.start.split(':').map(Number);
-            const [endH, endM] = rule.end.split(':').map(Number);
+    let slotTime = new Date(dateStr + 'T00:00:00');
+    slotTime.setHours(startH, startM, 0, 0);
+    const slotEndTime = new Date(dateStr + 'T00:00:00');
+    slotEndTime.setHours(endH, endM, 0, 0);
 
-            let slotTime = new Date(dateStr + 'T00:00:00');
-            slotTime.setHours(startH, startM, 0, 0);
-            const slotEndTime = new Date(dateStr + 'T00:00:00');
-            slotEndTime.setHours(endH, endM, 0, 0);
+    // Safety limit
+    let iterations = 0;
+    while (slotTime < slotEndTime && iterations < 100) {
+        iterations++;
+        const timeStr = slotTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-            // Safety limit
-            let iterations = 0;
-            while (slotTime < slotEndTime && iterations < 100) {
-                iterations++;
-                const timeStr = slotTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        const slotDiv = document.createElement('div');
+        slotDiv.className = 'time-slot';
+        slotDiv.style.cursor = 'pointer';
 
-                const slotDiv = document.createElement('div');
-                slotDiv.className = 'time-slot';
-                slotDiv.style.cursor = 'pointer';
+        const appt = appointmentsMap[dateStr] && appointmentsMap[dateStr][timeStr];
 
-                const appt = appointmentsMap[dateStr] && appointmentsMap[dateStr][timeStr];
+        if (appt) {
+            const isBlocked = appt.status === 'blocked';
+            slotDiv.classList.add('taken');
+            if (isBlocked) {
+                slotDiv.style.background = '#fee2e2';
+                slotDiv.style.color = '#b91c1c';
+            }
 
-                if (appt) {
-                    const isBlocked = appt.status === 'blocked';
-                    slotDiv.classList.add('taken');
-                    if (isBlocked) {
-                        slotDiv.style.background = '#fee2e2';
-                        slotDiv.style.color = '#b91c1c';
-                    }
-
-                    slotDiv.style.minHeight = '60px';
-                    slotDiv.innerHTML = `
+            slotDiv.style.minHeight = '60px';
+            slotDiv.innerHTML = `
                                 <strong>${timeStr}</strong><br>
                                 ${isBlocked ? 'BLOQUEADO' : (appt.patientName ? appt.patientName.split(' ')[0] : 'Ocupado')}
                             `;
-                    slotDiv.onclick = () => openEditModal(appt);
-                } else {
-                    slotDiv.textContent = timeStr;
-                    slotDiv.onclick = () => openAddModal(timeStr, dateStr);
-                }
-
-                slotsContainer.appendChild(slotDiv);
-                slotTime.setMinutes(slotTime.getMinutes() + intervalMinutes);
-            }
+            slotDiv.onclick = () => openEditModal(appt);
+        } else {
+            slotDiv.textContent = timeStr;
+            slotDiv.onclick = () => openAddModal(timeStr, dateStr);
         }
 
-        col.appendChild(slotsContainer);
-        calendarGrid.appendChild(col);
+        slotsContainer.appendChild(slotDiv);
+        slotTime.setMinutes(slotTime.getMinutes() + intervalMinutes);
+    }
+}
+
+col.appendChild(slotsContainer);
+calendarGrid.appendChild(col);
     });
 
 } catch (error) {
