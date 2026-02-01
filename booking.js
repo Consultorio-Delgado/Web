@@ -20,7 +20,10 @@ const nextWeekBtn = document.getElementById('next-week');
 const selectedSlotDisplay = document.getElementById('slot-display');
 const selectedSlotInput = document.getElementById('selected-slot');
 const submitBtn = document.getElementById('submit-btn');
-const form = document.forms['turno-secondi'] || document.forms['turno-capparelli'];
+let form = null;
+if (typeof document !== 'undefined') {
+    form = document.forms['turno-secondi'] || document.forms['turno-capparelli'];
+}
 
 // Auth State
 let currentUser = null;
@@ -83,6 +86,11 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Re-query form to be safe
+    if (!form) {
+        form = document.forms['turno-secondi'] || document.forms['turno-capparelli'];
+    }
+
     // Identify Doctor
     const formName = form ? form.name : '';
     const doctorId = formName.includes('secondi') ? 'secondi' : 'capparelli';
