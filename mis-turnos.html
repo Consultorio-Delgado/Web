@@ -144,7 +144,7 @@
         <script type="module">
             import { auth, db } from './firebase-config.js';
             import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-            import { collection, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+            import { collection, query, where, getDocs, orderBy, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
             const greeting = document.getElementById('patient-greeting');
             const emailDisplay = document.getElementById('patient-email-display');
@@ -198,8 +198,18 @@
                         return a.date.localeCompare(b.date);
                     });
 
-                    const upcoming = appts.filter(a => a.date >= todayStr);
-                    const past = appts.filter(a => a.date < todayStr).reverse(); // Newest first
+                    // Logic:
+                    // Upcoming: Date >= Today AND status != 'cancelled'
+                    // History: Date < Today OR status == 'cancelled'
+
+                    const upcoming = appts.filter(a => a.date >= todayStr && a.status !== 'cancelled');
+
+                    // History includes past appointments OR any cancelled appointment (even if future)
+                    const past = appts.filter(a => a.date < todayStr || a.status === 'cancelled').sort((a, b) => {
+                        // Sort history by date descending (newest first)
+                        if (a.date === b.date) return b.time.localeCompare(a.time);
+                        return b.date.localeCompare(a.date);
+                    });
 
                     renderList(upcomingList, upcoming, true);
                     renderList(historyList, past, false);
@@ -216,6 +226,29 @@
                 }
             }
 
+            // Expose cancel function to global scope
+            window.cancelAppointment = async (id, date, time) => {
+                const confirmed = confirm(`¿Estás seguro que deseas cancelar el turno del ${date} a las ${time}hs?`);
+                if (!confirmed) return;
+
+                try {
+                    const apptRef = doc(db, "appointments", id);
+                    await updateDoc(apptRef, {
+                        status: 'cancelled',
+                        cancellationDate: new Date().toISOString()
+                    });
+
+                    alert("Turno cancelado correctamente.");
+                    // Reload
+                    const user = auth.currentUser;
+                    if (user) loadAppointments(user.email);
+
+                } catch (error) {
+                    console.error("Error cancelling:", error);
+                    alert("Hubo un error al cancelar el turno.");
+                }
+            };
+
             function renderList(container, items, isUpcoming) {
                 if (items.length === 0) {
                     container.innerHTML = `<div class="empty-state">No tienes turnos ${isUpcoming ? 'próximos' : 'pasados'}.</div>`;
@@ -227,8 +260,28 @@
                     const dateStr = dateObj.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
                     const doctorName = appt.doctor === 'secondi' ? 'Dra. Ma. Verónica Secondi' : 'Dr. Guillermo Capparelli';
-                    const statusClass = appt.status === 'blocked' ? 'status-cancelled' : 'status-confirmed';
-                    const statusText = appt.status === 'blocked' ? 'Cancelado / Bloqueado' : 'Confirmado';
+                    const isCancelled = appt.status === 'cancelled';
+
+                    let statusBadge = '';
+                    if (isCancelled) {
+                        statusBadge = `<span class="status-badge status-cancelled">Cancelado</span>`;
+                    } else if (appt.date < new Date().toISOString().split('T')[0]) {
+                        statusBadge = `<span class="status-badge" style="background:#eee; color:#666;">Finalizado</span>`;
+                    } else {
+                        statusBadge = `<span class="status-badge status-confirmed">Confirmado</span>`;
+                    }
+
+                    // Cancel Button only for Upcoming and NOT cancelled
+                    let actions = '';
+                    if (isUpcoming && !isCancelled) {
+                        actions = `
+                            <button onclick="cancelAppointment('${appt.id}', '${appt.date}', '${appt.time}')" 
+                                    class="btn-outline" 
+                                    style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-color: #ef4444; color: #ef4444; margin-left: 1rem; cursor: pointer;">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        `;
+                    }
 
                     return `
                     <div class="appt-card">
@@ -239,8 +292,9 @@
                                 <span><i class="far fa-clock"></i> ${appt.time} hs</span>
                             </div>
                         </div>
-                        <div>
-                             <span class="status-badge ${statusClass}">${statusText}</span>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                             ${statusBadge}
+                             ${actions}
                         </div>
                     </div>
                 `;

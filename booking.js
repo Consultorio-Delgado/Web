@@ -336,8 +336,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                if (!map[data.date]) map[data.date] = [];
-                map[data.date].push(data.time);
+                // Filter out cancelled appointments
+                if (data.status !== 'cancelled') {
+                    if (!map[data.date]) map[data.date] = [];
+                    map[data.date].push(data.time);
+                }
             });
 
             return map;
@@ -354,8 +357,11 @@ document.addEventListener('DOMContentLoaded', () => {
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 if (data.date >= startDate && data.date <= endDate) {
-                    if (!map[data.date]) map[data.date] = [];
-                    map[data.date].push(data.time);
+                    // Filter out cancelled appointments
+                    if (data.status !== 'cancelled') {
+                        if (!map[data.date]) map[data.date] = [];
+                        map[data.date].push(data.time);
+                    }
                 }
             });
             return map;
@@ -549,6 +555,18 @@ document.addEventListener('DOMContentLoaded', () => {
             where("time", "==", time)
         );
         const snap = await getDocs(q);
-        return !snap.empty;
+
+        // Check if any finding is NOT cancelled
+        // If empty, it's free. If not empty, we check if all are cancelled (unlikely duplicates, but safe)
+        if (snap.empty) return false;
+
+        let taken = false;
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (data.status !== 'cancelled') {
+                taken = true;
+            }
+        });
+        return taken;
     }
 });
