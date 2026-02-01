@@ -515,9 +515,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     console.log("4. Checking active appointments limit...");
                     const activeApptsCount = await checkActiveAppointmentsLimit(currentUser.email);
-                    if (activeApptsCount >= 3) {
+                    if (activeApptsCount >= 2) {
                         console.warn("❌ Limit reached:", activeApptsCount);
-                        alert("Ya tenés 3 turnos vigentes. Cancelá alguno antes de sacar otro.");
+                        // alert("Ya tenés 2 turnos vigentes. Cancelá alguno antes de sacar otro.");
+                        showLimitModal();
                         btn.disabled = false;
                         btn.innerHTML = originalText;
                         return;
