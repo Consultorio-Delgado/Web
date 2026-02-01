@@ -157,16 +157,24 @@
 
                     <form id="register-form">
                         <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" id="reg-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Contraseña *</label>
+                            <input type="password" id="reg-password" required minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label>DNI *</label>
+                            <input type="number" id="reg-dni" required placeholder="Sin puntos">
+                        </div>
+                        <div class="form-group">
                             <label>Nombre *</label>
                             <input type="text" id="reg-name" required>
                         </div>
                         <div class="form-group">
                             <label>Apellido *</label>
                             <input type="text" id="reg-lastname" required>
-                        </div>
-                        <div class="form-group">
-                            <label>DNI *</label>
-                            <input type="number" id="reg-dni" required placeholder="Sin puntos">
                         </div>
                         <div class="form-group">
                             <label>Sexo *</label>
@@ -191,14 +199,6 @@
                         <div class="form-group">
                             <label>Teléfono (WhatsApp) *</label>
                             <input type="tel" id="reg-phone" required placeholder="Ej: 11 1234 5678">
-                        </div>
-                        <div class="form-group">
-                            <label>Email *</label>
-                            <input type="email" id="reg-email" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Contraseña *</label>
-                            <input type="password" id="reg-password" required minlength="6">
                         </div>
                         <div style="color: red;margin-bottom: 1rem; display: none;" id="reg-error"></div>
                         <button type="submit" class="btn btn-primary" style="width: 100%;">Crear Cuenta</button>
