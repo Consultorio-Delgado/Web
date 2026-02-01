@@ -13,15 +13,12 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // DOM Elements
-const calendarGrid = document.getElementById('calendar-grid');
-const currentWeekLabel = document.getElementById('current-week-label');
-const prevWeekBtn = document.getElementById('prev-week');
-const nextWeekBtn = document.getElementById('next-week');
-const selectedSlotDisplay = document.getElementById('slot-display');
-const selectedSlotInput = document.getElementById('selected-slot');
-const submitBtn = document.getElementById('submit-btn');
+// DOM Elements (Initialized in DOMContentLoaded)
+let calendarGrid, currentWeekLabel, prevWeekBtn, nextWeekBtn, selectedSlotDisplay, selectedSlotInput, submitBtn;
 let form = null;
+
 if (typeof document !== 'undefined') {
+    // Attempt early bind, but re-bind in DOMContentLoaded is safer
     form = document.forms['turno-secondi'] || document.forms['turno-capparelli'];
 }
 
@@ -34,6 +31,11 @@ onAuthStateChanged(auth, async (user) => {
         // Pre-fill Form
         try {
             const docSnap = await getDoc(doc(db, "patients", user.uid));
+            // Ensure form is available (if auth loads fast)
+            if (!form && typeof document !== 'undefined') {
+                form = document.forms['turno-secondi'] || document.forms['turno-capparelli'];
+            }
+
             if (docSnap.exists() && form) {
                 const data = docSnap.data();
 
@@ -86,6 +88,15 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize DOM Elements
+    calendarGrid = document.getElementById('calendar-grid');
+    currentWeekLabel = document.getElementById('current-week-label');
+    prevWeekBtn = document.getElementById('prev-week');
+    nextWeekBtn = document.getElementById('next-week');
+    selectedSlotDisplay = document.getElementById('slot-display');
+    selectedSlotInput = document.getElementById('selected-slot');
+    submitBtn = document.getElementById('submit-btn');
+
     // Re-query form to be safe
     if (!form) {
         form = document.forms['turno-secondi'] || document.forms['turno-capparelli'];
@@ -96,8 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const doctorId = formName.includes('secondi') ? 'secondi' : 'capparelli';
 
     // Configuration
-    const startHour = 14;
-    const endHour = 18;
     const intervalMinutes = 20;
 
     // State
