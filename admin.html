@@ -102,6 +102,7 @@
                     Habituales</button>
                 <button id="tab-config" class="btn btn-outline btn-sm"
                     style="border-radius: 20px;">Configuración</button>
+                <button id="tab-patients" class="btn btn-outline btn-sm" style="border-radius: 20px;">Pacientes</button>
             </div>
 
             <button id="logout-btn" class="btn btn-outline btn-sm">Salir <i class="fas fa-sign-out-alt"></i></button>
@@ -202,6 +203,93 @@
                 </div>
             </div>
         </div>
+
+        <!-- VIEW 5: Patients Management -->
+        <div id="view-patients" class="view-section" style="display: none;">
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+                <h3 style="margin-bottom: 1rem; color: var(--primary);">Gestión de Pacientes</h3>
+                <div style="display: flex; gap: 1rem;">
+                    <input type="text" id="patient-search-input" placeholder="Buscar por Nombre o DNI..."
+                        style="flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                    <button id="patient-search-btn" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </div>
+
+            <div id="patients-results"
+                style="background: white; border-radius: 8px; overflow: hidden; border: 1px solid #eee; min-height: 200px;">
+                <div style="padding: 2rem; text-align: center; color: #888;">
+                    Ingrese un nombre o DNI para buscar.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Details Modal -->
+    <div id="patient-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1050; align-items:center; justify-content:center; overflow-y: auto;">
+        <div
+            style="background:white; width:95%; max-width:900px; margin: 2rem auto; padding:2rem; border-radius:8px; position:relative; max-height: 90vh; overflow-y: auto;">
+            <button onclick="document.getElementById('patient-modal').style.display='none'"
+                style="position:absolute; top:1rem; right:1rem; border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+
+            <h3
+                style="margin-bottom:1.5rem; color:var(--primary); border-bottom:1px solid #eee; padding-bottom:0.5rem;">
+                Ficha del Paciente</h3>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <!-- Left: Edit Info -->
+                <div>
+                    <h4 style="margin-bottom:1rem;">Datos Personales</h4>
+                    <form id="patient-edit-form">
+                        <input type="hidden" id="p-id">
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.9rem; color:#666;">Nombre</label>
+                            <input type="text" id="p-name" class="form-control"
+                                style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.9rem; color:#666;">Apellido</label>
+                            <input type="text" id="p-lastname" class="form-control"
+                                style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.9rem; color:#666;">DNI</label>
+                            <input type="text" id="p-dni" class="form-control"
+                                style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.9rem; color:#666;">Email</label>
+                            <input type="email" id="p-email" class="form-control"
+                                style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;" readonly
+                                style="background:#f9f9f9;">
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.9rem; color:#666;">Teléfono</label>
+                            <input type="text" id="p-phone" class="form-control"
+                                style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.9rem; color:#666;">Obra Social</label>
+                            <input type="text" id="p-insurance" class="form-control"
+                                style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;">Guardar Cambios</button>
+                    </form>
+                </div>
+
+                <!-- Right: History -->
+                <div>
+                    <h4 style="margin-bottom:1rem;">Historial de Turnos</h4>
+                    <div id="p-history-list"
+                        style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; background: #f9f9f9; padding: 0.5rem;">
+                        <!-- List loaded by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     </div>
 
     <!-- Edit/Add Appointment Modal -->
