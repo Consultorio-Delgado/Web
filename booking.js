@@ -378,8 +378,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- SUBMISSION LOGIC ---
+
     if (typeof document !== 'undefined') {
         const localSubmitBtn = document.getElementById('submit-btn');
+
+        console.log("Checking for submit button:", localSubmitBtn);
+        console.log("Checking for form:", form);
+
         if (localSubmitBtn && form) {
             console.log("Replacing submit listener with direct click listener");
 
@@ -387,18 +392,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const newSubmitBtn = localSubmitBtn.cloneNode(true);
             localSubmitBtn.parentNode.replaceChild(newSubmitBtn, localSubmitBtn);
 
+            // Validate references after replace
+            console.log("New submit button reference:", newSubmitBtn);
+
             newSubmitBtn.addEventListener('click', async function (event) {
                 event.preventDefault(); // Stop any form default
-                console.log("Button Clicked - Starting Process");
+                console.log("🟢 BUTTON CLICKED - Starting Submission Process");
 
                 const btn = newSubmitBtn;
                 const originalText = btn.innerText;
 
                 // 1. Initial Checks
+                console.log("1. Checking slot selection...");
                 if (!selectedSlotInput.value) {
+                    console.warn("❌ No slot selected");
                     alert("Por favor, selecciona un horario disponible.");
                     return;
                 }
+                console.log("✅ Slot selected:", selectedSlotInput.value);
 
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
@@ -406,8 +417,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const formData = new FormData(form);
                 const cleanDate = form.dataset.date;
                 const cleanTime = form.dataset.time;
+                console.log("Data to submit:", { cleanDate, cleanTime });
 
                 if (!cleanDate || !cleanTime) {
+                    console.error("❌ Missing date/time in dataset");
                     alert("Error: No se ha seleccionado fecha u hora.");
                     btn.disabled = false;
                     btn.innerText = "Confirmar Solicitud";
@@ -415,16 +428,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // 2. Auth Check
+                console.log("2. Checking Auth...");
                 if (!currentUser) {
+                    console.warn("❌ User not logged in");
                     alert("Debes iniciar sesión.");
                     btn.disabled = false;
                     btn.innerText = "Confirmar Solicitud";
                     return;
                 }
+                console.log("✅ User logged in:", currentUser.uid);
 
                 // 3. Strict Profile Check
                 try {
-                    console.log("Validating profile for:", currentUser.uid);
+                    console.log("3. Validating profile for:", currentUser.uid);
                     const docSnap = await getDoc(doc(db, "patients", currentUser.uid));
 
                     if (docSnap.exists()) {
@@ -436,17 +452,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
 
                         if (missing.length > 0) {
+                            console.warn("❌ Missing profile fields:", missing);
                             alert(`Faltan datos en tu perfil: ${missing.join(', ')}. Por favor complétalos.`);
                             window.location.href = 'perfil-paciente.html';
                             return;
                         }
+                        console.log("✅ Profile valid");
                     } else {
+                        console.warn("❌ Profile document not found");
                         alert("Perfil no encontrado. Por favor completa tu registro.");
                         window.location.href = 'perfil-paciente.html';
                         return;
                     }
                 } catch (err) {
-                    console.error("Profile validation error", err);
+                    console.error("❌ Profile validation error", err);
                     alert("Error validando perfil: " + (err.message || err));
                     btn.disabled = false;
                     btn.innerHTML = originalText;
@@ -455,16 +474,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 4. Booking
                 try {
+                    console.log("4. Checking slot availability...");
                     const isTaken = await checkSlotTaken(cleanDate, cleanTime);
                     if (isTaken) {
+                        console.warn("❌ Slot taken");
                         alert("Lo sentimos, este turno acaba de ser reservado por otra persona.");
                         btn.disabled = false;
                         btn.innerHTML = originalText;
                         renderWeek(currentMonday);
                         return;
                     }
+                    console.log("✅ Slot available");
 
-                    console.log("Saving to Firestore...");
+                    console.log("5. Saving to Firestore...");
                     await addDoc(collection(db, "appointments"), {
                         doctor: doctorId,
                         date: cleanDate,
@@ -477,9 +499,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         timestamp: new Date(),
                         patientUid: currentUser.uid
                     });
+                    console.log("✅ Firestore save successful");
 
                     // Email Logic
                     try {
+                        console.log("6. Sending Email...");
                         const EMAILJS_PUBLIC_KEY = "yp2cTT12Ti6VmL4iN";
                         const EMAILJS_SERVICE_ID = "service_0wgkq1l";
                         const EMAILJS_TEMPLATE_ID = "template_zkapdb6";
@@ -493,18 +517,24 @@ document.addEventListener('DOMContentLoaded', () => {
                                 doctor_name: doctorNamePretty,
                                 date_time: `${cleanDate} ${cleanTime}`
                             });
+                            console.log("✅ Email sent command issued");
+                        } else {
+                            console.warn("⚠️ EmailJS not found");
                         }
                     } catch (e) { console.warn("Email error (non-fatal)", e); }
 
+                    console.log("🚀 Redirecting to gracias.html");
                     window.location.href = 'gracias.html';
 
                 } catch (error) {
-                    console.error("Error booking:", error);
+                    console.error("❌ CRTICAL ERROR during booking:", error);
                     alert("Hubo un error al procesar el turno: " + error.message);
                     btn.disabled = false;
                     btn.innerHTML = originalText;
                 }
             });
+        } else {
+            console.error("❌ Submit button or Form NOT found in DOM. Button:", localSubmitBtn, "Form:", form);
         }
     }
 
