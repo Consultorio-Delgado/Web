@@ -48,6 +48,11 @@ onAuthStateChanged(auth, async (user) => {
                 if (form.dni) form.dni.value = data.dni || '';
                 if (form.sexo) form.sexo.value = data.gender || '';
 
+                // Dr. Secondi Specific Autofill
+                if (form.primera_vez && data.isReturningPatient_secondi) {
+                    form.primera_vez.value = "No";
+                }
+
                 // Validation
                 const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'insurance', 'dni', 'gender'];
                 const missing = requiredFields.some(field => !data[field]);
@@ -505,6 +510,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     console.log("✅ Slot available");
 
+                    // Extra fields for Secondi
+                    const motivo = formData.get('motivo_consulta') || 'Consulta General';
+                    const primeraVez = formData.get('primera_vez') || 'No especificado';
+
+                    // Logic to update patient profile if they say "No" to first time (meaning they are returning)
+                    // We only do this for Secondi relevant logic, but good to store general "returning" status?
+                    // User request: "cuando clickea primera vez no, que lo guarde... y lo copie la proxima vez"
+                    if (doctorId === 'secondi' && primeraVez === 'No') {
+                        try {
+                            const userRef = doc(db, "patients", currentUser.uid);
+                            // We use setDoc with merge to avoid overwriting invalidly if partial
+                            await setDoc(userRef, { isReturningPatient_secondi: true }, { merge: true });
+                            console.log("✅ Updated patient profile as Returning for Secondi");
+                        } catch (err) {
+                            console.warn("Could not update patient return status", err);
+                        }
+                    }
+
                     console.log("5. Saving to Firestore...");
                     await addDoc(collection(db, "appointments"), {
                         doctor: doctorId,
@@ -516,7 +539,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         insurance: formData.get('cobertura'),
                         status: 'confirmed',
                         timestamp: new Date(),
-                        patientUid: currentUser.uid
+                        patientUid: currentUser.uid,
+                        // New Fields
+                        consultationType: motivo,
+                        isFirstTime: primeraVez
                     });
                     console.log("✅ Firestore save successful");
 
