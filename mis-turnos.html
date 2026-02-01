@@ -401,9 +401,12 @@
                     <div class="appt-card">
                         <div class="appt-info">
                             <h4>${doctorName}</h4>
-                            <div class="appt-meta">
+                            <div class="appt-meta" style="flex-direction:column; gap:0.25rem; align-items:flex-start;">
                                 <span><i class="far fa-calendar"></i> ${capitalize(dateStr)}</span>
                                 <span><i class="far fa-clock"></i> ${appt.time} hs</span>
+                                <span style="font-size:0.9rem; color:var(--primary); margin-top:0.25rem;">
+                                    <i class="fas fa-stethoscope"></i> ${appt.consultationType || (appt.doctor === 'capparelli' ? 'Consulta Clínica' : 'Consulta General')}
+                                </span>
                             </div>
                         </div>
                         <div style="display:flex; align-items:center; gap:10px;">
