@@ -672,4 +672,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         return taken;
     }
+
+    function showLimitModal() {
+        // Check if modal already exists
+        let modal = document.getElementById('limit-modal');
+
+        if (!modal) {
+            // Create Modal DOM
+            const modalHTML = `
+                <div id="limit-modal" class="modal-overlay" style="display:flex;">
+                    <div class="modal-content" style="max-width: 450px; padding: 2.5rem;">
+                        <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <h3 style="margin-bottom:0.5rem; color:var(--text-main);">Límite de Turnos Alcanzado</h3>
+                        <p style="color: #666; margin-bottom: 1.5rem;">
+                            Ya tenés <strong>2 turnos vigentes</strong>. Para solicitar uno nuevo, por favor cancelá alguno de los pendientes o esperá a que finalicen.
+                        </p>
+                        <div class="modal-actions" style="justify-content:center;">
+                            <a href="mis-turnos.html" class="btn btn-primary">Ir a Mis Turnos</a>
+                            <button onclick="document.getElementById('limit-modal').style.display='none'" class="btn btn-outline" style="border:none; color:#666;">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        } else {
+            modal.style.display = 'flex';
+        }
+    }
 });
