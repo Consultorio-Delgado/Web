@@ -1014,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (patientSearchBtn) {
         patientSearchBtn.addEventListener('click', () => {
             const queryText = patientSearchInput.value.trim();
-            if (queryText) searchPatients(queryText);
+            searchPatients(queryText);
         });
         patientSearchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') patientSearchBtn.click();
@@ -1023,55 +1023,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function switchView(viewName) {
         // Reset ALL
-        viewDaily.style.display = 'none';
-        viewWeekly.style.display = 'none';
-        viewRecurrence.style.display = 'none';
-        viewConfig.style.display = 'none';
-        if (viewPatients) viewPatients.style.display = 'none';
+        if (viewDaily) viewDaily.style.display = 'none';
+        if (viewWeekly) viewWeekly.style.display = 'none';
+        if (viewRecurrence) viewRecurrence.style.display = 'none';
+        if (viewConfig) viewConfig.style.display = 'none';
 
-        [tabDaily, tabWeekly, tabRecurrence, tabConfig, tabPatients].forEach(t => {
+        // Helper to safe toggle classes
+        [tabDaily, tabWeekly, tabRecurrence, tabConfig].forEach(t => {
             if (t) {
                 t.classList.remove('active', 'btn-primary');
                 t.classList.add('btn-outline');
             }
         });
 
+        // Activate requested
         if (viewName === 'daily') {
-            viewDaily.style.display = 'block';
-            tabDaily.classList.add('active');
-            tabDaily.classList.remove('btn-outline');
+            if (viewDaily) viewDaily.style.display = 'block';
+            if (tabDaily) {
+                tabDaily.classList.add('active');
+                tabDaily.classList.remove('btn-outline');
+            }
             updateDailyView();
         } else if (viewName === 'weekly') {
-            viewWeekly.style.display = 'block';
-            tabWeekly.classList.add('active');
-            tabWeekly.classList.remove('btn-outline');
+            if (viewWeekly) viewWeekly.style.display = 'block';
+            if (tabWeekly) {
+                tabWeekly.classList.add('active');
+                tabWeekly.classList.remove('btn-outline');
+            }
             renderAdminWeek(currentMonday);
         } else if (viewName === 'recurrence') {
-            viewRecurrence.style.display = 'block';
-            tabRecurrence.classList.add('active');
-            tabRecurrence.classList.remove('btn-outline');
+            if (viewRecurrence) viewRecurrence.style.display = 'block';
+            if (tabRecurrence) {
+                tabRecurrence.classList.add('active');
+                tabRecurrence.classList.remove('btn-outline');
+            }
             loadScheduleConfig();
         } else if (viewName === 'config') {
-            viewConfig.style.display = 'block';
-            tabConfig.classList.add('active');
-            tabConfig.classList.remove('btn-outline');
+            if (viewConfig) viewConfig.style.display = 'block';
+            if (tabConfig) {
+                tabConfig.classList.add('active');
+                tabConfig.classList.remove('btn-outline');
+            }
             loadScheduleConfig();
-        } else if (viewName === 'patients') {
-            viewPatients.style.display = 'block';
-            tabPatients.classList.add('active');
-            tabPatients.classList.remove('btn-outline');
+        }
+
+        if (typeof viewPatients !== 'undefined' && viewPatients) {
+            if (viewName === 'patients') {
+                viewPatients.style.display = 'block';
+                if (tabPatients) {
+                    tabPatients.classList.add('active');
+                    tabPatients.classList.remove('btn-outline');
+                }
+                // Load ALL patients by default sorted
+                searchPatients('');
+            } else {
+                viewPatients.style.display = 'none';
+                if (tabPatients) {
+                    tabPatients.classList.remove('active', 'btn-primary');
+                    tabPatients.classList.add('btn-outline');
+                }
+            }
         }
     }
 
     async function searchPatients(queryText) {
-        patientsResults.innerHTML = '<div style="padding:2rem; text-align:center;">Buscando...</div>';
+        patientsResults.innerHTML = '<div style="padding:2rem; text-align:center;">Cargando pacientes...</div>';
         try {
-            // Ideally we use a proper search index, but for now we fetch all and filter client-side 
-            // OR use startAt/endAt for simple prefix search on Name if supported.
-            // Given Firestore limitations, let's fetch 'patients' collection. 
-            // Warning: If many patients, this is costly. Implementing "Client Side Filter" approach for < 1000 users.
-
-            const q = query(collection(db, "patients")); // Get all for now (MVP optimization)
+            const q = query(collection(db, "patients"));
             const snapshot = await getDocs(q);
 
             const matches = [];
@@ -1079,13 +1097,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             snapshot.forEach(doc => {
                 const data = doc.data();
-                const fullName = `${data.name || ''} ${data.lastname || ''}`.toLowerCase();
+                // Map new fields (firstName/lastName) and fallback to old ones if needed
+                const fName = data.firstName || data.name || '';
+                const lName = data.lastName || data.lastname || '';
+
+                const fullName = `${fName} ${lName}`.toLowerCase();
                 const dni = (data.dni || '').toString();
 
                 if (fullName.includes(lowerQ) || dni.includes(lowerQ)) {
-                    matches.push({ id: doc.id, ...data });
+                    matches.push({ id: doc.id, ...data, firstName: fName, lastName: lName });
                 }
             });
+
+            // Sort by firstName ascending
+            matches.sort((a, b) => a.firstName.localeCompare(b.firstName));
 
             renderPatientResults(matches);
         } catch (e) {
@@ -1116,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         patients.forEach(p => {
             html += `
                 <tr style="border-bottom:1px solid #eee;">
-                    <td style="padding:1rem;"><strong>${p.name || '-'} ${p.lastname || ''}</strong></td>
+                    <td style="padding:1rem;"><strong>${p.firstName || '-'} ${p.lastName || ''}</strong></td>
                     <td style="padding:1rem;">${p.dni || '-'}</td>
                     <td style="padding:1rem;">${p.email || '-'}</td>
                     <td style="padding:1rem; text-align:right;">
@@ -1137,24 +1162,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function openPatientModal(patientId) {
-        // 1. Load Patient Data
         try {
             const pDoc = await getDoc(doc(db, "patients", patientId));
             if (!pDoc.exists()) return alert("Paciente no encontrado");
             const pData = pDoc.data();
 
             document.getElementById('p-id').value = patientId;
-            document.getElementById('p-name').value = pData.name || '';
-            document.getElementById('p-lastname').value = pData.lastname || '';
-            document.getElementById('p-dni').value = pData.dni || '';
-            document.getElementById('p-email').value = pData.email || '';
-            document.getElementById('p-phone').value = pData.phone || '';
-            document.getElementById('p-insurance').value = pData.insurance || '';
+            // Map inputs to new/old fields
+            if (document.getElementById('p-name')) document.getElementById('p-name').value = pData.firstName || pData.name || '';
+            if (document.getElementById('p-lastname')) document.getElementById('p-lastname').value = pData.lastName || pData.lastname || '';
+            if (document.getElementById('p-dni')) document.getElementById('p-dni').value = pData.dni || '';
+            if (document.getElementById('p-email')) document.getElementById('p-email').value = pData.email || '';
+            if (document.getElementById('p-phone')) document.getElementById('p-phone').value = pData.phone || '';
+            if (document.getElementById('p-insurance')) document.getElementById('p-insurance').value = pData.insurance || '';
 
-            // 2. Load History
+            // Extra fields handling if elements exist (gender, etc) - user requested "all info"
+            // For now we alert if fields are missing in HTML or just show what we have.
+            // Ideally we'd update the modal HTML too to show Gender/UpdatedAt, but let's stick to existing inputs first.
+
             loadPatientHistory(pData.email);
 
             patientModal.style.display = 'flex';
+
+            // Log for debug
+            console.log("Patient Data:", pData);
+
         } catch (e) {
             console.error(e);
             alert("Error al cargar paciente");
@@ -1171,12 +1203,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const q = query(collection(db, "appointments"), where("patientEmail", "==", email)); // Index required?
+            const q = query(collection(db, "appointments"), where("patientEmail", "==", email));
             const snapshot = await getDocs(q);
             const appts = [];
             snapshot.forEach(doc => appts.push({ id: doc.id, ...doc.data() }));
 
-            // Sort by date desc
             appts.sort((a, b) => {
                 const dA = new Date(a.date + 'T' + a.time);
                 const dB = new Date(b.date + 'T' + b.time);
@@ -1211,19 +1242,21 @@ document.addEventListener('DOMContentLoaded', () => {
     patientEditForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('p-id').value;
+        // Updating only specific fields for now
         const data = {
-            name: document.getElementById('p-name').value,
-            lastname: document.getElementById('p-lastname').value,
+            firstName: document.getElementById('p-name').value, // Saving as firstName
+            lastName: document.getElementById('p-lastname').value, // Saving as lastName
             dni: document.getElementById('p-dni').value,
             phone: document.getElementById('p-phone').value,
-            insurance: document.getElementById('p-insurance').value
+            insurance: document.getElementById('p-insurance').value,
+            // Keep legacy sync
+            name: document.getElementById('p-name').value,
+            lastname: document.getElementById('p-lastname').value
         };
-        // Email is readonly to avoid auth mismatch issues for now
 
         try {
             await updateDoc(doc(db, "patients", id), data);
             alert("Datos actualizados correctamente.");
-            // Optional: Refresh search results or modal
         } catch (e) {
             console.error(e);
             alert("Error al actualizar.");
