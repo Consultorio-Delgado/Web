@@ -1176,9 +1176,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (document.getElementById('p-phone')) document.getElementById('p-phone').value = pData.phone || '';
             if (document.getElementById('p-insurance')) document.getElementById('p-insurance').value = pData.insurance || '';
 
-            // Extra fields handling if elements exist (gender, etc) - user requested "all info"
-            // For now we alert if fields are missing in HTML or just show what we have.
-            // Ideally we'd update the modal HTML too to show Gender/UpdatedAt, but let's stick to existing inputs first.
+            // New Fields
+            if (document.getElementById('p-gender')) document.getElementById('p-gender').value = pData.gender || '';
+
+            if (document.getElementById('p-updatedAt')) {
+                let dateStr = '-';
+                if (pData.updatedAt) {
+                    // Handle Firestore Timestamp or Date string
+                    if (pData.updatedAt.seconds) {
+                        dateStr = new Date(pData.updatedAt.seconds * 1000).toLocaleString('es-AR');
+                    } else {
+                        dateStr = pData.updatedAt.toString();
+                    }
+                }
+                document.getElementById('p-updatedAt').value = dateStr;
+            }
 
             loadPatientHistory(pData.email);
 
