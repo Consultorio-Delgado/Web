@@ -582,26 +582,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log("✅ Firestore save successful");
 
                     // Email Logic
+                    // Email Logic (Vercel + Resend)
                     try {
-                        console.log("6. Sending Email...");
-                        const EMAILJS_PUBLIC_KEY = "yp2cTT12Ti6VmL4iN";
-                        const EMAILJS_SERVICE_ID = "service_0wgkq1l";
-                        const EMAILJS_TEMPLATE_ID = "template_zkapdb6";
+                        console.log("6. Sending Email via API...");
+                        const doctorNamePretty = doctorId === 'secondi' ? 'Dra. Secondi' : 'Dr. Capparelli';
 
-                        if (typeof emailjs !== 'undefined') {
-                            emailjs.init(EMAILJS_PUBLIC_KEY);
-                            const doctorNamePretty = doctorId === 'secondi' ? 'Dra. Secondi' : 'Dr. Capparelli';
-                            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                        // Fire and forget (don't await to avoid delaying redirect too much, or await if critical)
+                        // Ideally await to confirm send, but speed is nice. Let's await to be safe.
+                        await fetch('/api/enviar-mail', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
                                 email: formData.get('email'),
-                                to_name: formData.get('nombre') + ' ' + formData.get('apellido'),
-                                doctor_name: doctorNamePretty,
-                                date_time: `${cleanDate} ${cleanTime}`
-                            });
-                            console.log("✅ Email sent command issued");
-                        } else {
-                            console.warn("⚠️ EmailJS not found");
-                        }
-                    } catch (e) { console.warn("Email error (non-fatal)", e); }
+                                nombre: formData.get('nombre') + ' ' + formData.get('apellido'),
+                                fecha: cleanDate.split('-').reverse().join('/'),
+                                hora: cleanTime,
+                                doctorName: doctorNamePretty
+                            })
+                        });
+
+                        console.log("✅ Email API called");
+                    } catch (e) {
+                        console.warn("Email error (non-fatal)", e);
+                    }
 
                     console.log("🚀 Redirecting to gracias.html");
                     window.location.href = 'gracias.html';
