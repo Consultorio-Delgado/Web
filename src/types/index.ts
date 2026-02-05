@@ -24,6 +24,7 @@ export interface Doctor {
         // This is a simplification; a real system might need more complex recurring rules
         [key: string]: string[];
     };
+    slotDuration: number; // Minutes per appointment (e.g. 20, 30, 60)
     color: string; // For calendar UI
 }
 

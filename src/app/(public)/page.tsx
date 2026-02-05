@@ -6,14 +6,40 @@ import {
   FileText,
   ArrowRight,
   Quote,
-  UserCheck,
   ShieldCheck,
-  Stethoscope,
-  Heart
 } from "lucide-react";
+import { doctorService } from "@/services/doctors";
 import { Card, CardContent } from "@/components/ui/card";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const doctors = await doctorService.getAll();
+
+  const getInitials = (firstName: string, lastName: string) => {
+    // Tomar primera letra de cada palabra del nombre + primera del apellido
+    // Ej: "Maria Veronica" "Secondi" -> "MVS" (o "VS" si quieres solo Veronica)
+    // Simplifiquemos: Primera del primer nombre + Primera del apellido
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`;
+  };
+
+  // Helper para asignar color de fondo según la propiedad 'color' (mapeo simple a clases tailwind)
+  const getAvatarColor = (color: string) => {
+    switch (color) {
+      case 'blue': return 'bg-blue-100 text-blue-700';
+      case 'emerald': return 'bg-emerald-100 text-emerald-700';
+      case 'pink': return 'bg-pink-100 text-pink-700';
+      default: return 'bg-slate-100 text-slate-700';
+    }
+  };
+
+  const getTextColor = (color: string) => {
+    switch (color) {
+      case 'blue': return 'text-blue-600';
+      case 'emerald': return 'text-emerald-600';
+      case 'pink': return 'text-pink-600';
+      default: return 'text-slate-600';
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen font-sans">
 
@@ -105,47 +131,39 @@ export default function LandingPage() {
           </div>
 
           <div className="lg:w-2/3 flex flex-col">
-            {/* Dr 1 */}
-            <div className="group border-t border-slate-300 py-12 cursor-pointer hover:bg-white/50 transition-colors px-4 -mx-4 rounded-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                <div className="flex items-start gap-6">
-                  <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-700 shrink-0">
-                    DS
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-medium text-slate-900 group-hover:text-blue-600 transition-colors">Dr. Secondi</h3>
-                    <p className="text-blue-600 font-medium mb-1">Cardiología</p>
-                    <p className="text-slate-500 max-w-md">Especialista en hipertensión y prevención cardiovascular. Atención integral del corazón.</p>
-                  </div>
-                </div>
-                <div className="hidden sm:flex">
-                  <Button variant="ghost" className="group-hover:translate-x-2 transition-transform">
-                    Ver Horarios <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
 
-            {/* Dr 2 */}
-            <div className="group border-t border-slate-300 py-12 cursor-pointer hover:bg-white/50 transition-colors px-4 -mx-4 rounded-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                <div className="flex items-start gap-6">
-                  <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-700 shrink-0">
-                    DC
+            {/* Dynamic Doctor List */}
+            {doctors.map((doctor) => (
+              <div key={doctor.id} className="group border-t border-slate-300 py-12 cursor-pointer hover:bg-white/50 transition-colors px-4 -mx-4 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                  <div className="flex items-start gap-6">
+                    <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl font-bold shrink-0 ${getAvatarColor(doctor.color)}`}>
+                      {getInitials(doctor.firstName, doctor.lastName)}
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-medium text-slate-900 group-hover:text-blue-600 transition-colors">
+                        {(doctor.specialty === 'Ginecología' || doctor.specialty.includes('Mujer')) ? 'Dra.' : 'Dr.'} {doctor.firstName} {doctor.lastName}
+                      </h3>
+                      <p className={`font-medium mb-1 ${getTextColor(doctor.color)}`}>{doctor.specialty}</p>
+                      <p className="text-slate-500 max-w-md">{doctor.bio || 'Especialista en Consultorio Delgado.'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-medium text-slate-900 group-hover:text-blue-600 transition-colors">Dra. Capparelli</h3>
-                    <p className="text-emerald-600 font-medium mb-1">Clínica Médica</p>
-                    <p className="text-slate-500 max-w-md">Atención clínica completa, chequeos generales y seguimiento de patologías.</p>
+                  <div className="hidden sm:flex">
+                    <Link href="/login">
+                      <Button variant="ghost" className="group-hover:translate-x-2 transition-transform">
+                        Ver Horarios <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
                   </div>
-                </div>
-                <div className="hidden sm:flex">
-                  <Button variant="ghost" className="group-hover:translate-x-2 transition-transform">
-                    Ver Horarios <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
                 </div>
               </div>
-            </div>
+            ))}
+
+            {doctors.length === 0 && (
+              <div className="py-12 text-center text-slate-500">
+                Cargando especialistas... (Asegúrate de haber ejecutado el Seed)
+              </div>
+            )}
 
             {/* More */}
             <div className="group border-t border-slate-300 py-12 cursor-pointer hover:bg-white/50 transition-colors px-4 -mx-4 rounded-lg">
