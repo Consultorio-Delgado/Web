@@ -1,16 +1,42 @@
-# OS Files
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
 .DS_Store
-Thumbs.db
-*.log
+*.pem
 
-# IDEs
-.vscode/
-.idea/
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# Node
-node_modules/
-package-lock.json
+# env files (can opt-in for committing if needed)
+.env*
 
-# Optional: If you want to hide credentials, uncomment the line below.
-# WARNING: If you hide firebase-config.js, your GitHub Pages site WILL NOT WORK (it won't find the database keys).
-# firebase-config.js
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+/v2_temp/

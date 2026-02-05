@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Acceso | Consultorio Delgado</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: var(--bg-body);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .auth-container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 1rem;
+            background: none;
+            border: none;
+            font-family: var(--font-body);
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <div style="margin-bottom: 2rem;">
+            <a href="index.html">
+                <img src="assets/logo.png" alt="Logo" style="height: 60px; margin: 0 auto;">
+            </a>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('pass')">Olvidé mi Contraseña</button>
+            <button class="tab-btn" onclick="switchTab('email')">Olvidé mi Email</button>
+        </div>
+
+        <!-- Password Recovery -->
+        <div id="tab-pass" class="tab-content active">
+            <p style="color:#666; margin-bottom:1.5rem; font-size:0.95rem;">
+                Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+            </p>
+            <form id="reset-pass-form">
+                <div class="form-group">
+                    <label class="form-label">Correo Electrónico</label>
+                    <input type="email" id="reset-email" class="form-input" required placeholder="tu@email.com">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Enviar Enlace</button>
+            </form>
+        </div>
+
+        <!-- Email Recovery -->
+        <div id="tab-email" class="tab-content">
+            <p style="color:#666; margin-bottom:1.5rem; font-size:0.95rem;">
+                Ingresa tu DNI para recuperar la dirección de correo asociada a tu cuenta.
+            </p>
+            <div class="form-group">
+                <label class="form-label">DNI</label>
+                <input type="text" id="recover-dni" class="form-input" required placeholder="Sin puntos ni guiones">
+            </div>
+            <button onclick="recoverEmail()" class="btn btn-primary" style="width:100%;">Buscar Email</button>
+
+            <div id="email-result"
+                style="margin-top:1.5rem; display:none; padding:1rem; background:#ecfeff; border-radius:8px; color:var(--primary-dark);">
+                <!-- Result injected here -->
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+            <a href="login-paciente.html" style="color: var(--primary); font-weight: 500;">Volver a Iniciar Sesión</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Tab Switching
+        window.switchTab = (tab) => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            if (tab === 'pass') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('tab-pass').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('tab-email').classList.add('active');
+            }
+        };
+
+        // Password Reset
+        document.getElementById('reset-pass-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('reset-email').value;
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+
+            btn.disabled = true;
+            btn.innerText = "Enviando...";
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert("✅ Hemos enviado un enlace a tu correo. Por favor revisa tu bandeja de entrada (y spam).");
+                window.location.href = 'login-paciente.html';
+            } catch (error) {
+                console.error(error);
+                let msg = "Error al enviar el correo.";
+                if (error.code === 'auth/user-not-found') msg = "No encontramos un usuario con ese correo.";
+                alert(msg);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        });
+
+        // Email Recovery (Option A)
+        window.recoverEmail = async () => {
+            const dni = document.getElementById('recover-dni').value.trim();
+            const resultBox = document.getElementById('email-result');
+
+            if (!dni) return alert("Ingresa tu DNI");
+
+            resultBox.style.display = 'none';
+            resultBox.innerHTML = 'Buscando...';
+            resultBox.style.display = 'block';
+
+            try {
+                const q = query(collection(db, "patients"), where("dni", "==", dni));
+                const snap = await getDocs(q);
+
+                if (snap.empty) {
+                    resultBox.innerHTML = '<span style="color:#ef4444;">No encontramos cuenta con este DNI.</span>';
+                } else {
+                    const data = snap.docs[0].data();
+                    // Obfuscate partially for privacy? User asked for Option A (Show Email). 
+                    // Let's show it fully or slightly obfuscated. User request implied showing it so they can remember.
+                    // "si existe en la base de datos que le muestre su email en pantalla" -> Show it.
+                    resultBox.innerHTML = `<div>Tu email es:</div><strong style="font-size:1.1rem;">${data.email}</strong>`;
+                }
+            } catch (error) {
+                console.error(error);
+                resultBox.innerHTML = '<span style="color:#ef4444;">Error al buscar. Intenta nuevamente.</span>';
+            }
+        };
+    </script>
+</body>
+
+</html>
