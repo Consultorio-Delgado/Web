@@ -38,12 +38,19 @@ export default function PortalDashboard() {
                     <h1 className="text-3xl font-bold tracking-tight">Hola, {profile?.firstName || 'Paciente'}</h1>
                     <p className="text-muted-foreground">Bienvenido a tu portal de salud.</p>
                 </div>
-                <Link href="/portal/new-appointment">
-                    <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Nuevo Turno
-                    </Button>
-                </Link>
+                <div className="flex gap-2">
+                    <Link href="/portal/profile">
+                        <Button variant="outline" size="lg">
+                            Mi Perfil
+                        </Button>
+                    </Link>
+                    <Link href="/portal/new-appointment">
+                        <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Nuevo Turno
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

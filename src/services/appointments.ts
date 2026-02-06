@@ -71,5 +71,17 @@ export const appointmentService = {
             console.error("Error fetching doctor appointments:", error);
             return [];
         }
+    },
+
+    async updateMedicalNotes(appointmentId: string, notes: string): Promise<void> {
+        try {
+            const docRef = doc(db, "appointments", appointmentId);
+            await updateDoc(docRef, {
+                medicalNotes: notes
+            });
+        } catch (error) {
+            console.error("Error updating medical notes:", error);
+            throw error;
+        }
     }
 };

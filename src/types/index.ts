@@ -40,6 +40,7 @@ export interface Appointment {
     time: string; // "10:00"
     status: AppointmentStatus;
     notes?: string; // Private notes from the doctor? Or patient reason?
+    medicalNotes?: string; // Evolution/Diagnosis from Doctor
     createdAt: Date;
 }
 
