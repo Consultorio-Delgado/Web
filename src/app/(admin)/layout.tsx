@@ -3,7 +3,8 @@
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Calendar, Users, LogOut, Settings } from "lucide-react";
 
@@ -12,8 +13,25 @@ export default function AdminLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { profile, logout } = useAuth();
+    const { profile, loading, user, logout } = useAuth();
     const pathname = usePathname();
+    const router = useRouter(); // Import this
+
+    useEffect(() => {
+        if (!loading) {
+            if (!user) {
+                router.push("/login");
+            } else if (profile && profile.role !== 'admin' && profile.role !== 'doctor') {
+                router.push("/portal"); // Kick patients out
+            }
+        }
+    }, [user, profile, loading, router]);
+
+    if (loading || !profile) {
+        return <div className="h-screen flex items-center justify-center bg-slate-100">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>;
+    }
 
     const navItems = [
         { name: "Tablero Principal", href: "/admin/dashboard", icon: LayoutDashboard },

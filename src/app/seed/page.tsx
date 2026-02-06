@@ -7,35 +7,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 
-const INITIAL_DOCTORS: Doctor[] = [
-    // ... (unchanged)
-    {
-        id: "capparelli",
-        firstName: "German Eduardo",
-        lastName: "Capparelli",
-        specialty: "Clínica Médica",
-        bio: "Atención integral del adulto, prevención y diagnóstico clínico.",
-        color: "emerald",
-        slotDuration: 20, // Turnos rápidos de 20 min
-        schedule: {
-            "Tuesday": ["09:00", "13:00"],
-            "Thursday": ["09:00", "13:00"]
-        }
-    },
-    {
-        id: "secondi",
-        firstName: "Maria Veronica",
-        lastName: "Secondi",
-        specialty: "Ginecología",
-        bio: "Salud integral de la mujer, control ginecológico y obstetricia.",
-        color: "pink",
-        slotDuration: 30, // Turnos estándar de 30 min
-        schedule: {
-            "Monday": ["16:00", "20:00"],
-            "Wednesday": ["16:00", "20:00"]
-        }
-    }
-];
+import { doctorsData } from "@/lib/doctorsData";
+
+// Adapter to ensure data matches Firestore expectation if needed
+// But doctorsData should align with Doctor type.
+const INITIAL_DOCTORS = doctorsData;
 
 export default function SeedPage() {
     const [status, setStatus] = useState("Idle");
@@ -45,7 +21,8 @@ export default function SeedPage() {
         setStatus("Seeding...");
         try {
             for (const doctor of INITIAL_DOCTORS) {
-                await setDoc(doc(db, "doctors", doctor.id), doctor);
+                // Ensure plain object for Firestore
+                await setDoc(doc(db, "doctors", doctor.id), { ...doctor });
             }
             setStatus("Success! Doctors added.");
         } catch (error) {

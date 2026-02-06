@@ -1,9 +1,10 @@
 import { db } from "@/lib/firebase";
 import { Appointment } from "@/types";
 import { addDoc, collection, doc, updateDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
+import { startOfDay, endOfDay } from "date-fns";
 
 export const appointmentService = {
-    async create(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'status'> & { createdAt?: Date }): Promise<string> {
+    async createAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'status'> & { createdAt?: Date }): Promise<string> {
         try {
             const docRef = await addDoc(collection(db, "appointments"), {
                 ...appointmentData,
@@ -42,6 +43,32 @@ export const appointmentService = {
 
         } catch (error) {
             console.error("Error fetching appointments:", error);
+            return [];
+        }
+    },
+    async getDoctorAppointmentsOnDate(doctorId: string, date: Date): Promise<Appointment[]> {
+        try {
+            // Needed imports: startOfDay, endOfDay from date-fns
+            // Ensure you have: import { startOfDay, endOfDay } from "date-fns";
+            const start = startOfDay(date);
+            const end = endOfDay(date);
+
+            const q = query(
+                collection(db, "appointments"),
+                where("doctorId", "==", doctorId),
+                where("date", ">=", Timestamp.fromDate(start)),
+                where("date", "<=", Timestamp.fromDate(end))
+            );
+
+            const querySnapshot = await getDocs(q);
+            return querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                date: doc.data().date.toDate(),
+                createdAt: doc.data().createdAt?.toDate() || new Date()
+            } as Appointment));
+        } catch (error) {
+            console.error("Error fetching doctor appointments:", error);
             return [];
         }
     }

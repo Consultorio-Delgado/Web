@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { Appointment } from "@/types";
+import { Appointment, UserProfile } from "@/types";
 import { collection, query, where, getDocs, Timestamp, orderBy, updateDoc, doc } from "firebase/firestore";
 import { startOfDay, endOfDay, startOfToday, endOfToday } from "date-fns";
 
@@ -97,6 +97,19 @@ export const adminService = {
                 newPatients: 0,
                 pendingConfirmations: 0
             };
+        }
+    },
+    async getAllPatients(): Promise<UserProfile[]> {
+        try {
+            const q = query(
+                collection(db, "users"),
+                where("role", "==", "patient")
+            );
+            const querySnapshot = await getDocs(q);
+            return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+        } catch (error) {
+            console.error("Error fetching patients:", error);
+            return [];
         }
     }
 };

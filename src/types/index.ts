@@ -20,9 +20,9 @@ export interface Doctor {
     bio?: string;
     imageUrl?: string;
     schedule: {
-        // Basic availability (e.g., "Monday": ["08:00", "14:00"])
-        // This is a simplification; a real system might need more complex recurring rules
-        [key: string]: string[];
+        startHour: string; // "09:00"
+        endHour: string;   // "17:00"
+        workDays: number[]; // [1, 2, 3, 4, 5] (Monday to Friday)
     };
     slotDuration: number; // Minutes per appointment (e.g. 20, 30, 60)
     color: string; // For calendar UI

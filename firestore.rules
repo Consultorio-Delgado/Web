@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if user has admin role
+    // Note: This requires the user document to differ from the auth token custom claims.
+    // Ideally, for security, we read the role from the 'users' collection to avoid client-side tampering if not using custom claims.
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Users (users/{userId})
+    match /users/{userId} {
+      // Create: Allow if authenticated and creating their own document
+      allow create: if isOwner(userId);
+      
+      // Read/Update: Allow if Owner OR Admin
+      allow read, update: if isOwner(userId) || isAdmin();
+      
+      // Delete: Admin only (or Owner if we want to allow account deletion)
+      allow delete: if isAdmin();
+    }
+
+    // 2. Doctors (doctors/{doctorId})
+    match /doctors/{doctorId} {
+      // Read: Public access (Landing page needs this)
+      allow read: if true;
+      
+      // Write: Admin only
+      allow write: if isAdmin();
+    }
+
+    // 3. Appointments (appointments/{appointmentId})
+    match /appointments/{appointmentId} {
+      // Read: Owner (Patient) OR Admin
+      // (Future: Add Doctor check if doctorId matches)
+      allow read: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid || isAdmin()
+      );
+      
+      // Create: Any authenticated user (booking a slot)
+      // Validity checks (e.g. data validation) should be enforced here ideally, 
+      // but for MVP we trust the client app + simple checks.
+      allow create: if isAuthenticated() && request.resource.data.patientId == request.auth.uid;
+      
+      // Update: Distinguish between Admin and Patient
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        // Patient can ONLY cancel (change status to 'cancelled')
+        (resource.data.patientId == request.auth.uid && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+         request.resource.data.status == 'cancelled')
+      );
+      
+      // Delete: Admin only
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,10 +1,11 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { userService } from "@/services/user";
 import { UserProfile } from "@/types";
+import Cookies from "js-cookie";
 
 interface AuthContextType {
     user: User | null; // Firebase Auth User
@@ -12,6 +13,7 @@ interface AuthContextType {
     loading: boolean;
     error: string | null;
     refreshProfile: () => Promise<void>;
+    logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
     loading: true,
     error: null,
     refreshProfile: async () => { },
+    logout: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -41,6 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    // ...
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             setLoading(true);
@@ -48,14 +53,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(firebaseUser);
                 // Sync session to cookie for Middleware
                 const token = await firebaseUser.getIdToken();
-                document.cookie = `session=${token}; path=/; max-age=3600; SameSite=Strict`; // Expires in 1 hour
+                // Set cookie that expires in 1 day
+                Cookies.set("session", token, { expires: 1, path: '/' });
 
                 await fetchProfile(firebaseUser.uid);
             } else {
                 setUser(null);
                 setProfile(null);
-                // Clear cookie
-                document.cookie = `session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                Cookies.remove("session", { path: '/' });
             }
             setLoading(false);
         });
@@ -63,14 +68,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, []);
 
+    // ...
+
     const refreshProfile = async () => {
         if (user) {
             await fetchProfile(user.uid);
         }
     };
 
+    const logout = async () => {
+        await signOut(auth);
+        setUser(null);
+        setProfile(null);
+        Cookies.remove("session", { path: '/' });
+    };
+
     return (
-        <AuthContext.Provider value={{ user, profile, loading, error, refreshProfile }}>
+        <AuthContext.Provider value={{ user, profile, loading, error, refreshProfile, logout }}>
             {children}
         </AuthContext.Provider>
     );

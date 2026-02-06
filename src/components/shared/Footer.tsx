@@ -11,6 +11,7 @@ export function Footer() {
                     <Link href="/terms" className="hover:underline">Términos</Link>
                     <Link href="/privacy" className="hover:underline">Privacidad</Link>
                 </div>
+
             </div>
         </footer>
     );
