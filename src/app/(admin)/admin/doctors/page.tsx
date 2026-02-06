@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Doctor } from "@/types";
 import { doctorService } from "@/services/doctors";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, UserMd } from "lucide-react";
+import { Plus, Pencil, Trash2, Stethoscope } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -132,7 +132,7 @@ export default function DoctorsPage() {
                                 <TableRow key={doc.id}>
                                     <TableCell className="font-medium flex items-center gap-2">
                                         <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
-                                            <UserMd className="h-4 w-4 text-slate-500" />
+                                            <Stethoscope className="h-4 w-4 text-slate-500" />
                                         </div>
                                         {doc.lastName}, {doc.firstName}
                                     </TableCell>
