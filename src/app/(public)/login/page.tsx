@@ -22,10 +22,13 @@ export default function LoginPage() {
     const { user, profile } = useAuth();
     // Redirect logic based on role
     useEffect(() => {
-        if (user && profile) {
-            if (profile.role === 'admin' || profile.role === 'doctor') {
+        // If user is already logged in, redirect.
+        // We don't strictly wait for 'profile' to be non-null to avoid getting stuck.
+        if (user) {
+            if (profile?.role === 'admin' || profile?.role === 'doctor') {
                 router.push("/admin/dashboard");
             } else {
+                // Default redirect for patients or if profile is loading/missing
                 router.push("/portal");
             }
         }
