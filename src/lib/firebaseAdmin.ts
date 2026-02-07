@@ -12,6 +12,9 @@ function formatPrivateKey(key: string) {
 }
 
 export function createFirebaseAdminApp(params: FirebaseAdminConfig) {
+    if (!params.privateKey) {
+        throw new Error("FIREBASE_PRIVATE_KEY is not set in environment variables. Consultorio Delgado requires this for Admin features.");
+    }
     const privateKey = formatPrivateKey(params.privateKey);
 
     if (admin.apps.length > 0) {

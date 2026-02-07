@@ -110,7 +110,25 @@ export default function SeedPage() {
 
             <div className="space-y-4 w-full border p-6 rounded-xl bg-slate-50">
                 <h2 className="font-semibold text-lg">1. Initialization</h2>
-                <Button onClick={runSeed} className="w-full">Initialize / Reset Doctors</Button>
+                <div className="space-y-2">
+                    <Button onClick={runSeed} className="w-full">Initialize / Reset Doctors</Button>
+                    <Button onClick={async () => {
+                        if (!confirm("Are you sure you want to delete ALL doctors?")) return;
+                        setStatus("Deleting all doctors...");
+                        try {
+                            const { getDocs, collection, deleteDoc } = await import("firebase/firestore");
+                            const snap = await getDocs(collection(db, "doctors"));
+                            for (const d of snap.docs) {
+                                await deleteDoc(d.ref);
+                            }
+                            setStatus("All doctors deleted.");
+                        } catch (e: any) {
+                            setStatus("Error: " + e.message);
+                        }
+                    }} variant="destructive" className="w-full">
+                        Delete All Doctors (Cleanup)
+                    </Button>
+                </div>
             </div>
 
             <div className="space-y-4 w-full border p-6 rounded-xl bg-slate-50">
