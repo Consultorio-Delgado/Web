@@ -6,6 +6,18 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { email, password, firstName, lastName, specialty, bio, slotDuration, schedule } = body;
 
+
+        // Validate Auth & Role
+        const authHeader = request.headers.get("Authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const token = authHeader.split("Bearer ")[1];
+        const decodedToken = await auth.verifyIdToken(token);
+        if (decodedToken.role !== 'admin' && decodedToken.role !== 'doctor') {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
         // Validate required fields
         if (!email || !password || !firstName || !lastName) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });

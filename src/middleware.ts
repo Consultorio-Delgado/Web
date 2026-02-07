@@ -5,14 +5,11 @@ export function middleware(request: NextRequest) {
     const session = request.cookies.get('session')
     const { pathname } = request.nextUrl
 
-    // 1. Protect Admin Routes
-    if (pathname.startsWith('/admin')) {
+    // 1. Protect Doctor Routes
+    if (pathname.startsWith('/doctor') || pathname.startsWith('/admin')) {
         if (!session) {
             return NextResponse.redirect(new URL('/login', request.url))
         }
-        // Note: Role check is better done in Layout/Page or via Custom Claims verification
-        // because decoding token in Edge middleware requires simplified libraries.
-        // For now, we trust the session cookie existence for redirection.
     }
 
     // 2. Protect Portal Routes (Patients)
@@ -36,7 +33,7 @@ export const config = {
          * - login (public login page)
          * - / (landing page)
          */
-        '/admin/:path*',
+        '/doctor/:path*',
         '/portal/:path*',
     ],
 }

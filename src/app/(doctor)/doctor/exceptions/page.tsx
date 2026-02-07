@@ -1,142 +1,203 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { exceptionService } from "@/services/exceptionService";
-import { DayOff } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { DayOff, Doctor } from "@/types";
+import { exceptionService } from "@/services/exceptions";
+import { doctorService } from "@/services/doctorService";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Trash2, Plus, CalendarOff } from "lucide-react";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
-export default function DoctorExceptionsPage() {
-    const { profile } = useAuth();
+export default function ExceptionsPage() {
     const [exceptions, setExceptions] = useState<DayOff[]>([]);
-    const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+    const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
 
-    const fetchExceptions = async () => {
-        if (!profile?.uid) return;
+    // Form State
+    const [date, setDate] = useState("");
+    const [doctorId, setDoctorId] = useState("global");
+    const [reason, setReason] = useState("");
+
+    const fetchData = async () => {
+        setLoading(true);
         try {
-            const data = await exceptionService.getDoctorExceptions(profile.uid);
-            setExceptions(data);
+            const [exData, docData] = await Promise.all([
+                exceptionService.getAll(),
+                doctorService.getAllDoctors()
+            ]);
+            setExceptions(exData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+            setDoctors(docData);
         } catch (error) {
             console.error(error);
-            toast.error("Error al cargar días bloqueados");
+            toast.error("Error al cargar datos.");
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchExceptions();
-    }, [profile?.uid]);
+        fetchData();
+    }, []);
 
-    const handleBlockDate = async () => {
-        if (!selectedDate || !profile?.uid) return;
-
-        const dateStr = format(selectedDate, "yyyy-MM-dd");
-
-        // Check if already blocked
-        if (exceptions.some(ex => ex.date === dateStr)) {
-            toast.info("Este día ya está bloqueado");
+    const handleAdd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!date) {
+            toast.error("Seleccione una fecha.");
             return;
         }
 
+        setSubmitting(true);
         try {
-            await exceptionService.createException({
-                date: dateStr,
-                doctorId: profile.uid,
-                reason: "Bloqueo manual",
+            await exceptionService.addDayOff({
+                date,
+                doctorId: doctorId === "global" ? undefined : doctorId,
+                reason: reason || "No disponible"
             });
-            toast.success("Día bloqueado correctamente");
-            setSelectedDate(undefined);
-            fetchExceptions();
+            toast.success("Día bloqueado correctamente.");
+            setDate("");
+            setReason("");
+            fetchData();
         } catch (error) {
             console.error(error);
-            toast.error("Error al bloquear el día");
+            toast.error("Error al guardar excepción.");
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const handleDelete = async (id: string) => {
+        if (!confirm("¿Está seguro de desbloquear este día?")) return;
         try {
-            await exceptionService.deleteException(id);
-            toast.success("Desbloqueado correctamente");
-            fetchExceptions();
+            await exceptionService.removeDayOff(id);
+            toast.success("Excepción eliminada.");
+            fetchData();
         } catch (error) {
             console.error(error);
-            toast.error("Error al desbloquear");
+            toast.error("Error al eliminar.");
         }
     };
 
+    const getDoctorName = (id?: string) => {
+        if (!id) return "Todos (Global)";
+        const doc = doctors.find(d => d.id === id);
+        return doc ? `Dr. ${doc.lastName}` : "Desconocido";
+    };
+
+    if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>;
+
     return (
-        <div className="container py-10 max-w-4xl space-y-8">
+        <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Gestión de Ausencias</h1>
-                <p className="text-muted-foreground">Bloquee los días en los que no atenderá consultas.</p>
+                <h1 className="text-3xl font-bold tracking-tight">Gestión de Excepciones</h1>
+                <p className="text-muted-foreground">Bloquea días festivos o licencias médicas.</p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Bloquear Nuevo Día</CardTitle>
-                        <CardDescription>Seleccione una fecha para bloquear su agenda.</CardDescription>
+                        <CardTitle>Bloquear Fecha</CardTitle>
+                        <CardDescription>Añade un nuevo día no laborable.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-col items-center gap-4">
-                        <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={setSelectedDate}
-                            className="rounded-md border"
-                            disabled={(date) => date < new Date()}
-                        />
-                        <Button
-                            onClick={handleBlockDate}
-                            disabled={!selectedDate}
-                            className="w-full"
-                        >
-                            Bloquear {selectedDate ? format(selectedDate, "dd/MM/yyyy") : ""}
-                        </Button>
+                    <CardContent>
+                        <form onSubmit={handleAdd} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="date">Fecha</Label>
+                                <Input
+                                    id="date"
+                                    type="date"
+                                    value={date}
+                                    onChange={e => setDate(e.target.value)}
+                                    min={new Date().toISOString().split('T')[0]}
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="doctor">Profesional</Label>
+                                <Select value={doctorId} onValueChange={setDoctorId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccione alcance" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="global">Todos (Feriado Global)</SelectItem>
+                                        {doctors.map(doc => (
+                                            <SelectItem key={doc.id} value={doc.id}>
+                                                Dr. {doc.lastName}, {doc.firstName}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="reason">Motivo</Label>
+                                <Input
+                                    id="reason"
+                                    placeholder="Ej: Feriado Nacional, Congreso, Licencia"
+                                    value={reason}
+                                    onChange={e => setReason(e.target.value)}
+                                />
+                            </div>
+
+                            <Button type="submit" className="w-full" disabled={submitting}>
+                                {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                                Agregar Bloqueo
+                            </Button>
+                        </form>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
                         <CardTitle>Días Bloqueados</CardTitle>
-                        <CardDescription>Lista de sus excepciones vigentes.</CardDescription>
+                        <CardDescription>Lista de excepciones activas.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {loading ? (
-                            <div className="text-center py-4">Cargando...</div>
-                        ) : exceptions.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground space-y-2">
-                                <AlertCircle className="h-8 w-8 text-slate-300" />
-                                <p>No hay días bloqueados</p>
+                        {exceptions.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+                                <CalendarOff className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                No hay días bloqueados configurados.
                             </div>
                         ) : (
-                            <ul className="space-y-2">
-                                {exceptions.map((ex) => (
-                                    <li key={ex.id} className="flex justify-between items-center p-3 border rounded-md bg-slate-50">
-                                        <div className="flex flex-col">
-                                            <span className="font-medium">
-                                                {format(new Date(ex.date + "T00:00:00"), "EEEE d 'de' MMMM, yyyy", { locale: es })}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">{ex.reason}</span>
-                                        </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                            onClick={() => handleDelete(ex.id)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </li>
-                                ))}
-                            </ul>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Fecha</TableHead>
+                                        <TableHead>Alcance</TableHead>
+                                        <TableHead>Motivo</TableHead>
+                                        <TableHead className="text-right">Acción</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {exceptions.map((ex) => (
+                                        <TableRow key={ex.id}>
+                                            <TableCell className="font-medium">
+                                                {format(new Date(ex.date + 'T00:00:00'), "dd/MM/yyyy")}
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${!ex.doctorId ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-700'}`}>
+                                                    {getDoctorName(ex.doctorId)}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground">{ex.reason}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="sm" onClick={() => handleDelete(ex.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         )}
                     </CardContent>
                 </Card>

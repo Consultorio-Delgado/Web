@@ -34,29 +34,12 @@ export default function DoctorLayout({
     }
 
     const navItems = [
-        // Dashboard not yet implemented for doctor, maybe redirect to agenda or profile?
-        // For now, let's keep consistency with Admin layout but maybe point to profile as "Home" or a future dashboard.
-        // Actually, doctor landing is often their agenda or profile. Let's use Profile as default for now or maybe Agenda if it exists.
-        // Checking file structure: doctor/page.tsx does NOT exist.
-        // doctor/profile/page.tsx EXISTS.
-        // doctor/exceptions/page.tsx EXISTS.
-        // doctor/patient/[id]/page.tsx EXISTS.
-
-        // We need a main entry point. Currently /doctor redirects to ?? (It was 404ing in my check).
-        // Let's assume /doctor/profile is a good start, or maybe /admin/appointments if they share the agenda view?
-        // Wait, the user said "usa la disposicion de los menus como el de admin".
-
-        { name: "Mi Perfil", href: "/doctor/profile", icon: UserCircle },
-        { name: "Mis Pacientes", href: "/admin/patients", icon: Users }, // Reusing admin patients view? Or do they have a specific one? The task list mentioned "Patient Search" and "Timeline".
-        // The task "Patient Timeline" is at /doctor/patient/[id]. The search might be on a shared page or a new one.
-        // Previously implemented: "Feature: Patient Search (Name/DNI)". Where?
-        // Let's assume they can use the Admin Patient list for now if they have permissions, OR we should have a /doctor/patients page.
-        // Checking file structure again... "doctor/patient" dir exists but only has [id].
-        // So they probably search via the Admin Patients page or a new component.
-        // Let's link to /admin/patients for now as they likely have access via RLS or logic.
-
-        { name: "Agenda", href: "/admin/appointments", icon: Calendar }, // Doctors use the admin appointments view heavily.
+        { name: "Tablero Principal", href: "/doctor/dashboard", icon: LayoutDashboard },
+        { name: "Agenda", href: "/doctor/appointments", icon: Calendar },
+        { name: "Pacientes", href: "/doctor/patients", icon: Users },
+        { name: "Doctores", href: "/doctor/doctors", icon: UserCircle },
         { name: "Excepciones", href: "/doctor/exceptions", icon: ShieldAlert },
+        { name: "Mi Perfil", href: "/doctor/profile", icon: Settings },
     ];
 
     return (
