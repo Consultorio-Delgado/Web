@@ -48,18 +48,18 @@ export default async function LandingPage() {
       <header className="relative w-full h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-primary/80 z-10 mix-blend-multiply"></div>
-          <div className="absolute inset-0 bg-black/20 z-10"></div>
+          <div className="absolute inset-0 bg-primary/40 z-10 mix-blend-multiply"></div>
+          <div className="absolute inset-0 bg-black/10 z-10"></div>
           <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('/images/hero_bg.png')" }}></div>
         </div>
 
-        <div className="container relative z-20 px-6 text-center text-white">
-          <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-1000">
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-medium tracking-tight leading-tight">
+        <div className="container relative z-20 px-6 text-center text-white pb-32 md:pb-40">
+          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-1000">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-light tracking-tight leading-tight">
               Cuidado Médico de Excelencia y <br className="hidden md:block" />
               <span className="italic">Calidez Humana</span>
             </h1>
-            <p className="text-xl md:text-2xl font-light text-slate-100 max-w-2xl mx-auto opacity-90">
+            <p className="text-base md:text-lg font-light text-slate-100 max-w-2xl mx-auto opacity-90">
               Especialistas en Ginecología y Clínica Médica dedicados a su bienestar integral.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
@@ -199,6 +199,48 @@ export default async function LandingPage() {
             </div>
 
             <div className="border-t border-slate-300"></div>
+          </div>
+        </div>
+      </section>
+
+      {/* Medical Coverage Section (New) */}
+      <section className="w-full bg-slate-900 py-24 border-t border-slate-800">
+        <div className="container px-6 text-center">
+          <h2 className="text-4xl md:text-5xl font-serif text-white mb-6">Coberturas Médicas</h2>
+          <p className="text-lg text-slate-400 font-light mb-12 max-w-2xl mx-auto">
+            Trabajamos con las principales obras sociales y prepagas para tu tranquilidad.
+          </p>
+
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
+            {/* Particular - Highlighted */}
+            <div className="px-8 py-3 rounded-full border border-red-500/50 bg-red-500/10 text-red-400 font-medium tracking-wide shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+              Particular
+            </div>
+
+            {/* Standard Providers */}
+            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
+              OSDE (210-550)
+            </div>
+            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
+              Swiss Medical
+            </div>
+            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
+              Galeno**
+            </div>
+            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
+              Omint
+            </div>
+            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
+              Luis Pasteur*
+            </div>
+            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
+              OSA*
+            </div>
+          </div>
+
+          <div className="text-sm text-slate-500 space-y-2 font-light">
+            <p>* Solo Dr. Capparelli. Consultar por planes específicos.</p>
+            <p>** No se atienden pacientes por primera vez.</p>
           </div>
         </div>
       </section>

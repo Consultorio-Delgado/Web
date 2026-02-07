@@ -13,15 +13,16 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Calendar as CalendarIcon, Clock, User as UserIcon, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { INSURANCE_PROVIDERS } from "@/constants";
 
 export function BookingWizard() {
-    const { user, profile } = useAuth();
+    const { user, profile, loading } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
 
     const rescheduleId = searchParams.get('reschedule');
@@ -50,9 +51,21 @@ export function BookingWizard() {
     // Processing
     const [bookingProcessing, setBookingProcessing] = useState(false);
 
+    // Auth Guard
+    useEffect(() => {
+        if (!loading && !user) {
+            const currentParams = searchParams.toString();
+            const redirectUrl = currentParams ? `${pathname}?${currentParams}` : pathname;
+            router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
+        }
+    }, [user, loading, router, pathname, searchParams]);
+
     // Load initial data and handle params
     useEffect(() => {
+        if (!user) return; // Prevent fetching if not authenticated
+
         const fetchDoctors = async () => {
+
             try {
                 const data = await doctorService.getAllDoctors();
                 setDoctors(data);
@@ -184,6 +197,14 @@ export function BookingWizard() {
     // Group slots
     const morningSlots = availableSlots.filter(t => parseInt(t.split(':')[0]) < 13);
     const afternoonSlots = availableSlots.filter(t => parseInt(t.split(':')[0]) >= 13);
+
+    if (loading) {
+        return <div className="flex justify-center items-center min-h-[400px]"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>;
+    }
+
+    if (!user) {
+        return null; // Prevents flashing content before redirect
+    }
 
     // --- Steps Render ---
 

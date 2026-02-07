@@ -33,12 +33,16 @@ export function Navbar() {
             <div className="container flex h-16 items-center justify-between">
 
                 {/* Logo */}
-                <div className="flex gap-6 md:gap-10">
-                    <Link href="/" className="flex items-center space-x-2">
-                        <Image src="/images/logo.png" alt="Consultorio Delgado" width={40} height={40} className="w-10 h-10 object-contain" />
-                        <span className="inline-block font-bold text-xl text-primary">
-                            Consultorio Delgado
-                        </span>
+                <div className="flex gap-6 md:gap-10 items-center">
+                    <Link href="/" className="flex items-center">
+                        <Image
+                            src="/images/logo.png"
+                            alt="Consultorio Delgado"
+                            width={200}
+                            height={60}
+                            className="h-14 w-auto object-contain"
+                            priority
+                        />
                     </Link>
 
                     {/* Navegación Desktop */}
