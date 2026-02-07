@@ -43,12 +43,35 @@ export const adminService = {
             );
 
             const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                date: doc.data().date.toDate(),
-                createdAt: doc.data().createdAt?.toDate() || new Date()
-            } as Appointment));
+            const appointments = await Promise.all(querySnapshot.docs.map(async doc => {
+                const data = doc.data();
+                let patientName = data.patientName;
+
+                // Fallback: If no patientName, try to fetch from User Profile
+                if (!patientName || patientName === 'undefined undefined') {
+                    try {
+                        const { getDoc, doc: docRef } = await import("firebase/firestore");
+                        const userSnap = await getDoc(docRef(db, "users", data.patientId));
+                        if (userSnap.exists()) {
+                            const userData = userSnap.data();
+                            patientName = `${userData.firstName} ${userData.lastName}`;
+                        } else {
+                            patientName = "Paciente";
+                        }
+                    } catch (e) {
+                        patientName = "Paciente";
+                    }
+                }
+
+                return {
+                    id: doc.id,
+                    ...data,
+                    patientName, // Override with fixed name
+                    date: data.date.toDate(),
+                    createdAt: data.createdAt?.toDate() || new Date()
+                } as Appointment;
+            }));
+            return appointments;
         } catch (error) {
             console.error("Error fetching daily appointments:", error);
             return [];

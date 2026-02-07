@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Doctor } from "@/types";
 import { Button } from "@/components/ui/button";
+import { appointmentService } from "@/services/appointments";
 import {
     Form,
     FormControl,
@@ -34,6 +35,7 @@ const createSchema = (isEditing: boolean) => {
         slotDuration: z.string(),
         startHour: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM inválido"),
         endHour: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM inválido"),
+        workDays: z.array(z.number()).min(1, "Seleccione al menos un día laboral."),
     }).refine((data) => {
         if (!isEditing) {
             // Creation mode: Email and Password are required
@@ -74,11 +76,27 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
             slotDuration: defaultValues?.slotDuration?.toString() || "30",
             startHour: defaultValues?.schedule?.startHour || "09:00",
             endHour: defaultValues?.schedule?.endHour || "17:00",
+            workDays: defaultValues?.schedule?.workDays || [1, 2, 3, 4, 5],
             acceptedInsurances: defaultValues?.acceptedInsurances || [],
         },
     });
 
     async function handleSubmit(values: any) {
+        // 1. Conflict Check: If editing, check if removed days have future appointments
+        if (isEditing && defaultValues?.schedule?.workDays) {
+            const oldDays = defaultValues.schedule.workDays;
+            const newDays = values.workDays;
+            const removedDays = oldDays.filter((d: number) => !newDays.includes(d));
+
+            if (removedDays.length > 0) {
+                const hasConflict = await appointmentService.hasFutureAppointmentsOnDays(defaultValues.id, removedDays);
+                if (hasConflict) {
+                    toast.error("No se pueden eliminar días que tienen turnos futuros asignados. Por favor, cancele o re-programe esos turnos primero.");
+                    return; // Block submission
+                }
+            }
+        }
+
         // Prepare data for submission
         const doctorData = {
             ...values,
@@ -86,7 +104,7 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
             schedule: {
                 startHour: values.startHour,
                 endHour: values.endHour,
-                workDays: [1, 2, 3, 4, 5], // Default M-F
+                workDays: values.workDays,
             },
             color: "blue",
         };
@@ -234,6 +252,62 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
                         )}
                     />
                 </div>
+
+                <FormField
+                    control={form.control}
+                    name="workDays"
+                    render={() => (
+                        <FormItem>
+                            <div className="mb-4">
+                                <FormLabel className="text-base">Días Laborales</FormLabel>
+                            </div>
+                            <div className="flex flex-wrap gap-4">
+                                {[
+                                    { id: 1, label: "Lunes" },
+                                    { id: 2, label: "Martes" },
+                                    { id: 3, label: "Miércoles" },
+                                    { id: 4, label: "Jueves" },
+                                    { id: 5, label: "Viernes" },
+                                    { id: 6, label: "Sábado" },
+                                    { id: 0, label: "Domingo" },
+                                ].map((item) => (
+                                    <FormField
+                                        key={item.id}
+                                        control={form.control}
+                                        name="workDays"
+                                        render={({ field }) => {
+                                            return (
+                                                <FormItem
+                                                    key={item.id}
+                                                    className="flex flex-row items-start space-x-2 space-y-0"
+                                                >
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value?.includes(item.id)}
+                                                            onCheckedChange={(checked) => {
+                                                                return checked
+                                                                    ? field.onChange([...(field.value || []), item.id])
+                                                                    : field.onChange(
+                                                                        field.value?.filter(
+                                                                            (value) => value !== item.id
+                                                                        )
+                                                                    )
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal cursor-pointer">
+                                                        {item.label}
+                                                    </FormLabel>
+                                                </FormItem>
+                                            )
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
                 <FormField
                     control={form.control}

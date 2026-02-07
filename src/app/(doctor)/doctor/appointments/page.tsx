@@ -63,6 +63,47 @@ export default function AppointmentsPage() {
         fetchData();
     }, [selectedDate, doctor]);
 
+
+
+    const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+    // ... existing hooks
+
+    // Handle Block Single Slot
+    const handleBlockSlot = async (time: string) => {
+        if (!selectedDate || !doctor) return;
+        try {
+            setLoading(true);
+            const date = new Date(selectedDate);
+            const [hours, minutes] = time.split(':').map(Number);
+            date.setHours(hours, minutes, 0, 0);
+
+            await appointmentService.createAppointment({
+                patientId: 'blocked',
+                patientName: 'Bloqueado',
+                patientEmail: '',
+                doctorId: doctor.id,
+                doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                date: date,
+                time: time,
+                type: 'Bloqueado',
+                status: 'confirmed', // Confirmed but "blocked" type effectively
+                notes: 'Bloqueado manualmente'
+            } as any); // Type cast due to some missing fields like status that createAppointment overrides
+
+            // Refresh
+            const appointments = await adminService.getDailyAppointments(selectedDate);
+            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
+            setDaySlots(slots);
+            toast.success(`Horiario ${time} bloqueado.`);
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al bloquear horario");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Handle Unlock (Delete Exception)
     const handleUnlock = async () => {
         if (!selectedDate || !doctor) return;
@@ -154,14 +195,14 @@ export default function AppointmentsPage() {
                             {selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Seleccione Fecha"}
                         </h2>
                         <div className="flex gap-2">
-                            {/* Block Button (if not blocked) */}
-                            {daySlots.length > 0 && !daySlots.every(s => s.status === 'blocked') && (
+                            {/* Block Button (if has at least one free/occupied slot) */}
+                            {daySlots.length > 0 && daySlots.some(s => s.status !== 'blocked') && (
                                 <Button variant="secondary" onClick={handleBlockDay} disabled={loading}>
                                     <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear Día
                                 </Button>
                             )}
 
-                            {/* Unlock Button if all slots are blocked */}
+                            {/* Unlock Button if ANY slot is blocked */}
                             {daySlots.length > 0 && daySlots.every(s => s.status === 'blocked') && (
                                 <Button variant="destructive" onClick={handleUnlock} disabled={loading}>
                                     <Unlock className="mr-2 h-4 w-4" /> Desbloquear Día
@@ -211,8 +252,22 @@ export default function AppointmentsPage() {
 
                                         <div>
                                             {/* Actions based on status */}
-                                            {slot.status === 'free' && <Button size="sm" variant="outline">Reservar</Button>}
-                                            {slot.status === 'occupied' && <Button size="sm" variant="ghost">Ver Detalles</Button>}
+                                            {slot.status === 'free' && (
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="outline" onClick={() => {/* Open Booking Modal logic - handled separate */ }}>Reservar</Button>
+                                                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); handleBlockSlot(slot.time); }}>
+                                                        <ShieldAlert className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            )}
+                                            {(slot.status === 'occupied' || slot.appointment?.type === 'Bloqueado') && (
+                                                <Button size="sm" variant="ghost" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (slot.appointment) setSelectedAppointment(slot.appointment);
+                                                }}>
+                                                    Ver Detalles
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 ))
@@ -221,6 +276,48 @@ export default function AppointmentsPage() {
                     )}
                 </div>
             </div>
+
+            {/* Details Dialog */}
+            <Dialog open={!!selectedAppointment} onOpenChange={(open) => !open && setSelectedAppointment(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Detalles del Turno</DialogTitle>
+                    </DialogHeader>
+                    {selectedAppointment && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label>Paciente</Label>
+                                    <p className="text-lg font-medium">{selectedAppointment.patientName}</p>
+                                </div>
+                                <div>
+                                    <Label>Hora</Label>
+                                    <p className="text-lg font-medium">{selectedAppointment.time}</p>
+                                </div>
+                                <div>
+                                    <Label>Email</Label>
+                                    <p className="text-sm text-muted-foreground">{selectedAppointment.patientEmail}</p>
+                                </div>
+                                <div>
+                                    <Label>Estado</Label>
+                                    <p className="text-sm capitalize">{selectedAppointment.status}</p>
+                                </div>
+                            </div>
+
+                            {selectedAppointment.medicalNotes && (
+                                <div>
+                                    <Label>Notas Médicas</Label>
+                                    <p className="text-sm bg-slate-50 p-2 rounded">{selectedAppointment.medicalNotes}</p>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-2 pt-4">
+                                <Button variant="outline" onClick={() => setSelectedAppointment(null)}>Cerrar</Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

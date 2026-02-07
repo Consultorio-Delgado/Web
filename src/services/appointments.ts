@@ -183,5 +183,36 @@ export const appointmentService = {
             console.error("Error adding attachment:", error);
             throw error;
         }
+    },
+
+    async hasFutureAppointmentsOnDays(doctorId: string, daysIdx: number[]): Promise<boolean> {
+        if (daysIdx.length === 0) return false;
+
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const q = query(
+                collection(db, "appointments"),
+                where("doctorId", "==", doctorId),
+                where("date", ">=", Timestamp.fromDate(today)),
+                where("status", "in", ['confirmed', 'arrived'])
+            );
+
+            const snapshot = await getDocs(q);
+
+            // Client-side filtering for specific weekdays
+            // Firestore doesn't support "where dayOfWeek in [...]" natively
+            return snapshot.docs.some(doc => {
+                const date = doc.data().date.toDate();
+                const day = date.getDay(); // 0-6 (Sun-Sat)
+                // We want to return TRUE if the appointment falls on one of the forbidden days
+                return daysIdx.includes(day);
+            });
+
+        } catch (error) {
+            console.error("Error checking future appointments:", error);
+            return true; // Fail safe: assume conflict if error
+        }
     }
 };
