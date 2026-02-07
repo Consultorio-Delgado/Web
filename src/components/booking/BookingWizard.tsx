@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { format, addDays, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { Doctor } from "@/types";
-import { doctorService } from "@/services/doctors";
+import { doctorService } from "@/services/doctorService";
 import { appointmentService } from "@/services/appointments";
 import { availabilityService } from "@/services/availabilityService";
 import { useAuth } from "@/context/AuthContext";
@@ -41,7 +41,7 @@ export function BookingWizard() {
     useEffect(() => {
         const fetchDoctors = async () => {
             try {
-                const data = await doctorService.getAll();
+                const data = await doctorService.getAllDoctors();
                 setDoctors(data);
 
                 // Handle preselection logic

@@ -8,11 +8,11 @@ import {
   Quote,
   ShieldCheck,
 } from "lucide-react";
-import { doctorService } from "@/services/doctors";
+import { doctorService } from "@/services/doctorService";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default async function LandingPage() {
-  const doctors = await doctorService.getAll();
+  const doctors = await doctorService.getAllDoctors();
 
   const getInitials = (firstName: string, lastName: string) => {
     // Tomar primera letra de cada palabra del nombre + primera del apellido
