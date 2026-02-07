@@ -3,6 +3,8 @@ import { Appointment } from "@/types";
 import { addDoc, collection, doc, updateDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { startOfDay, endOfDay } from "date-fns";
 
+import { auditService } from "./auditService";
+
 export const appointmentService = {
     async createAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'status'> & { createdAt?: Date }): Promise<string> {
         try {
@@ -15,6 +17,12 @@ export const appointmentService = {
 
             // Update the doc with its own ID (optional but helpful)
             await updateDoc(doc(db, "appointments", docRef.id), { id: docRef.id });
+
+            // Audit
+            await auditService.logAction('APPOINTMENT_CREATED', appointmentData.patientId, {
+                appointmentId: docRef.id,
+                date: appointmentData.date
+            });
 
             return docRef.id;
         } catch (error) {
@@ -100,5 +108,31 @@ export const appointmentService = {
         const q = query(collection(db, "appointments"));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+    },
+
+    async addAttachment(appointmentId: string, attachment: { name: string; url: string; type: string }): Promise<void> {
+        try {
+            const docRef = doc(db, "appointments", appointmentId);
+            const docSnap = await getDocs(query(collection(db, "appointments"), where("__name__", "==", appointmentId))); // Valid way to get single doc or just getDoc
+            // Better: use arrayUnion
+            const { arrayUnion } = await import("firebase/firestore");
+            await updateDoc(docRef, {
+                attachments: arrayUnion(attachment)
+            });
+
+            // Audit
+            // We need patientId. Fetching it might be expensive just for audit. 
+            // We can pass it or just log without it correctly.
+            // Let's just log the action. 
+            const auth = (await import("@/lib/firebase")).auth;
+            await auditService.logAction('PATIENT_FILE_UPLOADED', auth.currentUser?.uid || 'unknown', {
+                appointmentId,
+                fileName: attachment.name
+            });
+
+        } catch (error) {
+            console.error("Error adding attachment:", error);
+            throw error;
+        }
     }
 };

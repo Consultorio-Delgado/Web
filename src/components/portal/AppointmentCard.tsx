@@ -4,7 +4,8 @@ import { Appointment } from "@/types";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge"; // Verify if I need to install this? Shadcn usually has it.
-import { CalendarDays, Clock, User, AlertTriangle } from "lucide-react";
+import { CalendarDays, Clock, User, AlertTriangle, FileText, Image as ImageIcon } from "lucide-react";
+import { FileUpload } from "@/components/shared/FileUpload";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -88,11 +89,48 @@ export function AppointmentCard({ appointment, onStatusChange }: AppointmentCard
                 </div>
             </CardContent>
             {canManage && (
-                <CardFooter className="flex justify-end gap-2 pt-2">
+                <div className="border-t pt-4 mt-4 px-6 pb-2">
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                        <FileText className="h-4 w-4" /> Estudios y Adjuntos
+                    </h4>
+
+                    {/* List existing attachments */}
+                    {appointment.attachments && appointment.attachments.length > 0 && (
+                        <div className="space-y-2 mb-4">
+                            {appointment.attachments.map((file, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-sm bg-slate-50 p-2 rounded border">
+                                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline truncate max-w-[200px]">
+                                        {file.type === 'pdf' ? <FileText className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+                                        {file.name}
+                                    </a>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Upload Component */}
+                    <FileUpload
+                        pathPrefix={`appointments/${appointment.id}`}
+                        onUploadComplete={(url, file) => {
+                            appointmentService.addAttachment(appointment.id, {
+                                name: file.name,
+                                url: url,
+                                type: file.type.includes('pdf') ? 'pdf' : 'image'
+                            }).then(() => {
+                                onStatusChange(); // Refresh
+                                toast.success("Adjunto guardado");
+                            });
+                        }}
+                    />
+                </div>
+            )}
+
+            {canManage && (
+                <CardFooter className="flex justify-end gap-2 pt-2 border-t mt-0">
                     <Button variant="outline" size="sm" onClick={handleReschedule}>
                         Reprogramar
                     </Button>
-
+                    {/* ... (Cancel Dialog unchanged) ... */}
                     <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
                         <DialogTrigger asChild>
                             <Button variant="destructive" size="sm">Cancelar</Button>

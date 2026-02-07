@@ -9,6 +9,7 @@ export interface UserProfile {
     dni?: string;
     phone?: string;
     insurance?: string; // Obra Social
+    permissions?: string[]; // E.g., ['admin'] to grant admin access regardless of role
     createdAt: Date;
 }
 
@@ -48,6 +49,7 @@ export interface Appointment {
     status: AppointmentStatus;
     notes?: string; // Private notes from the doctor? Or patient reason?
     medicalNotes?: string; // Evolution/Diagnosis from Doctor
+    attachments?: { name: string; url: string; type: string; }[]; // PDF/JPG attachments
     createdAt: Date;
 }
 

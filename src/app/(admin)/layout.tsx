@@ -21,8 +21,17 @@ export default function AdminLayout({
         if (!loading) {
             if (!user) {
                 router.push("/login");
-            } else if (profile && profile.role !== 'admin' && profile.role !== 'doctor') {
-                router.push("/portal"); // Kick patients out
+            } else if (profile) {
+                const hasAdminAccess = profile.role === 'admin' || profile.permissions?.includes('admin');
+                const isDoctor = profile.role === 'doctor';
+
+                // Allow if Admin Access OR Doctor (since logic allows doctors in admin layout for simplified structure currently)
+                // Actually, original code allowed 'doctor' too: `profile.role !== 'admin' && profile.role !== 'doctor'`
+                // We keep that but add permission check.
+
+                if (!hasAdminAccess && !isDoctor) {
+                    router.push("/portal");
+                }
             }
         }
     }, [user, profile, loading, router]);

@@ -8,7 +8,7 @@ import { format, differenceInYears } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Calendar, FileText, Phone, Activity } from "lucide-react";
+import { ArrowLeft, User, Calendar, FileText, Phone, Activity, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 
@@ -121,12 +121,33 @@ export default function PatientHistoryPage() {
                                 </CardHeader>
                                 <CardContent>
                                     {appt.medicalNotes ? (
-                                        <div className="bg-slate-50 p-4 rounded-md border border-slate-100 text-sm">
+                                        <div className="bg-slate-50 p-4 rounded-md border border-slate-100 text-sm mb-3">
                                             <span className="font-semibold text-slate-700 block mb-1">Evolución:</span>
                                             {appt.medicalNotes}
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-muted-foreground italic">Sin notas médicas registradas.</p>
+                                        <p className="text-sm text-muted-foreground italic mb-3">Sin notas médicas registradas.</p>
+                                    )}
+
+                                    {/* Attachments */}
+                                    {appt.attachments && appt.attachments.length > 0 && (
+                                        <div className="mt-4 pt-3 border-t border-slate-100">
+                                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Adjuntos</span>
+                                            <div className="flex flex-wrap gap-2">
+                                                {appt.attachments.map((file, idx) => (
+                                                    <a
+                                                        key={idx}
+                                                        href={file.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm text-blue-600 hover:bg-slate-50 hover:border-blue-200 transition-colors"
+                                                    >
+                                                        {file.type === 'pdf' ? <FileText className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+                                                        <span className="truncate max-w-[150px]">{file.name}</span>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
                                     )}
                                 </CardContent>
                             </Card>

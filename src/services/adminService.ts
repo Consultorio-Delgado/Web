@@ -1,4 +1,5 @@
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
+import { auditService } from "./auditService";
 import { Appointment, UserProfile } from "@/types";
 import { collection, query, where, getDocs, Timestamp, orderBy, updateDoc, doc } from "firebase/firestore";
 import { startOfDay, endOfDay, startOfToday, endOfToday } from "date-fns";
@@ -58,6 +59,18 @@ export const adminService = {
         try {
             const docRef = doc(db, "appointments", id);
             await updateDoc(docRef, { status });
+
+            // Audit
+            const currentUser = auth.currentUser?.uid || 'admin-portal';
+            await auditService.logAction(
+                status === 'arrived' ? 'APPOINTMENT_ARRIVED' :
+                    status === 'confirmed' ? 'APPOINTMENT_CONFIRMED' :
+                        status === 'completed' ? 'APPOINTMENT_COMPLETED' :
+                            'APPOINTMENT_CANCELLED',
+                currentUser,
+                { appointmentId: id }
+            );
+
         } catch (error) {
             console.error("Error updating status:", error);
             throw error;

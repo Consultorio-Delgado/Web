@@ -31,34 +31,87 @@ export default function SeedPage() {
         }
     };
 
-    const makeMeAdmin = async () => {
+    const updateRole = async (role: 'admin' | 'doctor' | 'patient') => {
         if (!user) {
             setStatus("Error: No estás logueado.");
             return;
         }
-        setStatus("Updating role...");
+        setStatus(`Changing role to ${role}...`);
         try {
-            // Use setDoc with merge: true to CREATE the doc if it doesn't exist
             await setDoc(doc(db, "users", user.uid), {
                 email: user.email,
-                role: 'admin',
+                role: role,
                 updatedAt: new Date()
             }, { merge: true });
 
-            setStatus("Success! You are now an Admin. Refresh page to see changes.");
+            setStatus(`Success! You are now a ${role}. Refresh page to see changes.`);
         } catch (error) {
             console.error(error);
             setStatus("Error: " + JSON.stringify(error));
         }
     };
 
-    return (
-        <div className="p-10 flex flex-col gap-4 items-center justify-center min-h-screen">
-            <h1 className="text-2xl font-bold">Database Seeder</h1>
+    const toggleAdminPermission = async () => {
+        if (!user) return;
+        setStatus("Toggling admin permission...");
+        try {
+            // We need to fetch current permissions first
+            const { getDoc } = await import("firebase/firestore");
+            const docRef = doc(db, "users", user.uid);
+            const snap = await getDoc(docRef);
 
-            <div className="flex gap-4">
-                <Button onClick={runSeed}>Run Doctor Seed</Button>
-                <Button variant="destructive" onClick={makeMeAdmin}>Make Me Admin 👑</Button>
+            let currentPerms: string[] = [];
+            if (snap.exists()) {
+                currentPerms = snap.data().permissions || [];
+            }
+
+            let newPerms = [...currentPerms];
+            if (newPerms.includes('admin')) {
+                newPerms = newPerms.filter(p => p !== 'admin');
+                setStatus("Admin permission REMOVED.");
+            } else {
+                newPerms.push('admin');
+                setStatus("Admin permission GRANTED.");
+            }
+
+            await updateDoc(docRef, {
+                permissions: newPerms
+            });
+
+        } catch (error) {
+            console.error(error);
+            setStatus("Error toggling permission: " + JSON.stringify(error));
+        }
+    };
+
+    return (
+        <div className="p-10 flex flex-col gap-8 items-center justify-center min-h-screen max-w-lg mx-auto text-center">
+            <div>
+                <h1 className="text-3xl font-bold mb-2">Database Seeder & Debug</h1>
+                <p className="text-slate-500">Utilities for development and testing.</p>
+            </div>
+
+            <div className="space-y-4 w-full border p-6 rounded-xl bg-slate-50">
+                <h2 className="font-semibold text-lg">1. Initialization</h2>
+                <Button onClick={runSeed} className="w-full">Initialize / Reset Doctors</Button>
+            </div>
+
+            <div className="space-y-4 w-full border p-6 rounded-xl bg-slate-50">
+                <h2 className="font-semibold text-lg">2. Role Management</h2>
+                <div className="grid grid-cols-3 gap-2">
+                    <Button variant="outline" onClick={() => updateRole('admin')}>Set Admin 👑</Button>
+                    <Button variant="outline" onClick={() => updateRole('doctor')}>Set Doctor 🩺</Button>
+                    <Button variant="outline" onClick={() => updateRole('patient')}>Set Patient 👤</Button>
+                </div>
+
+                <div className="pt-2 border-t mt-2">
+                    <Button variant="secondary" onClick={toggleAdminPermission} className="w-full">
+                        Toggle "Admin Access" Permission 🔓
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2">
+                        Allows Doctors/Patients to access Admin Panel without changing their main role.
+                    </p>
+                </div>
             </div>
 
             <p className="text-mono bg-slate-100 p-2 rounded">{status}</p>
