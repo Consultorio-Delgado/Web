@@ -50,7 +50,7 @@ export default async function LandingPage() {
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-primary/80 z-10 mix-blend-multiply"></div>
           <div className="absolute inset-0 bg-black/20 z-10"></div>
-          <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?q=80&w=2091&auto=format&fit=crop')" }}></div>
+          <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('/images/hero_bg.png')" }}></div>
         </div>
 
         <div className="container relative z-20 px-6 text-center text-white">

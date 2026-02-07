@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -34,6 +35,7 @@ export function Navbar() {
                 {/* Logo */}
                 <div className="flex gap-6 md:gap-10">
                     <Link href="/" className="flex items-center space-x-2">
+                        <Image src="/images/logo.png" alt="Consultorio Delgado" width={40} height={40} className="w-10 h-10 object-contain" />
                         <span className="inline-block font-bold text-xl text-primary">
                             Consultorio Delgado
                         </span>
