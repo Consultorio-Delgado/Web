@@ -129,6 +129,7 @@ export function BookingWizard() {
                 patientName: `${profile.firstName} ${profile.lastName}`,
                 patientEmail: profile.email,
                 doctorId: selectedDoctor.id,
+                doctorName: `${selectedDoctor.lastName}, ${selectedDoctor.firstName}`,
                 date: appointmentDate,
                 time: selectedTime,
             });
@@ -141,24 +142,7 @@ export function BookingWizard() {
                 toast.success("¡Turno confirmado con éxito!");
             }
 
-            // 4. Send Email Notification
-            try {
-                await fetch('/api/send', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        to: profile.email,
-                        patientName: `${profile.firstName} ${profile.lastName}`,
-                        doctorName: `${selectedDoctor?.firstName} ${selectedDoctor?.lastName}`,
-                        date: format(new Date(selectedDate), "EEEE d 'de' MMMM", { locale: es }),
-                        time: selectedTime
-                    })
-                });
-            } catch (emailError) {
-                console.error("Error sending email:", emailError);
-                // Don't block success screen if email fails
-            }
-
-            // 5. Show success screen
+            // 4. Show success screen (Email is handled by service)
             setStep(5);
 
         } catch (error) {

@@ -29,7 +29,7 @@ export const appointmentService = {
                     data: {
                         to: appointmentData.patientEmail,
                         patientName: appointmentData.patientName,
-                        doctorName: 'Dr. (Consultar en Portal)', // We might not have doc name here easily without fetching
+                        doctorName: appointmentData.doctorName || 'Dr. (Consultar en Portal)',
                         date: appointmentData.date.toLocaleDateString(),
                         time: appointmentData.time,
                         appointmentId: docRef.id

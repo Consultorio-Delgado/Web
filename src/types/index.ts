@@ -45,6 +45,7 @@ export interface Appointment {
     patientName: string; // Denormalized for faster read
     patientEmail: string;
     doctorId: string;
+    doctorName?: string; // Denormalized for emails and lists
     date: Date; // Firestore Timestamp converted to Date
     time: string; // "10:00"
     status: AppointmentStatus;
