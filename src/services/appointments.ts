@@ -21,9 +21,10 @@ export const appointmentService = {
                 date: appointmentData.date
             });
 
-            // Send Email Confirmation (Fire and Forget)
+            // Send Email Confirmation (Fire and Forget but with logs)
             fetch('/api/emails', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     type: 'confirmation',
                     data: {
@@ -35,7 +36,16 @@ export const appointmentService = {
                         appointmentId: docRef.id
                     }
                 })
-            }).catch(err => console.error("Failed to send email:", err));
+            })
+                .then(async (res) => {
+                    const result = await res.json();
+                    if (!res.ok) {
+                        console.error("[Email] Server returned error:", result);
+                    } else {
+                        console.log("[Email] Sent successfully:", result);
+                    }
+                })
+                .catch(err => console.error("[Email] Network error:", err));
 
             return docRef.id;
         } catch (error) {

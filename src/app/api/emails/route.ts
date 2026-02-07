@@ -12,6 +12,8 @@ export async function POST(request: Request) {
 
         let result;
 
+        console.log(`[API/Emails] Processing ${type} for ${data.to}`);
+
         switch (type) {
             case 'confirmation':
                 result = await emailService.sendConfirmation(data);
@@ -28,9 +30,11 @@ export async function POST(request: Request) {
         }
 
         if (!result.success) {
+            console.error('[API/Emails] Service Error:', result.error);
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
 
+        console.log('[API/Emails] Success');
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('[API/Emails] Error:', error);
