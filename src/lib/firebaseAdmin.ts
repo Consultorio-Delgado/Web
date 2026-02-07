@@ -1,45 +1,17 @@
-import "server-only";
-import * as admin from "firebase-admin";
+import * as admin from 'firebase-admin';
 
-interface FirebaseAdminConfig {
-    projectId: string;
-    clientEmail: string;
-    privateKey: string;
-}
-
-function formatPrivateKey(key: string) {
-    return key.replace(/\\n/g, "\n");
-}
-
-export function createFirebaseAdminApp(params: FirebaseAdminConfig) {
-    if (!params.privateKey) {
-        throw new Error("FIREBASE_PRIVATE_KEY is not set in environment variables. Consultorio Delgado requires this for Admin features.");
-    }
-    const privateKey = formatPrivateKey(params.privateKey);
-
-    if (admin.apps.length > 0) {
-        return admin.app();
-    }
-
-    const cert = admin.credential.cert({
-        projectId: params.projectId,
-        clientEmail: params.clientEmail,
-        privateKey,
-    });
-
-    return admin.initializeApp({
-        credential: cert,
-        projectId: params.projectId,
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+if (!admin.apps.length) {
+    admin.initializeApp({
+        credential: admin.credential.cert({
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            // IMPORTANT: Replace escaped newlines for Vercel support
+            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        }),
     });
 }
 
-export async function initAdmin() {
-    const params = {
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID as string,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL as string,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY as string,
-    };
+const db = admin.firestore();
+const auth = admin.auth();
 
-    return createFirebaseAdminApp(params);
-}
+export { db, auth };
