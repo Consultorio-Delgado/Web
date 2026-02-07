@@ -4,90 +4,98 @@ service cloud.firestore {
     
     // --- Helper Functions ---
     
-    // Check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Check if user is the owner of the document
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Check if user has admin role
-    // Note: This requires the user document to differ from the auth token custom claims.
-    // Ideally, for security, we read the role from the 'users' collection to avoid client-side tampering if not using custom claims.
     function isAdmin() {
       return isAuthenticated() && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- Schema Validation Functions ---
+
+    function isValidAppointment() {
+      let data = request.resource.data;
+      return 
+        // Required Fields
+        data.keys().hasAll(['date', 'doctorId', 'patientId', 'status', 'type', 'updatedAt']) &&
+        // Data Types
+        data.date is timestamp &&
+        data.doctorId is string &&
+        data.patientId is string &&
+        data.status is string &&
+        data.type is string &&
+        data.updatedAt is timestamp &&
+        // Data Integrity
+        data.patientId == request.auth.uid && // Can only create for self
+        // Optional Fields Check (prevent spoofing admin flags)
+        !data.keys().hasAny(['isAdmin', 'role', 'permissions']);
+    }
+
+    function isValidAuditLog() {
+      let data = request.resource.data;
+      return 
+        data.keys().hasAll(['action', 'performedBy', 'timestamp', 'metadata']) &&
+        data.action is string &&
+        data.performedBy is string &&
+        data.timestamp is timestamp &&
+        data.metadata is map &&
+        data.performedBy == request.auth.uid; // Must match auth user
     }
 
     // --- Collection Rules ---
 
     // 1. Users (users/{userId})
     match /users/{userId} {
-      // Create: Allow if authenticated and creating their own document
       allow create: if isOwner(userId);
-      
-      // Read/Update: Allow if Owner OR Admin
       allow read, update: if isOwner(userId) || isAdmin();
-      
-      // Delete: Admin only (or Owner if we want to allow account deletion)
       allow delete: if isAdmin();
     }
 
+    // 2. Doctors (doctors/{doctorId})
     match /doctors/{doctorId} {
-      // Read: Public access (Landing page needs this)
       allow read: if true;
-      
-      // Write: Admin OR the Doctor themselves
       allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == doctorId);
     }
 
     // 3. Appointments (appointments/{appointmentId})
     match /appointments/{appointmentId} {
-      // Read: Owner (Patient) OR Admin
-      // (Future: Add Doctor check if doctorId matches)
-      // Read: Owner (Patient) OR Admin OR Authenticated (for availability checks)
-      // Ideally we would only allow listing availability, but for MVP we allow reading appointments to see busy slots.
       allow read: if isAuthenticated();
       
-      // Create: Any authenticated user (booking a slot)
-      // Validity checks (e.g. data validation) should be enforced here ideally, 
-      // but for MVP we trust the client app + simple checks.
-      allow create: if isAuthenticated() && request.resource.data.patientId == request.auth.uid;
+      // Strict Creation
+      allow create: if isAuthenticated() && isValidAppointment();
       
-      // Update: Distinguish between Admin and Patient
+      // Update: Admin or Patient (Cancel only)
       allow update: if isAuthenticated() && (
         isAdmin() || 
-        // Patient can ONLY cancel (change status to 'cancelled')
         (resource.data.patientId == request.auth.uid && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
          request.resource.data.status == 'cancelled')
       );
       
-      // Delete: Admin only
       allow delete: if isAdmin();
     }
 
     // 4. Exceptions (Blocked Days)
     match /exceptions/{exceptionId} {
-      // Read: Authenticated users (to check availability)
       allow read: if isAuthenticated();
-      
-      // Write: Admin or Doctor (for their own)
       allow write: if isAdmin() || (isAuthenticated() && request.resource.data.doctorId == request.auth.uid);
-      
-      // Delete: Admin or Owner
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.doctorId == request.auth.uid);
     }
 
     // 5. Audit Logs
     match /audit_logs/{logId} {
-      // Create: Authenticated users (System logs actions)
-      allow create: if isAuthenticated();
+      // Strict Creation (System/User logs)
+      allow create: if isAuthenticated() && isValidAuditLog();
       // Read/Delete: Admin only
       allow read, delete: if isAdmin();
+      // No updates allowed
+      allow update: if false; 
     }
   }
 }
