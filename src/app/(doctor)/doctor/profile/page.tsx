@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import Link from "next/link";
 import { toast } from "sonner";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, CalendarOff } from "lucide-react";
 
 export default function DoctorProfilePage() {
     const { user, profile } = useAuth();
@@ -125,8 +126,18 @@ export default function DoctorProfilePage() {
 
     return (
         <div className="container max-w-3xl py-8">
-            <h1 className="text-3xl font-bold mb-2">Perfil Profesional</h1>
-            <p className="text-muted-foreground mb-8">Administra tu información pública y horarios de atención.</p>
+            <div className="flex justify-between items-start mb-8">
+                <div>
+                    <h1 className="text-3xl font-bold mb-2">Perfil Profesional</h1>
+                    <p className="text-muted-foreground">Administra tu información pública y horarios de atención.</p>
+                </div>
+                <Link href="/doctor/exceptions">
+                    <Button variant="outline">
+                        <CalendarOff className="mr-2 h-4 w-4" />
+                        Gestionar Ausencias
+                    </Button>
+                </Link>
+            </div>
 
             <div className="grid gap-6">
                 {/* Public Info */}

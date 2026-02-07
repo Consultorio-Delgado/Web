@@ -45,12 +45,24 @@ export default function DoctorsPage() {
     const handleCreate = async (data: any) => {
         setIsInternalLoading(true);
         try {
-            await doctorService.createDoctor(data);
+            // Use API to create Auth User + Firestore Profile
+            const response = await fetch("/api/admin/doctors", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Error al crear doctor");
+            }
+
             setDialogOpen(false);
+            toast.success("Doctor creado exitosamente");
             fetchDoctors(); // Refresh list
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert("Error al crear doctor");
+            alert(error.message || "Error al crear doctor");
         } finally {
             setIsInternalLoading(false);
         }

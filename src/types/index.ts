@@ -15,6 +15,7 @@ export interface UserProfile {
 
 export interface Doctor {
     id: string; // 'secondi' | 'capparelli' (allows expansion)
+    email?: string; // Contact/Auth email
     firstName: string;
     lastName: string;
     specialty: string;

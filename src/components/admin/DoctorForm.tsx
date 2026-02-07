@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -22,22 +21,30 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useEffect } from "react";
+import { toast } from "sonner";
 
-const formSchema = z.object({
-    firstName: z.string().min(2, {
-        message: "El nombre debe tener al menos 2 caracteres.",
-    }),
-    lastName: z.string().min(2, {
-        message: "El apellido debe tener al menos 2 caracteres.",
-    }),
-    specialty: z.string().min(1, {
-        message: "Seleccione una especialidad.",
-    }),
-    slotDuration: z.string(), // We'll parse to number on submit
-    startHour: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM inválido"),
-    endHour: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM inválido"),
-});
+// Schema generator to handle dynamic requirements
+const createSchema = (isEditing: boolean) => {
+    return z.object({
+        firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
+        lastName: z.string().min(2, "El apellido debe tener al menos 2 caracteres."),
+        email: z.string().email("Email inválido").optional().or(z.literal("")),
+        password: z.string().min(6, "Mínimo 6 caracteres").optional().or(z.literal("")),
+        specialty: z.string().min(1, "Seleccione una especialidad."),
+        slotDuration: z.string(),
+        startHour: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM inválido"),
+        endHour: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM inválido"),
+    }).refine((data) => {
+        if (!isEditing) {
+            // Creation mode: Email and Password are required
+            return !!data.email && !!data.password;
+        }
+        return true;
+    }, {
+        message: "Email y contraseña son obligatorios para nuevos médicos",
+        path: ["password"] // Attach error to password field
+    });
+};
 
 interface Props {
     defaultValues?: Doctor;
@@ -46,11 +53,16 @@ interface Props {
 }
 
 export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
+    const isEditing = !!defaultValues;
+    const schema = createSchema(isEditing);
+
+    const form = useForm<z.infer<typeof schema>>({
+        resolver: zodResolver(schema),
         defaultValues: {
             firstName: defaultValues?.firstName || "",
             lastName: defaultValues?.lastName || "",
+            email: defaultValues?.email || "",
+            password: "",
             specialty: defaultValues?.specialty || "",
             slotDuration: defaultValues?.slotDuration?.toString() || "30",
             startHour: defaultValues?.schedule?.startHour || "09:00",
@@ -58,19 +70,17 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
         },
     });
 
-    async function handleSubmit(values: z.infer<typeof formSchema>) {
-        // Transform flat form values to Doctor structure
+    async function handleSubmit(values: z.infer<typeof schema>) {
+        // Prepare data for submission
         const doctorData = {
-            firstName: values.firstName,
-            lastName: values.lastName,
-            specialty: values.specialty,
+            ...values,
             slotDuration: parseInt(values.slotDuration),
             schedule: {
                 startHour: values.startHour,
                 endHour: values.endHour,
-                workDays: [1, 2, 3, 4, 5], // Hardcoded MVP
+                workDays: [1, 2, 3, 4, 5], // Default M-F
             },
-            color: "blue", // Default
+            color: "blue",
         };
         await onSubmit(doctorData);
     }
@@ -79,6 +89,37 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
+                    {!isEditing && (
+                        <>
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Email (Acceso)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="doctor@clinica.com" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="password"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Contraseña</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" placeholder="******" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </>
+                    )}
+
                     <FormField
                         control={form.control}
                         name="firstName"
@@ -124,6 +165,8 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
                                     <SelectItem value="Clínica Médica">Clínica Médica</SelectItem>
                                     <SelectItem value="Pediatría">Pediatría</SelectItem>
                                     <SelectItem value="Traumatología">Traumatología</SelectItem>
+                                    <SelectItem value="Dermatología">Dermatología</SelectItem>
+                                    <SelectItem value="Ginecología">Ginecología</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -148,6 +191,7 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
                                         <SelectItem value="15">15 min</SelectItem>
                                         <SelectItem value="20">20 min</SelectItem>
                                         <SelectItem value="30">30 min</SelectItem>
+                                        <SelectItem value="40">40 min</SelectItem>
                                         <SelectItem value="60">60 min</SelectItem>
                                     </SelectContent>
                                 </Select>

@@ -1,0 +1,52 @@
+
+> consultorio-delgado-v2@0.1.0 build
+> next build
+
+   Γû▓ Next.js 14.1.0
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+Error: Cannot find module '@opentelemetry/api'
+Require stack:
+- C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\@google-cloud\firestore\build\src\telemetry\enabled-trace-util.js
+- C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\@google-cloud\firestore\build\src\index.js
+- C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\firebase-admin\lib\firestore\index.js
+- C:\Users\nicoc\Downloads\Consultorio Delgado\.next\server\app\api\admin\doctors\route.js
+- C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\next\dist\server\require.js
+- C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\next\dist\server\load-components.js
+- C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\next\dist\build\utils.js
+- C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\next\dist\build\worker.js
+- C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\next\dist\compiled\jest-worker\processChild.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1421:15)
+    at C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\next\dist\server\require-hook.js:55:36
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1227:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1504:12)
+    at mod.require (C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\next\dist\server\require-hook.js:65:28)
+    at require (node:internal/modules/helpers:152:16) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\nicoc\\Downloads\\Consultorio Delgado\\node_modules\\@google-cloud\\firestore\\build\\src\\telemetry\\enabled-trace-util.js',
+    'C:\\Users\\nicoc\\Downloads\\Consultorio Delgado\\node_modules\\@google-cloud\\firestore\\build\\src\\index.js',
+    'C:\\Users\\nicoc\\Downloads\\Consultorio Delgado\\node_modules\\firebase-admin\\lib\\firestore\\index.js',
+    'C:\\Users\\nicoc\\Downloads\\Consultorio Delgado\\.next\\server\\app\\api\\admin\\doctors\\route.js',
+    'C:\\Users\\nicoc\\Downloads\\Consultorio Delgado\\node_modules\\next\\dist\\server\\require.js',
+    'C:\\Users\\nicoc\\Downloads\\Consultorio Delgado\\node_modules\\next\\dist\\server\\load-components.js',
+    'C:\\Users\\nicoc\\Downloads\\Consultorio Delgado\\node_modules\\next\\dist\\build\\utils.js',
+    'C:\\Users\\nicoc\\Downloads\\Consultorio Delgado\\node_modules\\next\\dist\\build\\worker.js',
+    'C:\\Users\\nicoc\\Downloads\\Consultorio Delgado\\node_modules\\next\\dist\\compiled\\jest-worker\\processChild.js'
+  ]
+}
+
+> Build error occurred
+Error: Failed to collect page data for /api/admin/doctors
+    at C:\Users\nicoc\Downloads\Consultorio Delgado\node_modules\next\dist\build\utils.js:1258:15
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  type: 'Error'
+}

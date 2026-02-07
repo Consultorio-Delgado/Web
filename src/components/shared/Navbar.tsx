@@ -66,8 +66,12 @@ export function Navbar() {
                                         </div>
                                     </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => router.push(role === 'admin' ? "/admin/dashboard" : "/portal")}>
-                                        {role === 'admin' ? "Panel Administrativo" : "Portal Paciente"}
+                                    <DropdownMenuItem onClick={() => {
+                                        if (role === 'admin') router.push("/admin/dashboard");
+                                        else if (role === 'doctor') router.push("/doctor/profile");
+                                        else router.push("/portal");
+                                    }}>
+                                        {role === 'admin' ? "Panel Administrativo" : role === 'doctor' ? "Portal Médico" : "Portal Paciente"}
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={handleLogout}>

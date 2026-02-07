@@ -7,11 +7,28 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 
-import { doctorsData } from "@/lib/doctorsData";
+// import { doctorsData } from "@/lib/doctorsData";
 
-// Adapter to ensure data matches Firestore expectation if needed
-// But doctorsData should align with Doctor type.
-const INITIAL_DOCTORS = doctorsData;
+const INITIAL_DOCTORS: Doctor[] = [
+    {
+        id: "capparelli",
+        firstName: "Javier",
+        lastName: "Capparelli",
+        specialty: "Clínica Médica",
+        slotDuration: 20,
+        color: "blue",
+        schedule: { startHour: "09:00", endHour: "18:00", workDays: [1, 2, 3, 4, 5] }
+    },
+    {
+        id: "secondi",
+        firstName: "Ignacio",
+        lastName: "Secondi",
+        specialty: "Traumatología",
+        slotDuration: 20,
+        color: "green",
+        schedule: { startHour: "14:00", endHour: "18:00", workDays: [1, 3, 5] }
+    }
+];
 
 export default function SeedPage() {
     const [status, setStatus] = useState("Idle");
