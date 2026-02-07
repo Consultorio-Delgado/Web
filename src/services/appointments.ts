@@ -83,5 +83,16 @@ export const appointmentService = {
             console.error("Error updating medical notes:", error);
             throw error;
         }
+    },
+    async cancelAppointment(appointmentId: string): Promise<void> {
+        try {
+            const docRef = doc(db, "appointments", appointmentId);
+            await updateDoc(docRef, {
+                status: 'cancelled'
+            });
+        } catch (error) {
+            console.error("Error cancelling appointment:", error);
+            throw error;
+        }
     }
 };

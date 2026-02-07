@@ -6,8 +6,28 @@ import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Consultorio Delgado",
-  description: "Sistema de Gestión de Turnos Médicos",
+  title: {
+    default: "Consultorio Delgado | Medicina de Excelencia",
+    template: "%s | Consultorio Delgado",
+  },
+  description: "Gestión de turnos médicos y atención personalizada en Consultorio Delgado. Reserva tu cita online con nuestros especialistas.",
+  keywords: ["medicina", "turnos", "salud", "consultorio", "delgado", "especialistas", "reservas online"],
+  authors: [{ name: "Consultorio Delgado" }],
+  creator: "Consultorio Delgado",
+  openGraph: {
+    type: "website",
+    locale: "es_AR",
+    url: "https://consultoriodelgado.com",
+    title: "Consultorio Delgado | Cuidamos tu salud",
+    description: "Atención médica de primer nivel. Reserva tu turno online en segundos.",
+    siteName: "Consultorio Delgado",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Consultorio Delgado",
+    description: "Cuidamos tu salud, cuidamos de vos.",
+    creator: "@consultoriodelgado",
+  },
 };
 
 import { Navbar } from "@/components/shared/Navbar";

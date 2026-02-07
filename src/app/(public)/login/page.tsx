@@ -86,6 +86,15 @@ export default function LoginPage() {
                                 disabled={loading}
                             />
                         </div>
+                        <div className="text-right">
+                            <Link
+                                href="/login/reset-password"
+                                className="text-sm font-medium text-primary hover:underline"
+                                tabIndex={-1}
+                            >
+                                ¿Olvidaste tu contraseña?
+                            </Link>
+                        </div>
 
                         {error && (
                             <div className="text-red-500 text-sm flex items-center gap-2 p-2 bg-red-50 rounded">

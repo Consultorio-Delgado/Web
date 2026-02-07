@@ -60,7 +60,7 @@ export default async function LandingPage() {
               Reserva tu turno online en segundos.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/portal/book">
+              <Link href="/portal/new-appointment">
                 <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-base rounded-md font-semibold bg-slate-900 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/10">
                   Reservar Turno
                   <CalendarDays className="ml-2 h-5 w-5" />
@@ -88,7 +88,7 @@ export default async function LandingPage() {
         <div className="container px-6 md:px-12 mx-auto max-w-[1440px]">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-slate-200 border border-slate-200 shadow-sm">
             {/* Turnos */}
-            <Link href="/portal/book" className="bg-white p-12 flex flex-col h-80 justify-between group hover:bg-blue-50 transition-colors duration-300">
+            <Link href="/portal/new-appointment" className="bg-white p-12 flex flex-col h-80 justify-between group hover:bg-blue-50 transition-colors duration-300">
               <CalendarDays className="h-12 w-12 text-slate-400 group-hover:text-blue-600 transition-colors" />
               <div>
                 <p className="text-3xl font-light tracking-tight text-slate-900 mb-2">Turnos Online</p>
@@ -149,7 +149,7 @@ export default async function LandingPage() {
                     </div>
                   </div>
                   <div className="hidden sm:flex">
-                    <Link href="/portal/book">
+                    <Link href="/portal/new-appointment">
                       <Button variant="ghost" className="group-hover:translate-x-2 transition-transform">
                         Ver Horarios <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>

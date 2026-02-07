@@ -123,7 +123,7 @@ function NavItems({ mobile = false }: { mobile?: boolean }) {
             <Link href="/#staff" className={className}>
                 Especialistas
             </Link>
-            <Link href="/portal/book" className={className}>
+            <Link href="/portal/new-appointment" className={className}>
                 Reservar Turno
             </Link>
         </>
