@@ -1,6 +1,7 @@
 "use client";
 
 import { adminService } from "@/services/adminService";
+import { DashboardMetrics } from "@/components/admin/DashboardMetrics";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Calendar, Activity, AlertCircle } from "lucide-react";
@@ -69,17 +70,12 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
+            <div className="mt-8">
+                <DashboardMetrics />
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4">
-                    <CardHeader>
-                        <CardTitle>Resumen Semanal</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pl-2">
-                        <div className="h-[200px] flex items-center justify-center text-slate-400">
-                            [Gráfico Placeholder]
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Recent Activity Card ... */}
                 <Card className="col-span-3">
                     <CardHeader>
                         <CardTitle>Actividad Reciente</CardTitle>

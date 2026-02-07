@@ -94,5 +94,11 @@ export const appointmentService = {
             console.error("Error cancelling appointment:", error);
             throw error;
         }
+    },
+
+    async getAllAppointments(): Promise<Appointment[]> {
+        const q = query(collection(db, "appointments"));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
     }
 };

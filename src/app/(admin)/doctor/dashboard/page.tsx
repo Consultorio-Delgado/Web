@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { PatientSearch } from "@/components/doctor/PatientSearch";
 
 export default function DoctorDashboard() {
     const { user, profile, loading: authLoading } = useAuth();
@@ -100,7 +101,17 @@ export default function DoctorDashboard() {
                 </div>
 
                 {/* Right: Appointments List */}
-                <div className="md:col-span-8 lg:col-span-9">
+                <div className="md:col-span-8 lg:col-span-9 space-y-6">
+                    {/* Search Bar Area */}
+                    <Card className="bg-blue-50/50 border-blue-100">
+                        <CardContent className="p-4 flex flex-col sm:flex-row gap-4 justify-between items-center">
+                            <div className="text-sm font-medium text-blue-900">
+                                Buscar Paciente
+                            </div>
+                            <PatientSearch />
+                        </CardContent>
+                    </Card>
+
                     <Card>
                         <CardHeader>
                             <CardTitle>Appointments for {format(date, "PPP", { locale: es })}</CardTitle>
@@ -113,10 +124,27 @@ export default function DoctorDashboard() {
                             ) : (
                                 <div className="space-y-4">
                                     {appointments.map((appt) => (
-                                        <div key={appt.id} className="flex items-center justify-between border p-4 rounded-lg bg-card hover:bg-accent/50 transition-colors">
+                                        <div key={appt.id} className={`flex items-center justify-between border p-4 rounded-lg transition-colors ${appt.status === 'arrived' ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-card hover:bg-accent/50'}`}>
                                             <div>
-                                                <div className="font-semibold text-lg">{appt.time} - {appt.patientName}</div>
-                                                <div className="text-sm text-muted-foreground">Status: <span className="capitalize">{appt.status}</span></div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="font-semibold text-lg">{appt.time} - {appt.patientName}</div>
+                                                    {appt.status === 'arrived' && (
+                                                        <span className="relative flex h-3 w-3">
+                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                                    Status:
+                                                    <span className={`capitalize px-2 py-0.5 rounded-full text-xs font-medium ${appt.status === 'arrived' ? 'bg-green-100 text-green-700' :
+                                                        appt.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
+                                                            appt.status === 'completed' ? 'bg-slate-100 text-slate-700' :
+                                                                'bg-gray-100 text-gray-600'
+                                                        }`}>
+                                                        {appt.status === 'arrived' ? 'En Espera (Llegó)' : appt.status}
+                                                    </span>
+                                                </div>
                                                 {appt.medicalNotes && (
                                                     <div className="mt-2 text-sm bg-yellow-50/10 p-2 rounded border border-yellow-200/20">
                                                         <span className="font-medium text-yellow-600">Note:</span> {appt.medicalNotes}
@@ -124,6 +152,9 @@ export default function DoctorDashboard() {
                                                 )}
                                             </div>
                                             <div className="flex gap-2">
+                                                <Button variant="ghost" size="sm" onClick={() => router.push(`/doctor/patient/${appt.patientId}`)}>
+                                                    Historia
+                                                </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"

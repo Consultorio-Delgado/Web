@@ -70,7 +70,7 @@ export function BookingWizard() {
                 setAvailableSlots([]);
                 try {
                     const busyAppointments = await appointmentService.getDoctorAppointmentsOnDate(selectedDoctor.id, selectedDate);
-                    const slots = availabilityService.getAvailableSlots(selectedDoctor, selectedDate, busyAppointments);
+                    const slots = await availabilityService.getAvailableSlots(selectedDoctor, selectedDate, busyAppointments);
                     setAvailableSlots(slots);
                 } catch (error) {
                     toast.error("Error retrieving availability.");
@@ -110,7 +110,7 @@ export function BookingWizard() {
         try {
             // 1. Re-check availability (concurrency check)
             const busyAppointments = await appointmentService.getDoctorAppointmentsOnDate(selectedDoctor.id, selectedDate);
-            const currentSlots = availabilityService.getAvailableSlots(selectedDoctor, selectedDate, busyAppointments);
+            const currentSlots = await availabilityService.getAvailableSlots(selectedDoctor, selectedDate, busyAppointments);
 
             if (!currentSlots.includes(selectedTime)) {
                 toast.error("Lo sentimos, este turno acaba de ser reservado.");

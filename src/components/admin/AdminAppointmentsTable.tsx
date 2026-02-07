@@ -25,7 +25,7 @@ interface Props {
 export function AdminAppointmentsTable({ initialAppointments, onUpdate }: Props) {
     const [loadingId, setLoadingId] = useState<string | null>(null);
 
-    const handleStatusUpdate = async (id: string, status: 'confirmed' | 'cancelled' | 'completed') => {
+    const handleStatusUpdate = async (id: string, status: 'confirmed' | 'cancelled' | 'completed' | 'arrived') => {
         setLoadingId(id);
         try {
             await adminService.updateAppointmentStatus(id, status);
@@ -70,10 +70,12 @@ export function AdminAppointmentsTable({ initialAppointments, onUpdate }: Props)
                             <td className="p-4">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
                                     ${appt.status === 'confirmed' ? 'bg-green-50 text-green-700 border-green-200' :
-                                        appt.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                            appt.status === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
-                                                'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                                        appt.status === 'arrived' ? 'bg-green-100 text-green-800 border-green-300 ring-2 ring-green-400 ring-opacity-50' :
+                                            appt.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                appt.status === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                    'bg-slate-100 text-slate-700 border-slate-200'}`}>
                                     {appt.status === 'confirmed' && <Check className="w-3 h-3 mr-1" />}
+                                    {appt.status === 'arrived' && <div className="w-2 h-2 rounded-full bg-green-600 mr-2 animate-pulse" />}
                                     {appt.status}
                                 </span>
                             </td>
@@ -93,6 +95,9 @@ export function AdminAppointmentsTable({ initialAppointments, onUpdate }: Props)
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'confirmed')} disabled={loadingId === appt.id}>
                                             <Check className="mr-2 h-4 w-4 text-green-600" /> Confirmar
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'arrived')} disabled={loadingId === appt.id}>
+                                            <div className="mr-2 h-4 w-4 bg-green-500 rounded-full animate-pulse" /> Marcar Llegada
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleStatusUpdate(appt.id, 'completed')} disabled={loadingId === appt.id}>
                                             <Check className="mr-2 h-4 w-4 text-blue-600" /> Marcar Asistió

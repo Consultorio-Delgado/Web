@@ -28,7 +28,14 @@ export interface Doctor {
     color: string; // For calendar UI
 }
 
-export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived';
+
+export interface DayOff {
+    id: string;
+    date: string; // "YYYY-MM-DD"
+    doctorId?: string; // If null, applies to all (global holiday)
+    reason?: string;
+}
 
 export interface Appointment {
     id: string;

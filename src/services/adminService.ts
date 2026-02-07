@@ -54,7 +54,7 @@ export const adminService = {
         }
     },
 
-    async updateAppointmentStatus(id: string, status: 'confirmed' | 'cancelled' | 'completed'): Promise<void> {
+    async updateAppointmentStatus(id: string, status: 'confirmed' | 'cancelled' | 'completed' | 'arrived'): Promise<void> {
         try {
             const docRef = doc(db, "appointments", id);
             await updateDoc(docRef, { status });

@@ -38,6 +38,7 @@ export default function AdminLayout({
         { name: "Agenda", href: "/admin/appointments", icon: Calendar },
         { name: "Pacientes", href: "/admin/patients", icon: Users },
         { name: "Doctores", href: "/admin/doctors", icon: Settings },
+        { name: "Excepciones", href: "/admin/exceptions", icon: Calendar },
     ];
 
     return (
