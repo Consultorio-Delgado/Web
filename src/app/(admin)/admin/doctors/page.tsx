@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Doctor } from "@/types";
-import { doctorService } from "@/services/doctors";
+import { doctorService } from "@/services/doctorService";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, Stethoscope } from "lucide-react";
 import {
@@ -33,7 +33,7 @@ export default function DoctorsPage() {
 
     const fetchDoctors = async () => {
         setLoading(true);
-        const data = await doctorService.getAll();
+        const data = await doctorService.getAllDoctors();
         setDoctors(data);
         setLoading(false);
     };

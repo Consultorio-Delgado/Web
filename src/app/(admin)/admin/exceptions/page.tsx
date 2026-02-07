@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { DayOff, Doctor } from "@/types";
 import { exceptionService } from "@/services/exceptions";
-import { doctorService } from "@/services/doctors";
+import { doctorService } from "@/services/doctorService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,7 @@ export default function ExceptionsPage() {
         try {
             const [exData, docData] = await Promise.all([
                 exceptionService.getAll(),
-                doctorService.getAll()
+                doctorService.getAllDoctors()
             ]);
             setExceptions(exData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
             setDoctors(docData);

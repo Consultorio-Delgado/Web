@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Appointment, Doctor } from "@/types";
 import { appointmentService } from "@/services/appointments";
-import { doctorService } from "@/services/doctors";
+import { doctorService } from "@/services/doctorService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { Loader2 } from "lucide-react";
@@ -31,7 +31,7 @@ export function DashboardMetrics() {
                 // but likely we need to add a method to appointments.ts. 
                 // I will assume I'll add `getAll` to `appointmentService` in the next step.
 
-                const allDocs = await doctorService.getAll();
+                const allDocs = await doctorService.getAllDoctors();
                 setDoctors(allDocs);
 
                 // Placeholder for now until I add the service method

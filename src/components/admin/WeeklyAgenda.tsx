@@ -5,7 +5,7 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays, is
 import { es } from "date-fns/locale";
 import { Appointment, Doctor } from "@/types";
 import { adminService } from "@/services/adminService";
-import { doctorService } from "@/services/doctors";
+import { doctorService } from "@/services/doctorService";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +21,7 @@ export function WeeklyAgenda() {
 
     // Load doctors
     useEffect(() => {
-        doctorService.getAll().then(setDoctors);
+        doctorService.getAllDoctors().then(setDoctors);
     }, []);
 
     // Fetch appointments when date or filter changes

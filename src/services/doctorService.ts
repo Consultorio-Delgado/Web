@@ -1,6 +1,6 @@
 import { db } from "@/lib/firebase";
 import { Doctor } from "@/types";
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
 export const doctorService = {
     async getAllDoctors(): Promise<Doctor[]> {
@@ -46,6 +46,15 @@ export const doctorService = {
             await setDoc(doc(db, "doctors", doctor.id), doctor, { merge: true });
         } catch (error) {
             console.error(`Error creating doctor ${doctor.id}:`, error);
+            throw error;
+        }
+    },
+
+    async deleteDoctor(id: string): Promise<void> {
+        try {
+            await deleteDoc(doc(db, "doctors", id));
+        } catch (error) {
+            console.error(`Error deleting doctor ${id}:`, error);
             throw error;
         }
     }
