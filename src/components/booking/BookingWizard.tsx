@@ -126,8 +126,10 @@ export function BookingWizard() {
 
             await appointmentService.createAppointment({
                 patientId: user.uid,
-                patientName: `${profile.firstName} ${profile.lastName}`,
-                patientEmail: profile.email,
+                patientName: (profile.firstName && profile.lastName)
+                    ? `${profile.firstName} ${profile.lastName}`
+                    : (user.displayName || "Paciente"),
+                patientEmail: profile.email || user.email || "",
                 doctorId: selectedDoctor.id,
                 doctorName: `${selectedDoctor.lastName}, ${selectedDoctor.firstName}`,
                 date: appointmentDate,
