@@ -3,6 +3,17 @@ import { DayOff } from "@/types";
 import { collection, deleteDoc, doc, getDocs, query, setDoc, where } from "firebase/firestore";
 
 export const exceptionService = {
+    // Get all exceptions (for admin/management)
+    async getAll(): Promise<DayOff[]> {
+        try {
+            const snapshot = await getDocs(collection(db, "exceptions"));
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DayOff));
+        } catch (error) {
+            console.error("Error fetching all exceptions:", error);
+            return [];
+        }
+    },
+
     // Get all exceptions for a specific doctor
     async getDoctorExceptions(doctorId: string): Promise<DayOff[]> {
         try {

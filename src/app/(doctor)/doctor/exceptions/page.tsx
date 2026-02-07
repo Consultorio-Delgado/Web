@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { DayOff, Doctor } from "@/types";
-import { exceptionService } from "@/services/exceptions";
+import { exceptionService } from "@/services/exceptionService";
 import { doctorService } from "@/services/doctorService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,7 +57,7 @@ export default function ExceptionsPage() {
 
         setSubmitting(true);
         try {
-            await exceptionService.addDayOff({
+            await exceptionService.createException({
                 date,
                 doctorId: doctorId === "global" ? undefined : doctorId,
                 reason: reason || "No disponible"
@@ -77,7 +77,7 @@ export default function ExceptionsPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("¿Está seguro de desbloquear este día?")) return;
         try {
-            await exceptionService.removeDayOff(id);
+            await exceptionService.deleteException(id);
             toast.success("Excepción eliminada.");
             fetchData();
         } catch (error) {

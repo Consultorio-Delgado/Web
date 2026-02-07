@@ -8,10 +8,29 @@ export const userService = {
      */
     async getUserProfile(uid: string): Promise<UserProfile | null> {
         try {
-            const userDoc = await getDoc(doc(db, "users", uid));
-            if (userDoc.exists()) {
-                return userDoc.data() as UserProfile;
+            // Optimization: Check if user is a doctor first (or in parallel) to avoid 'users' permission issues
+            // and to use the correct source of truth for doctors.
+            const [doctorSnap, userSnap] = await Promise.all([
+                getDoc(doc(db, "doctors", uid)),
+                getDoc(doc(db, "users", uid))
+            ]);
+
+            if (doctorSnap.exists()) {
+                const doctorData = doctorSnap.data();
+                return {
+                    uid: doctorSnap.id,
+                    email: doctorData.email,
+                    firstName: doctorData.firstName,
+                    lastName: doctorData.lastName,
+                    role: 'doctor', // Enforce role based on collection
+                    createdAt: doctorData.createdAt
+                } as UserProfile;
             }
+
+            if (userSnap.exists()) {
+                return userSnap.data() as UserProfile;
+            }
+
             return null;
         } catch (error) {
             console.error("Error fetching user profile:", error);
