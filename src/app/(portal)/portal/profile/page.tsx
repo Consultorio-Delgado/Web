@@ -9,9 +9,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, KeyRound, User as UserIcon } from "lucide-react";
+import { Loader2, KeyRound, User as UserIcon, Save } from "lucide-react";
 import { toast } from "sonner";
 import { updatePassword, User } from "firebase/auth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { INSURANCE_PROVIDERS } from "@/constants";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Separator } from "@/components/ui/separator";
+
+// Schema Validation
+const profileSchema = z.object({
+    phone: z.string().min(6, "El teléfono debe tener al menos 6 caracteres"),
+    birthDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Ingrese una fecha válida"),
+    insurance: z.string().min(1, "Seleccione una obra social"),
+    insuranceNumber: z.string().optional(),
+}).refine((data) => {
+    if (data.insurance !== "PARTICULAR" && (!data.insuranceNumber || data.insuranceNumber.length < 3)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "El número de credencial es obligatorio",
+    path: ["insuranceNumber"],
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
     const { user, profile, refreshProfile, loading: authLoading } = useAuth();
@@ -61,30 +85,44 @@ export default function ProfilePage() {
 }
 
 function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null, profile: any, refreshProfile: () => Promise<void> }) {
-    const [isLoading, setIsLoading] = useState(false);
-    const [formData, setFormData] = useState({
-        phone: "",
-        insurance: "",
+    const [isSaving, setIsSaving] = useState(false);
+
+    const form = useForm<ProfileFormValues>({
+        resolver: zodResolver(profileSchema),
+        defaultValues: {
+            phone: "",
+            birthDate: "",
+            insurance: "",
+            insuranceNumber: "",
+        },
     });
 
     useEffect(() => {
         if (profile) {
-            setFormData({
-                phone: profile.phone || "",
-                insurance: profile.insurance || "",
-            });
+            // Ensure the insurance value is valid, otherwise default to "PARTICULAR"
+            // Cast to readonly string[] to allow checking generic strings
+            const insuranceValue = profile.insurance;
+            const validInsurance = (INSURANCE_PROVIDERS as readonly string[]).includes(insuranceValue || "")
+                ? insuranceValue
+                : "PARTICULAR";
+
+            // Use setValue to ensure the form updates even if reset behaves unexpectedly
+            form.setValue("phone", profile.phone || "");
+            form.setValue("birthDate", profile.birthDate || "");
+            form.setValue("insurance", validInsurance || "PARTICULAR");
+            form.setValue("insuranceNumber", profile.insuranceNumber || "");
         }
-    }, [profile]);
+    }, [profile, form]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onSubmit = async (data: ProfileFormValues) => {
         if (!user) return;
-
-        setIsLoading(true);
+        setIsSaving(true);
         try {
             await userService.updateUserProfile(user.uid, {
-                phone: formData.phone,
-                insurance: formData.insurance,
+                phone: data.phone,
+                birthDate: data.birthDate,
+                insurance: data.insurance,
+                insuranceNumber: data.insuranceNumber,
             });
             await refreshProfile();
             toast.success("Perfil actualizado correctamente");
@@ -92,60 +130,128 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
             console.error(error);
             toast.error("Error al actualizar el perfil");
         } finally {
-            setIsLoading(false);
+            setIsSaving(false);
         }
     };
+
+    const watchedInsurance = form.watch("insurance");
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Datos Personales</CardTitle>
                 <CardDescription>
-                    Actualiza tus datos de contacto y obra social.
+                    Mantén tu información actualizada para una mejor atención.
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" value={profile?.email || ""} disabled className="bg-muted" />
-                    </div>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="firstName">Nombre</Label>
-                            <Input id="firstName" value={profile?.firstName || ""} disabled className="bg-muted" />
+                    {/* Read-Only Section */}
+                    <div className="space-y-4">
+                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Datos de Identidad (No editables)</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                            <div className="space-y-1">
+                                <Label className="text-xs text-slate-500">Email</Label>
+                                <div className="font-medium text-sm text-slate-700">{profile?.email}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-slate-500">DNI</Label>
+                                <div className="font-medium text-sm text-slate-700">{profile?.dni || "No registrado"}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-slate-500">Nombre</Label>
+                                <div className="font-medium text-sm text-slate-700">{profile?.firstName}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-slate-500">Apellido</Label>
+                                <div className="font-medium text-sm text-slate-700">{profile?.lastName}</div>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="lastName">Apellido</Label>
-                            <Input id="lastName" value={profile?.lastName || ""} disabled className="bg-muted" />
+                    </div>
+
+                    <Separator />
+
+                    {/* Editable Section */}
+                    <div className="space-y-4">
+                        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Información de Contacto y Cobertura</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Teléfono / Celular</Label>
+                                <Input
+                                    id="phone"
+                                    {...form.register("phone")}
+                                    className={form.formState.errors.phone ? "border-red-500" : ""}
+                                />
+                                {form.formState.errors.phone && (
+                                    <p className="text-xs text-red-500">{form.formState.errors.phone.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+                                <Input
+                                    id="birthDate"
+                                    type="date"
+                                    {...form.register("birthDate")}
+                                    className={form.formState.errors.birthDate ? "border-red-500" : ""}
+                                />
+                                {form.formState.errors.birthDate && (
+                                    <p className="text-xs text-red-500">{form.formState.errors.birthDate.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="insurance">Obra Social / Prepaga</Label>
+                                <Select
+                                    key={watchedInsurance}
+                                    onValueChange={(val) => form.setValue("insurance", val)}
+                                    value={watchedInsurance}
+                                >
+                                    <SelectTrigger className={form.formState.errors.insurance ? "border-red-500" : ""}>
+                                        <SelectValue placeholder="Seleccione su cobertura" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {INSURANCE_PROVIDERS.map((ins) => (
+                                            <SelectItem key={ins} value={ins}>
+                                                {ins}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {form.formState.errors.insurance && (
+                                    <p className="text-xs text-red-500">{form.formState.errors.insurance.message}</p>
+                                )}
+                            </div>
+
+                            {watchedInsurance !== "PARTICULAR" && (
+                                <div className="space-y-2 animate-in fade-in zoom-in-95 duration-300">
+                                    <Label htmlFor="insuranceNumber">Número de Credencial / Afiliado</Label>
+                                    <Input
+                                        id="insuranceNumber"
+                                        {...form.register("insuranceNumber")}
+                                        placeholder="Ej: 1234567890"
+                                        className={form.formState.errors.insuranceNumber ? "border-red-500" : ""}
+                                    />
+                                    {form.formState.errors.insuranceNumber && (
+                                        <p className="text-xs text-red-500">{form.formState.errors.insuranceNumber.message}</p>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="phone">Teléfono / Celular</Label>
-                        <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            placeholder="Ej: 11 1234-5678"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="insurance">Obra Social / Prepaga</Label>
-                        <Input
-                            id="insurance"
-                            value={formData.insurance}
-                            onChange={(e) => setFormData({ ...formData, insurance: e.target.value })}
-                            placeholder="Ej: OSDE 210"
-                        />
-                    </div>
-
-                    <div className="pt-4">
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Guardar Cambios
+                    <div className="pt-4 flex justify-end">
+                        <Button type="submit" disabled={isSaving}>
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Guardando...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="mr-2 h-4 w-4" />
+                                    Guardar Cambios
+                                </>
+                            )}
                         </Button>
                     </div>
                 </form>
@@ -196,7 +302,7 @@ function ChangePasswordForm({ user }: { user: User | null }) {
             <CardHeader>
                 <CardTitle>Cambiar Contraseña</CardTitle>
                 <CardDescription>
-                    Ingrese su nueva contraseña.
+                    Ingrese su nueva contraseña para mantener su cuenta segura.
                 </CardDescription>
             </CardHeader>
             <CardContent>

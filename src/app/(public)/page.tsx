@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Quote,
   ShieldCheck,
+  User as UserIcon,
 } from "lucide-react";
 import { doctorService } from "@/services/doctorService";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,73 +44,89 @@ export default async function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen font-sans">
 
-      {/* Hero Section (Hybrid: New Layout + Old Branding) */}
-      <header className="relative w-full min-h-[calc(100vh-80px)] flex flex-col lg:flex-row overflow-hidden border-b border-slate-200 bg-white">
-        <div className="flex-1 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-20 lg:py-0 relative z-10">
-          <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-xs font-semibold uppercase tracking-wider text-blue-600 mb-8 w-fit">
-              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-              Consultorio Delgado
-            </div>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-slate-900 leading-[1.1] mb-8">
-              Cuidamos tu salud, <br />
-              <span className="text-blue-600">cuidamos de vos.</span>
+      {/* Hero Section (Redesigned) */}
+      <header className="relative w-full h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-primary/80 z-10 mix-blend-multiply"></div>
+          <div className="absolute inset-0 bg-black/20 z-10"></div>
+          <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?q=80&w=2091&auto=format&fit=crop')" }}></div>
+        </div>
+
+        <div className="container relative z-20 px-6 text-center text-white">
+          <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-1000">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-medium tracking-tight leading-tight">
+              Cuidado Médico de Excelencia y <br className="hidden md:block" />
+              <span className="italic">Calidez Humana</span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 font-light leading-relaxed max-w-md mb-12">
-              Profesionales de primer nivel y atención personalizada en el corazón de la ciudad.
-              Reserva tu turno online en segundos.
+            <p className="text-xl md:text-2xl font-light text-slate-100 max-w-2xl mx-auto opacity-90">
+              Especialistas en Ginecología y Clínica Médica dedicados a su bienestar integral.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
               <Link href="/portal/new-appointment">
-                <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-base rounded-md font-semibold bg-slate-900 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/10">
+                <Button size="lg" className="h-14 px-10 rounded-full bg-primary hover:bg-primary/90 text-white font-medium text-lg shadow-lg border-2 border-transparent transition-all hover:scale-105">
                   Reservar Turno
-                  <CalendarDays className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
               <Link href="#staff">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto h-14 px-8 text-base rounded-md font-medium border-slate-300 text-slate-900 hover:bg-slate-50">
-                  Ver Especialistas
+                <Button size="lg" variant="outline" className="h-14 px-10 rounded-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-primary font-medium text-lg transition-all hover:scale-105">
+                  Nuestros Servicios
                 </Button>
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Hero Image (New Style) */}
-        <div className="flex-1 bg-slate-100 relative h-[50vh] lg:h-auto min-h-[400px]">
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=2053&auto=format&fit=crop')" }}>
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent lg:bg-gradient-to-l"></div>
+        {/* Wave Separator */}
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none z-20">
+          <svg className="relative block w-[calc(100%+1.3px)] h-[100px] md:h-[150px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M985.66,92.83C906.67,72,823.78,31,743.84,14.19c-82.26-17.34-168.06-16.33-250.45.39-57.84,11.73-114,31.07-172,41.86A600.21,600.21,0,0,1,0,27.35V120H1200V95.8C1132.19,118.92,1055.71,111.31,985.66,92.83Z" className="fill-white"></path>
+          </svg>
         </div>
       </header>
 
-      {/* Feature Grid (Hybrid: New Grid + Functional Icons) */}
-      <section className="w-full bg-white py-24 border-b border-slate-200">
-        <div className="container px-6 md:px-12 mx-auto max-w-[1440px]">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-slate-200 border border-slate-200 shadow-sm">
-            {/* Turnos */}
-            <Link href="/portal/new-appointment" className="bg-white p-12 flex flex-col h-80 justify-between group hover:bg-blue-50 transition-colors duration-300">
-              <CalendarDays className="h-12 w-12 text-slate-400 group-hover:text-blue-600 transition-colors" />
-              <div>
-                <p className="text-3xl font-light tracking-tight text-slate-900 mb-2">Turnos Online</p>
-                <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Gestiona tus citas las 24hs</p>
+      {/* Specialties Section (Redesigned) */}
+      <section className="w-full bg-white pb-32 pt-10">
+        <div className="container px-6 md:px-12 mx-auto max-w-7xl">
+          <div className="text-center mb-20 space-y-4">
+            <h2 className="text-4xl md:text-5xl font-serif text-primary">Nuestras Especialidades</h2>
+            <p className="text-lg text-slate-500 font-light max-w-2xl mx-auto">
+              Brindamos atención médica de primer nivel con un enfoque humano y personalizado.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Ginecología */}
+            <div className="bg-white rounded-[2rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 flex flex-col items-center text-center group">
+              <div className="h-20 w-20 rounded-full bg-accent flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <ShieldCheck className="h-10 w-10 text-accent-foreground" />
               </div>
-            </Link>
-            {/* Obras Sociales */}
-            <div className="bg-white p-12 flex flex-col h-80 justify-between group hover:bg-blue-50 transition-colors duration-300">
-              <ShieldCheck className="h-12 w-12 text-slate-400 group-hover:text-blue-600 transition-colors" />
-              <div>
-                <p className="text-3xl font-light tracking-tight text-slate-900 mb-2">Obras Sociales</p>
-                <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Atendemos particulares y coberturas</p>
-              </div>
+              <h3 className="text-2xl font-serif text-slate-900 mb-3">Ginecología</h3>
+              <p className="text-slate-500 leading-relaxed">
+                Check-ups anuales, control de embarazo y salud reproductiva integral.
+              </p>
             </div>
-            {/* Historia Clínica */}
-            <div className="bg-white p-12 flex flex-col h-80 justify-between group hover:bg-blue-50 transition-colors duration-300">
-              <FileText className="h-12 w-12 text-slate-400 group-hover:text-blue-600 transition-colors" />
-              <div>
-                <p className="text-3xl font-light tracking-tight text-slate-900 mb-2">Resultados</p>
-                <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Acceso a tus informes médicos</p>
+
+            {/* Clínica Médica */}
+            <div className="bg-white rounded-[2rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 flex flex-col items-center text-center group">
+              <div className="h-20 w-20 rounded-full bg-accent flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <UserIcon className="h-10 w-10 text-accent-foreground" />
               </div>
+              <h3 className="text-2xl font-serif text-slate-900 mb-3">Clínica Médica</h3>
+              <p className="text-slate-500 leading-relaxed">
+                Diagnóstico, tratamiento y prevención de enfermedades para adultos.
+              </p>
+            </div>
+
+            {/* Recetas */}
+            <div className="bg-white rounded-[2rem] p-10 shadow-xl shadow-slate-200/50 border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 flex flex-col items-center text-center group">
+              <div className="h-20 w-20 rounded-full bg-accent flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <FileText className="h-10 w-10 text-accent-foreground" />
+              </div>
+              <h3 className="text-2xl font-serif text-slate-900 mb-3">Recetas Digitales</h3>
+              <p className="text-slate-500 leading-relaxed">
+                Solicitud y gestión ágil de tus prescripciones médicas.
+              </p>
             </div>
           </div>
         </div>

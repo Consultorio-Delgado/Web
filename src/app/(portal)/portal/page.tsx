@@ -47,47 +47,32 @@ export default function PortalDashboard() {
 
     return (
         <div className="container py-10 max-w-5xl">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
                 <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16 border-2 border-white shadow-sm">
-                        <AvatarImage src={user?.photoURL || undefined} />
-                        <AvatarFallback className="text-xl bg-blue-100 text-blue-700">
-                            {getInitials(profile?.firstName, profile?.lastName)}
-                        </AvatarFallback>
-                    </Avatar>
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Hola, {profile?.firstName || 'Paciente'}</h1>
-                        <p className="text-slate-500">Bienvenido a tu portal de salud.</p>
+                        <h1 className="text-3xl font-serif font-medium text-slate-900 mb-1">Hola, {profile?.firstName || 'Paciente'}</h1>
+                        <p className="text-slate-500 font-light">Bienvenido a tu portal de salud.</p>
                     </div>
                 </div>
-                <div className="flex gap-3 w-full md:w-auto">
-                    <Link href="/portal/profile" className="flex-1 md:flex-none">
-                        <Button variant="outline" size="lg" className="w-full">
-                            Mi Perfil
-                        </Button>
-                    </Link>
-                    <Link href="/portal/new-appointment" className="flex-1 md:flex-none">
-                        <Button size="lg" className="bg-blue-600 hover:bg-blue-700 w-full shadow-md hover:shadow-lg transition-all">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Nuevo Turno
+                <div className="w-full md:w-auto">
+                    <Link href="/portal/new-appointment" className="block w-full">
+                        <Button size="lg" className="w-full md:w-auto h-12 px-8 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-cyan-900/10 text-white font-medium transition-transform hover:scale-105">
+                            Solicitar Nuevo Turno
                         </Button>
                     </Link>
                 </div>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-12">
                 <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <CalendarDays className="h-5 w-5 text-blue-600" />
-                        <h2 className="text-xl font-semibold">Mis Próximos Turnos</h2>
-                    </div>
+                    <h2 className="text-xl font-medium text-slate-900 mb-6">Próximos Turnos</h2>
 
                     {loadingAppts ? (
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {[1, 2].map(i => <div key={i} className="h-40 bg-slate-100 animate-pulse rounded-xl"></div>)}
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {[1, 2].map(i => <div key={i} className="h-48 bg-slate-50 animate-pulse rounded-[2rem]"></div>)}
                         </div>
                     ) : upcomingAppts.length > 0 ? (
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {upcomingAppts.map(appt => (
                                 <AppointmentCard
                                     key={appt.id}
@@ -97,14 +82,15 @@ export default function PortalDashboard() {
                             ))}
                         </div>
                     ) : (
-                        <Card className="bg-slate-50 border-dashed">
-                            <CardContent className="flex flex-col items-center justify-center p-8 text-center">
-                                <p className="text-muted-foreground mb-4">No tienes turnos programados próximamente.</p>
-                                <Link href="/portal/new-appointment">
-                                    <Button variant="link" className="text-blue-600">Reservar un turno ahora <ArrowRight className="ml-1 h-4 w-4" /></Button>
-                                </Link>
-                            </CardContent>
-                        </Card>
+                        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-center">
+                            <CalendarDays className="h-12 w-12 text-slate-200 mb-4" />
+                            <p className="text-lg text-slate-500 font-light mb-6">No tienes turnos próximos.</p>
+                            <Link href="/portal/new-appointment">
+                                <Button className="rounded-full px-8 bg-primary text-white hover:bg-primary/90">
+                                    Solicitar Nuevo Turno
+                                </Button>
+                            </Link>
+                        </div>
                     )}
                 </section>
 

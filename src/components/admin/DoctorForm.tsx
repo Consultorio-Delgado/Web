@@ -46,6 +46,13 @@ const createSchema = (isEditing: boolean) => {
     });
 };
 
+import { INSURANCE_PROVIDERS } from "@/constants";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// ... existing imports
+
+// ... existing createSchema
+
 interface Props {
     defaultValues?: Doctor;
     onSubmit: (values: any) => Promise<void>;
@@ -56,7 +63,7 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
     const isEditing = !!defaultValues;
     const schema = createSchema(isEditing);
 
-    const form = useForm<z.infer<typeof schema>>({
+    const form = useForm<z.infer<typeof schema> & { acceptedInsurances: string[] }>({
         resolver: zodResolver(schema),
         defaultValues: {
             firstName: defaultValues?.firstName || "",
@@ -67,10 +74,11 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
             slotDuration: defaultValues?.slotDuration?.toString() || "30",
             startHour: defaultValues?.schedule?.startHour || "09:00",
             endHour: defaultValues?.schedule?.endHour || "17:00",
+            acceptedInsurances: defaultValues?.acceptedInsurances || [],
         },
     });
 
-    async function handleSubmit(values: z.infer<typeof schema>) {
+    async function handleSubmit(values: any) {
         // Prepare data for submission
         const doctorData = {
             ...values,
@@ -226,6 +234,54 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
                         )}
                     />
                 </div>
+
+                <FormField
+                    control={form.control}
+                    name="acceptedInsurances"
+                    render={() => (
+                        <FormItem>
+                            <div className="mb-4">
+                                <FormLabel className="text-base">Obras Sociales Aceptadas</FormLabel>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                {INSURANCE_PROVIDERS.map((item) => (
+                                    <FormField
+                                        key={item}
+                                        control={form.control}
+                                        name="acceptedInsurances"
+                                        render={({ field }) => {
+                                            return (
+                                                <FormItem
+                                                    key={item}
+                                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                                >
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value?.includes(item)}
+                                                            onCheckedChange={(checked) => {
+                                                                return checked
+                                                                    ? field.onChange([...(field.value || []), item])
+                                                                    : field.onChange(
+                                                                        field.value?.filter(
+                                                                            (value) => value !== item
+                                                                        )
+                                                                    )
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal">
+                                                        {item}
+                                                    </FormLabel>
+                                                </FormItem>
+                                            )
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
                 <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Guardando..." : "Guardar Doctor"}

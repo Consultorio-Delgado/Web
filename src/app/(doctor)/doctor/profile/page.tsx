@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Loader2, Save, CalendarOff } from "lucide-react";
+import { INSURANCE_PROVIDERS } from "@/constants";
 
 export default function DoctorProfilePage() {
     const { user, profile } = useAuth();
@@ -28,30 +30,13 @@ export default function DoctorProfilePage() {
     const [startHour, setStartHour] = useState("09:00");
     const [endHour, setEndHour] = useState("17:00");
     const [workDays, setWorkDays] = useState<number[]>([]);
+    const [acceptedInsurances, setAcceptedInsurances] = useState<string[]>([]);
 
     useEffect(() => {
         const fetchDoctor = async () => {
             if (!user) return;
-            // Strategy: We assume the doctor ID matches the User UID if we migrate fully.
-            // But currently the seed uses 'capparelli', 'secondi'.
-            // How do we link User -> Doctor?
-            // Option A: UserProfile has a 'doctorId' field (cleanest).
-            // Option B: We assume user.uid IS the doctorId (goal state).
-            // Option C: We check if there's a doctor with ID == user.uid.
-
-            // For this phase, let's try to find a doctor with the same ID as the user.
-            // If not found, maybe he is using one of the legacy IDs? 
-            // Let's assume for the "Make Me Doctor" flow, we create a doctor with the user's UID.
-
             try {
                 let docData = await doctorService.getDoctorById(user.uid);
-
-                if (!docData) {
-                    // Try to find by email or other robust link? 
-                    // No, let's prompt creation or handle legacy mapping if we had it.
-                    // For now, if no doctor doc exists, we might need to initialize it.
-                    // Let's initialize a draft if role is doctor
-                }
 
                 if (docData) {
                     setDoctor(docData);
@@ -61,6 +46,7 @@ export default function DoctorProfilePage() {
                     setStartHour(docData.schedule.startHour);
                     setEndHour(docData.schedule.endHour);
                     setWorkDays(docData.schedule.workDays);
+                    setAcceptedInsurances(docData.acceptedInsurances || []);
                 }
             } catch (err) {
                 console.error(err);
@@ -72,7 +58,7 @@ export default function DoctorProfilePage() {
         if (profile?.role === 'doctor') {
             fetchDoctor();
         } else {
-            setLoading(false); // Not a doctor
+            setLoading(false);
         }
     }, [user, profile]);
 
@@ -80,7 +66,6 @@ export default function DoctorProfilePage() {
         if (!user || !profile) return;
         setSaving(true);
         try {
-            // Upsert: update if exists, create if not (using user.uid as ID)
             const docId = doctor?.id || user.uid;
 
             const doctorData: Doctor = {
@@ -89,26 +74,19 @@ export default function DoctorProfilePage() {
                 lastName: profile.lastName,
                 specialty: specialty || "General",
                 bio: bio,
-                color: doctor?.color || "blue", // Default
+                color: doctor?.color || "blue",
                 slotDuration: slotDuration,
                 schedule: {
                     startHour,
                     endHour,
                     workDays
                 },
-                // Conditionally add optional fields to avoid 'undefined'
+                acceptedInsurances: acceptedInsurances,
                 ...(doctor?.imageUrl ? { imageUrl: doctor.imageUrl } : {}),
                 ...(doctor?.email ? { email: doctor.email } : {})
             };
 
-            console.log("Saving doctor data:", doctorData);
-
-            // Validate for undefined values explicitly
-            Object.entries(doctorData).forEach(([key, value]) => {
-                if (value === undefined) console.error(`Field ${key} is undefined!`);
-            });
-
-            await doctorService.createDoctor(doctorData); // efficient upsert
+            await doctorService.createDoctor(doctorData);
             setDoctor(doctorData);
             toast.success("Perfil profesional actualizado.");
         } catch (error) {
@@ -124,6 +102,14 @@ export default function DoctorProfilePage() {
             setWorkDays(workDays.filter(d => d !== day));
         } else {
             setWorkDays([...workDays, day].sort());
+        }
+    };
+
+    const toggleInsurance = (insurance: string) => {
+        if (acceptedInsurances.includes(insurance)) {
+            setAcceptedInsurances(acceptedInsurances.filter(i => i !== insurance));
+        } else {
+            setAcceptedInsurances([...acceptedInsurances, insurance]);
         }
     };
 
@@ -188,6 +174,33 @@ export default function DoctorProfilePage() {
                     </CardContent>
                 </Card>
 
+                {/* Insurance Configuration */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Obras Sociales Aceptadas</CardTitle>
+                        <CardDescription>Active las coberturas con las que trabaja.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {INSURANCE_PROVIDERS.map((ins) => (
+                                <div key={ins} className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                                    <Label htmlFor={`ins-${ins}`} className="font-medium text-slate-700 cursor-pointer flex-grow">
+                                        {ins}
+                                    </Label>
+                                    <Switch
+                                        id={`ins-${ins}`}
+                                        checked={acceptedInsurances.includes(ins)}
+                                        onCheckedChange={() => toggleInsurance(ins)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <p className="text-sm text-slate-500 mt-4 bg-slate-50 p-3 rounded-md">
+                            Nota: Los pacientes que filtren por una obra social que usted no acepte no verán su perfil en los resultados de búsqueda.
+                        </p>
+                    </CardContent>
+                </Card>
+
                 {/* Schedule Configuration */}
                 <Card>
                     <CardHeader>
@@ -249,7 +262,6 @@ export default function DoctorProfilePage() {
                             <div className="flex flex-wrap gap-4">
                                 {['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map((dayName, idx) => (
                                     <div key={idx} className="flex items-center space-x-2">
-                                        {/* Skip Sunday (0) and Saturday (6) usually? No, let user choose */}
                                         <Checkbox
                                             id={`day-${idx}`}
                                             checked={workDays.includes(idx)}

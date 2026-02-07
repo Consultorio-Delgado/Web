@@ -7,8 +7,10 @@ export interface UserProfile {
     firstName: string;
     lastName: string;
     dni?: string;
+    birthDate?: string; // YYYY-MM-DD
     phone?: string;
     insurance?: string; // Obra Social
+    insuranceNumber?: string; // Numero de afiliado
     permissions?: string[]; // E.g., ['admin'] to grant admin access regardless of role
     createdAt: Date;
 }
@@ -28,6 +30,7 @@ export interface Doctor {
     };
     slotDuration: number; // Minutes per appointment (e.g. 20, 30, 60)
     color: string; // For calendar UI
+    acceptedInsurances?: string[]; // Array of strings from INSURANCE_PROVIDERS
 }
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived';

@@ -67,96 +67,112 @@ export function AppointmentCard({ appointment, onStatusChange }: AppointmentCard
     const canManage = isUpcoming && appointment.status !== 'cancelled' && appointment.status !== 'completed';
 
     return (
-        <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                <div className="flex flex-col gap-1">
-                    <span className="font-semibold text-lg flex items-center gap-2">
-                        {format(new Date(appointment.date), "EEEE d 'de' MMMM", { locale: es })}
-                    </span>
-                    <span className="text-muted-foreground flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4" /> {appointment.time} hs
-                    </span>
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">
+            <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-lg font-medium text-slate-800">
+                        Dr. {appointment.doctorName || appointment.doctorId}
+                    </h3>
+                    {getStatusBadge(appointment.status)}
                 </div>
-                {getStatusBadge(appointment.status)}
-            </CardHeader>
-            <CardContent className="space-y-2 mt-4">
-                <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-blue-500" />
-                    <span className="font-medium">Dr/a. {appointment.doctorId === 'capparelli' ? 'M. Capparelli' : 'G. Secondi'}</span>
-                </div>
-                <div className="text-sm text-muted-foreground pl-6">
-                    {appointment.doctorId === 'capparelli' ? 'Clínica Médica' : 'Traumatología'}
-                </div>
-            </CardContent>
-            {canManage && (
-                <div className="border-t pt-4 mt-4 px-6 pb-2">
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                        <FileText className="h-4 w-4" /> Estudios y Adjuntos
-                    </h4>
 
-                    {/* List existing attachments */}
-                    {appointment.attachments && appointment.attachments.length > 0 && (
-                        <div className="space-y-2 mb-4">
-                            {appointment.attachments.map((file, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-sm bg-slate-50 p-2 rounded border">
-                                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline truncate max-w-[200px]">
-                                        {file.type === 'pdf' ? <FileText className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
-                                        {file.name}
-                                    </a>
-                                </div>
-                            ))}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-slate-600">
+                        <CalendarDays className="h-5 w-5 text-cyan-600" />
+                        <span className="text-sm font-medium">
+                            {format(new Date(appointment.date), "EEEE d 'de' MMMM", { locale: es })}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-slate-600">
+                        <Clock className="h-5 w-5 text-cyan-600" />
+                        <span className="text-sm font-medium">
+                            {appointment.time} hs
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-slate-600">
+                        <User className="h-5 w-5 text-cyan-600" />
+                        <span className="text-sm">
+                            {appointment.doctorId === 'capparelli' ? 'Clínica Médica' :
+                                (appointment.doctorId === 'secondi' ? 'Traumatología' :
+                                    (appointment.doctorName?.includes('Ginec') || (appointment as any).specialty === 'Ginecología' ? 'Ginecología' : 'Dermatología'))}
+                            {/* Fallback logic preserved but improved visually */}
+                        </span>
+                    </div>
+                </div>
+
+                {canManage && (
+                    <div className="mt-6 pt-4 border-t border-slate-100">
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                className="flex-1 rounded-full border-slate-200 text-slate-600 hover:text-cyan-700 hover:bg-cyan-50"
+                                onClick={handleReschedule}
+                            >
+                                Reprogramar
+                            </Button>
+
+                            <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" className="rounded-full text-red-500 hover:text-red-700 hover:bg-red-50 px-3">
+                                        Cancelar
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    {/* Dialog Content Preserved */}
+                                    <DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2">
+                                            <AlertTriangle className="h-5 w-5 text-red-600" />
+                                            Cancelar Turno
+                                        </DialogTitle>
+                                        <DialogDescription>
+                                            ¿Está seguro que desea cancelar su turno con <strong>{appointment.doctorName || appointment.doctorId}</strong> el día <strong>{format(new Date(appointment.date), "d/MM", { locale: es })}</strong>?
+                                            <br /><br />
+                                            Esta acción no se puede deshacer.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <DialogFooter>
+                                        <Button variant="ghost" onClick={() => setIsCancelDialogOpen(false)}>Volver</Button>
+                                        <Button variant="destructive" onClick={handleCancel} disabled={isCancelling}>
+                                            {isCancelling ? "Cancelando..." : "Confirmar Cancelación"}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         </div>
-                    )}
 
-                    {/* Upload Component */}
-                    <FileUpload
-                        pathPrefix={`appointments/${appointment.id}`}
-                        onUploadComplete={(url, file) => {
-                            appointmentService.addAttachment(appointment.id, {
-                                name: file.name,
-                                url: url,
-                                type: file.type.includes('pdf') ? 'pdf' : 'image'
-                            }).then(() => {
-                                onStatusChange(); // Refresh
-                                toast.success("Adjunto guardado");
-                            });
-                        }}
-                    />
-                </div>
-            )}
-
-            {canManage && (
-                <CardFooter className="flex justify-end gap-2 pt-2 border-t mt-0">
-                    <Button variant="outline" size="sm" onClick={handleReschedule}>
-                        Reprogramar
-                    </Button>
-                    {/* ... (Cancel Dialog unchanged) ... */}
-                    <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="destructive" size="sm">Cancelar</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                    <AlertTriangle className="h-5 w-5 text-red-600" />
-                                    Cancelar Turno
-                                </DialogTitle>
-                                <DialogDescription>
-                                    ¿Está seguro que desea cancelar su turno con <strong>{appointment.doctorId}</strong> el día <strong>{format(new Date(appointment.date), "d/MM", { locale: es })}</strong>?
-                                    <br /><br />
-                                    Esta acción no se puede deshacer.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <DialogFooter>
-                                <Button variant="ghost" onClick={() => setIsCancelDialogOpen(false)}>Volver</Button>
-                                <Button variant="destructive" onClick={handleCancel} disabled={isCancelling}>
-                                    {isCancelling ? "Cancelando..." : "Confirmar Cancelación"}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </CardFooter>
-            )}
+                        <div className="mt-4">
+                            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-2">
+                                <FileText className="h-3 w-3" /> Estudios
+                            </h4>
+                            {/* Attachments List */}
+                            {appointment.attachments && appointment.attachments.length > 0 && (
+                                <div className="space-y-2 mb-3">
+                                    {appointment.attachments.map((file, idx) => (
+                                        <a key={idx} href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-cyan-600 hover:underline p-2 bg-cyan-50/50 rounded-lg transition-colors">
+                                            {file.type === 'pdf' ? <FileText className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+                                            <span className="truncate">{file.name}</span>
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
+                            <FileUpload
+                                pathPrefix={`appointments/${appointment.id}`}
+                                onUploadComplete={(url, file) => {
+                                    appointmentService.addAttachment(appointment.id, {
+                                        name: file.name,
+                                        url: url,
+                                        type: file.type.includes('pdf') ? 'pdf' : 'image'
+                                    }).then(() => {
+                                        onStatusChange();
+                                        toast.success("Adjunto guardado");
+                                    });
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+            {/* Removed CardFooter as buttons are moved inside */}
         </Card>
     );
 }

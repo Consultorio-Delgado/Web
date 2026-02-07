@@ -138,7 +138,7 @@ export const appointmentService = {
                             data: {
                                 to: appt.patientEmail,
                                 patientName: appt.patientName,
-                                doctorName: 'Su Profesional', // Placeholder
+                                doctorName: appt.doctorName || 'Dr. (Consultar en Portal)',
                                 date: appt.date.toDate().toLocaleDateString(),
                                 time: appt.time
                             }

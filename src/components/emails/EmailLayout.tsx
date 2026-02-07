@@ -37,10 +37,7 @@ export const EmailLayout = ({ previewText, heading, children }: EmailLayoutProps
                         <Hr className="border border-solid border-[#eaeaea] my-[26px] mx-0 w-full" />
                         <Section>
                             <Text className="text-[#8898aa] text-[12px] leading-[24px] text-center">
-                                © 2024 Consultorio Delgado. Av. Siempreviva 123.
-                            </Text>
-                            <Text className="text-[#8898aa] text-[12px] leading-[24px] text-center">
-                                Si no reconoces este turno, <Link href="https://consultoriodelgado.com/contact" className="text-blue-600 underline">contáctanos</Link>.
+                                © 2026 Consultorio Delgado. Delgado 588, 1°C (1426) CABA.
                             </Text>
                         </Section>
                     </Container>
