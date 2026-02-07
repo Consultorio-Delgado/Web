@@ -92,8 +92,8 @@ export function BookingWizard() {
     useEffect(() => {
         if (selectedDoctor) {
             const fetchExceptions = async () => {
-                const { exceptionService } = await import('@/services/exceptions');
-                const exceptions = await exceptionService.getExceptionsForDoctor(selectedDoctor.id);
+                const { exceptionService } = await import('@/services/exceptionService');
+                const exceptions = await exceptionService.getDoctorExceptions(selectedDoctor.id);
                 setDoctorExceptions(exceptions);
             };
             fetchExceptions();
