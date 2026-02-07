@@ -2,6 +2,21 @@ import { db } from "@/lib/firebase";
 import { Doctor } from "@/types";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
+// Helper to remove undefined fields recursively
+function cleanUndefined(obj: any): any {
+    if (Array.isArray(obj)) {
+        return obj.map(v => cleanUndefined(v));
+    } else if (obj !== null && typeof obj === 'object') {
+        return Object.entries(obj).reduce((acc, [key, value]) => {
+            if (value !== undefined) {
+                acc[key] = cleanUndefined(value);
+            }
+            return acc;
+        }, {} as any);
+    }
+    return obj;
+}
+
 export const doctorService = {
     async getAllDoctors(): Promise<Doctor[]> {
         try {
@@ -33,7 +48,8 @@ export const doctorService = {
     async updateDoctor(id: string, data: Partial<Doctor>): Promise<void> {
         try {
             const docRef = doc(db, "doctors", id);
-            await updateDoc(docRef, data);
+            const safeData = cleanUndefined(data);
+            await updateDoc(docRef, safeData);
         } catch (error) {
             console.error(`Error updating doctor ${id}:`, error);
             throw error;
@@ -43,7 +59,8 @@ export const doctorService = {
     // Create doctor if not exists (for seeding/admin)
     async createDoctor(doctor: Doctor): Promise<void> {
         try {
-            await setDoc(doc(db, "doctors", doctor.id), doctor, { merge: true });
+            const safeData = cleanUndefined(doctor);
+            await setDoc(doc(db, "doctors", doctor.id), safeData, { merge: true });
         } catch (error) {
             console.error(`Error creating doctor ${doctor.id}:`, error);
             throw error;

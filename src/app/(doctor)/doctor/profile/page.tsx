@@ -91,13 +91,22 @@ export default function DoctorProfilePage() {
                 bio: bio,
                 color: doctor?.color || "blue", // Default
                 slotDuration: slotDuration,
-                imageUrl: doctor?.imageUrl,
                 schedule: {
                     startHour,
                     endHour,
                     workDays
-                }
+                },
+                // Conditionally add optional fields to avoid 'undefined'
+                ...(doctor?.imageUrl ? { imageUrl: doctor.imageUrl } : {}),
+                ...(doctor?.email ? { email: doctor.email } : {})
             };
+
+            console.log("Saving doctor data:", doctorData);
+
+            // Validate for undefined values explicitly
+            Object.entries(doctorData).forEach(([key, value]) => {
+                if (value === undefined) console.error(`Field ${key} is undefined!`);
+            });
 
             await doctorService.createDoctor(doctorData); // efficient upsert
             setDoctor(doctorData);

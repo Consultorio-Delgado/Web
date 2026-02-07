@@ -98,7 +98,7 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
                                     <FormItem>
                                         <FormLabel>Email (Acceso)</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="doctor@clinica.com" {...field} />
+                                            <Input placeholder="doctor@clinica.com" autoComplete="email" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -111,7 +111,7 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
                                     <FormItem>
                                         <FormLabel>Contraseña</FormLabel>
                                         <FormControl>
-                                            <Input type="password" placeholder="******" {...field} />
+                                            <Input type="password" placeholder="******" autoComplete="new-password" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

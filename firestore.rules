@@ -36,22 +36,21 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 2. Doctors (doctors/{doctorId})
     match /doctors/{doctorId} {
       // Read: Public access (Landing page needs this)
       allow read: if true;
       
-      // Write: Admin only
-      allow write: if isAdmin();
+      // Write: Admin OR the Doctor themselves
+      allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == doctorId);
     }
 
     // 3. Appointments (appointments/{appointmentId})
     match /appointments/{appointmentId} {
       // Read: Owner (Patient) OR Admin
       // (Future: Add Doctor check if doctorId matches)
-      allow read: if isAuthenticated() && (
-        resource.data.patientId == request.auth.uid || isAdmin()
-      );
+      // Read: Owner (Patient) OR Admin OR Authenticated (for availability checks)
+      // Ideally we would only allow listing availability, but for MVP we allow reading appointments to see busy slots.
+      allow read: if isAuthenticated();
       
       // Create: Any authenticated user (booking a slot)
       // Validity checks (e.g. data validation) should be enforced here ideally, 
@@ -69,6 +68,26 @@ service cloud.firestore {
       
       // Delete: Admin only
       allow delete: if isAdmin();
+    }
+
+    // 4. Exceptions (Blocked Days)
+    match /exceptions/{exceptionId} {
+      // Read: Authenticated users (to check availability)
+      allow read: if isAuthenticated();
+      
+      // Write: Admin or Doctor (for their own)
+      allow write: if isAdmin() || (isAuthenticated() && request.resource.data.doctorId == request.auth.uid);
+      
+      // Delete: Admin or Owner
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.doctorId == request.auth.uid);
+    }
+
+    // 5. Audit Logs
+    match /audit_logs/{logId} {
+      // Create: Authenticated users (System logs actions)
+      allow create: if isAuthenticated();
+      // Read/Delete: Admin only
+      allow read, delete: if isAdmin();
     }
   }
 }

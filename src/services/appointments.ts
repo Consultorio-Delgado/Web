@@ -15,14 +15,27 @@ export const appointmentService = {
                 date: Timestamp.fromDate(appointmentData.date) // Ensure Date is saved as Timestamp
             });
 
-            // Update the doc with its own ID (optional but helpful)
-            await updateDoc(doc(db, "appointments", docRef.id), { id: docRef.id });
-
             // Audit
             await auditService.logAction('APPOINTMENT_CREATED', appointmentData.patientId, {
                 appointmentId: docRef.id,
                 date: appointmentData.date
             });
+
+            // Send Email Confirmation (Fire and Forget)
+            fetch('/api/emails', {
+                method: 'POST',
+                body: JSON.stringify({
+                    type: 'confirmation',
+                    data: {
+                        to: appointmentData.patientEmail,
+                        patientName: appointmentData.patientName,
+                        doctorName: 'Dr. (Consultar en Portal)', // We might not have doc name here easily without fetching
+                        date: appointmentData.date.toLocaleDateString(),
+                        time: appointmentData.time,
+                        appointmentId: docRef.id
+                    }
+                })
+            }).catch(err => console.error("Failed to send email:", err));
 
             return docRef.id;
         } catch (error) {
@@ -98,6 +111,41 @@ export const appointmentService = {
             await updateDoc(docRef, {
                 status: 'cancelled'
             });
+
+            // We need to fetch the appointment to get details for the email
+            // This is a bit expensive, but necessary for a good email.
+            // Alternatively, the UI can pass the details.
+            // For now, let's just log or try to fetch if we want to be perfect.
+            // To keep it simple and fast, we might skip email on cancel OR fetch it.
+            // Let's fetch it.
+            const docSnap = await getDocs(query(collection(db, "appointments"), where("__name__", "==", appointmentId)));
+            if (!docSnap.empty) {
+                const appt = docSnap.docs[0].data();
+                // We also need the doctor name... this gets complicated to do purely here without joins.
+                // Let's assume the UI handles the cancel email for now OR we accept generic info.
+                // Actually, the user asked for "Integration with Business Logic".
+                // Best place: The UI calling this service usually has the data. 
+                // BUT, the prompt said "Modify appointmentService...".
+                // So we should try our best here.
+
+                // Let's attempt to send what we have.
+                if (appt.patientEmail) {
+                    fetch('/api/emails', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            type: 'cancellation',
+                            data: {
+                                to: appt.patientEmail,
+                                patientName: appt.patientName,
+                                doctorName: 'Su Profesional', // Placeholder
+                                date: appt.date.toDate().toLocaleDateString(),
+                                time: appt.time
+                            }
+                        })
+                    }).catch(console.error);
+                }
+            }
+
         } catch (error) {
             console.error("Error cancelling appointment:", error);
             throw error;
