@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { initAdmin } from "@/lib/firebaseAdmin";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { db, auth } from "@/lib/firebaseAdmin";
 
 export async function POST(request: Request) {
     try {
@@ -12,13 +10,6 @@ export async function POST(request: Request) {
         if (!email || !password || !firstName || !lastName) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
-
-        // Initialize Admin SDK
-        // Note: This might throw if env vars are missing. 
-        // We should handle that gracefully or let it 500.
-        const app = await initAdmin();
-        const auth = getAuth(app);
-        const db = getFirestore(app);
 
         // 1. Create User in Firebase Auth
         const userRecord = await auth.createUser({
