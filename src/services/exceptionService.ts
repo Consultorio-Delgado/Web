@@ -15,6 +15,18 @@ export const exceptionService = {
         }
     },
 
+    // Get exceptions by date (Global or Doctor specific)
+    async getByDate(date: string): Promise<DayOff[]> {
+        try {
+            const q = query(collection(db, "exceptions"), where("date", "==", date));
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DayOff));
+        } catch (error) {
+            console.error("Error fetching exceptions by date:", error);
+            return [];
+        }
+    },
+
     // Block a day
     async createException(exception: Omit<DayOff, "id">): Promise<void> {
         try {

@@ -15,7 +15,7 @@ export const availabilityService = {
         const dateString = format(date, 'yyyy-MM-dd');
 
         // 0. Check Exceptions
-        const { exceptionService } = await import('./exceptions');
+        const { exceptionService } = await import('./exceptionService');
         const exceptions = await exceptionService.getByDate(dateString);
         const isBlockedGlobal = exceptions.some(e => !e.doctorId);
         const isBlockedDoctor = exceptions.some(e => e.doctorId === doctor.id);

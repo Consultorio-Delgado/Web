@@ -42,6 +42,9 @@ export function PatientSearch() {
                 found = nameSnap.docs.map(d => ({ uid: d.id, ...d.data() } as UserProfile));
             }
 
+            // Client-side filter to ensure we only get patients, not doctors/admins
+            found = found.filter(u => u.role === 'patient');
+
             setResults(found);
             if (found.length === 0) toast.info("No se encontraron pacientes.");
 

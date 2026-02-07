@@ -76,12 +76,16 @@ export default function PatientHistoryPage() {
                             {patient.phone || 'Sin teléfono'}
                         </div>
                         <div className="flex items-center gap-1">
+                            <FileText className="h-4 w-4" />
+                            {patient.email}
+                        </div>
+                        <div className="flex items-center gap-1">
                             <User className="h-4 w-4" />
                             {patient.insurance || 'Particular'}
                         </div>
                         <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            Registrado: {format(new Date(), "yyyy")} {/* Placeholder for createdAt */}
+                            {patient.birthDate ? `${format(new Date(patient.birthDate), 'dd/MM/yyyy')} (${differenceInYears(new Date(), new Date(patient.birthDate))} años)` : 'Fecha nac. desconocida'}
                         </div>
                     </div>
                 </div>
@@ -155,6 +159,6 @@ export default function PatientHistoryPage() {
                     ))}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { PatientSearch } from "@/components/doctor/PatientSearch";
+
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -65,7 +67,43 @@ export default function AppointmentsPage() {
 
 
 
+    const [bookingSlot, setBookingSlot] = useState<string | null>(null);
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+    const handleBooking = async (patient: any) => {
+        if (!selectedDate || !doctor || !bookingSlot) return;
+        try {
+            setLoading(true);
+            const date = new Date(selectedDate);
+            const [hours, minutes] = bookingSlot.split(':').map(Number);
+            date.setHours(hours, minutes, 0, 0);
+
+            await appointmentService.createAppointment({
+                patientId: patient.uid,
+                patientName: `${patient.firstName} ${patient.lastName}`,
+                patientEmail: patient.email,
+                doctorId: doctor.id,
+                doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                date: date, // Correct Date object
+                time: bookingSlot,
+                status: 'confirmed',
+                type: 'Consulta',
+                notes: 'Reservado manualmente desde Agenda'
+            } as any);
+
+            // Refresh
+            const appointments = await adminService.getDailyAppointments(selectedDate);
+            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
+            setDaySlots(slots);
+            toast.success(`Turno reservado para ${patient.firstName} ${patient.lastName}`);
+            setBookingSlot(null);
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al reservar turno");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // ... existing hooks
 
@@ -195,15 +233,15 @@ export default function AppointmentsPage() {
                             {selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Seleccione Fecha"}
                         </h2>
                         <div className="flex gap-2">
-                            {/* Block Button (if has at least one free/occupied slot) */}
-                            {daySlots.length > 0 && daySlots.some(s => s.status !== 'blocked') && (
+                            {/* Block Button (if NO slots are blocked by exception) */}
+                            {daySlots.length > 0 && !daySlots.some(s => s.status === 'blocked') && (
                                 <Button variant="secondary" onClick={handleBlockDay} disabled={loading}>
                                     <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear Día
                                 </Button>
                             )}
 
-                            {/* Unlock Button if ANY slot is blocked */}
-                            {daySlots.length > 0 && daySlots.every(s => s.status === 'blocked') && (
+                            {/* Unlock Button if ANY slot is blocked (implies Day Exception) */}
+                            {daySlots.length > 0 && daySlots.some(s => s.status === 'blocked') && (
                                 <Button variant="destructive" onClick={handleUnlock} disabled={loading}>
                                     <Unlock className="mr-2 h-4 w-4" /> Desbloquear Día
                                 </Button>
@@ -254,7 +292,10 @@ export default function AppointmentsPage() {
                                             {/* Actions based on status */}
                                             {slot.status === 'free' && (
                                                 <div className="flex gap-2">
-                                                    <Button size="sm" variant="outline" onClick={() => {/* Open Booking Modal logic - handled separate */ }}>Reservar</Button>
+                                                    <Button size="sm" variant="outline" onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setBookingSlot(slot.time);
+                                                    }}>Reservar</Button>
                                                     <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); handleBlockSlot(slot.time); }}>
                                                         <ShieldAlert className="h-4 w-4" />
                                                     </Button>
@@ -318,6 +359,23 @@ export default function AppointmentsPage() {
                     )}
                 </DialogContent>
             </Dialog>
+            {/* Manual Booking Dialog */}
+            <Dialog open={!!bookingSlot} onOpenChange={(open) => !open && setBookingSlot(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reservar Turno: {bookingSlot}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Label>Buscar Paciente</Label>
+                        <PatientSearch onSelect={handleBooking} />
+                        <div className="flex justify-end">
+                            <Button variant="outline" onClick={() => setBookingSlot(null)}>Cancelar</Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
+
+

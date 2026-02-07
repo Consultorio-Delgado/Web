@@ -19,20 +19,20 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    const { user, profile } = useAuth();
+    const { user, profile, loading: authLoading } = useAuth();
     // Redirect logic based on role
     useEffect(() => {
-        // If user is already logged in, redirect.
-        // We don't strictly wait for 'profile' to be non-null to avoid getting stuck.
+        // Wait for profile to load before making decisions
+        if (authLoading) return;
+
         if (user) {
             if (profile?.role === 'admin' || profile?.role === 'doctor') {
-                router.push("/admin/dashboard");
+                router.push("/doctor/dashboard"); // Updated to point to Doctor Dashboard
             } else {
-                // Default redirect for patients or if profile is loading/missing
                 router.push("/portal");
             }
         }
-    }, [user, profile, router]);
+    }, [user, profile, authLoading, router]);
 
     const handleEmailLogin = async (e: React.FormEvent) => {
         e.preventDefault();

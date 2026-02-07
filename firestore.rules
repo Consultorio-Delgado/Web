@@ -31,37 +31,13 @@ service cloud.firestore {
         data.status is string &&
         data.type is string &&
         data.updatedAt is timestamp &&
-        // Data Integrity
-        data.patientId == request.auth.uid && // Can only create for self
-        // Optional Fields Check (prevent spoofing admin flags)
+        // Data Integrity: Patient creating own OR Doctor creating for themselves (start/end) OR Admin
+        (data.patientId == request.auth.uid || data.doctorId == request.auth.uid || isAdmin()) &&
+        // Optional Fields Check
         !data.keys().hasAny(['isAdmin', 'role', 'permissions']);
     }
 
-    function isValidAuditLog() {
-      let data = request.resource.data;
-      return 
-        data.keys().hasAll(['action', 'performedBy', 'timestamp', 'metadata']) &&
-        data.action is string &&
-        data.performedBy is string &&
-        data.timestamp is timestamp &&
-        data.metadata is map &&
-        data.performedBy == request.auth.uid; // Must match auth user
-    }
-
-    // --- Collection Rules ---
-
-    // 1. Users (users/{userId})
-    match /users/{userId} {
-      allow create: if isOwner(userId);
-      allow read, update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    // 2. Doctors (doctors/{doctorId})
-    match /doctors/{doctorId} {
-      allow read: if true;
-      allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == doctorId);
-    }
+    // ...
 
     // 3. Appointments (appointments/{appointmentId})
     match /appointments/{appointmentId} {
@@ -70,15 +46,16 @@ service cloud.firestore {
       // Strict Creation
       allow create: if isAuthenticated() && isValidAppointment();
       
-      // Update: Admin or Patient (Cancel only)
+      // Update: Admin, Doctor (Owner), or Patient (Cancel only)
       allow update: if isAuthenticated() && (
         isAdmin() || 
+        (resource.data.doctorId == request.auth.uid) || // Doctor can update their own appointments
         (resource.data.patientId == request.auth.uid && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
          request.resource.data.status == 'cancelled')
       );
       
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.doctorId == request.auth.uid);
     }
 
     // 4. Exceptions (Blocked Days)
