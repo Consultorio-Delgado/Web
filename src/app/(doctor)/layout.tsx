@@ -35,10 +35,9 @@ export default function DoctorLayout({
 
     const navItems = [
         { name: "Tablero Principal", href: "/doctor/dashboard", icon: LayoutDashboard },
-        { name: "Agenda", href: "/doctor/appointments", icon: Calendar },
+        { name: "Agenda Mensual", href: "/doctor/appointments", icon: Calendar },
         { name: "Pacientes", href: "/doctor/patients", icon: Users },
         { name: "Doctores", href: "/doctor/doctors", icon: UserCircle },
-        { name: "Excepciones", href: "/doctor/exceptions", icon: ShieldAlert },
         { name: "Mi Perfil", href: "/doctor/profile", icon: Settings },
     ];
 

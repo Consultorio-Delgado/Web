@@ -34,5 +34,21 @@ export const exceptionService = {
             console.error("Error deleting exception:", error);
             throw error;
         }
+    },
+
+    async deleteByDateAndDoctor(date: string, doctorId: string): Promise<void> {
+        try {
+            const q = query(
+                collection(db, "exceptions"),
+                where("date", "==", date),
+                where("doctorId", "==", doctorId)
+            );
+            const snapshot = await getDocs(q);
+            const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+            await Promise.all(deletePromises);
+        } catch (error) {
+            console.error("Error deleting exception by date:", error);
+            throw error;
+        }
     }
 };

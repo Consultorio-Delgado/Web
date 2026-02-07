@@ -55,6 +55,7 @@ export interface Appointment {
     notes?: string; // Private notes from the doctor? Or patient reason?
     medicalNotes?: string; // Evolution/Diagnosis from Doctor
     attachments?: { name: string; url: string; type: string; }[]; // PDF/JPG attachments
+    type?: string; // "Consulta", "Control", etc.
     createdAt: Date;
 }
 
