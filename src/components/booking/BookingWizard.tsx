@@ -19,6 +19,11 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { INSURANCE_PROVIDERS } from "@/constants";
 
+const DOCTOR_PHOTOS: Record<string, string> = {
+    'capparelli': '/images/doc_male.png',
+    'secondi': '/images/doc_female.png',
+};
+
 export function BookingWizard() {
     const { user, profile, loading } = useAuth();
     const router = useRouter();
@@ -341,9 +346,9 @@ export function BookingWizard() {
                                 onClick={() => handleDoctorSelect(doc)}
                             >
                                 <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 group-hover:bg-blue-100 transition-colors overflow-hidden">
-                                    {doc.photoURL ? (
+                                    {doc.photoURL || DOCTOR_PHOTOS[doc.id] ? (
                                         <img
-                                            src={doc.photoURL}
+                                            src={doc.photoURL || DOCTOR_PHOTOS[doc.id]}
                                             alt={`${doc.firstName} ${doc.lastName}`}
                                             className="h-full w-full object-cover"
                                         />
@@ -352,7 +357,11 @@ export function BookingWizard() {
                                     )}
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors">{doc.lastName}, {doc.firstName}</h3>
+                                    <h3 className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors">
+                                        {doc.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                                            doc.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                                `${doc.lastName}, ${doc.firstName}`}
+                                    </h3>
                                     <Badge variant="secondary" className="mt-1 bg-slate-100 text-slate-700 hover:bg-slate-200">{doc.specialty}</Badge>
                                     <div className="flex flex-wrap gap-1 mt-2">
                                         {doc.acceptedInsurances?.slice(0, 3).map(ins => (
@@ -378,7 +387,11 @@ export function BookingWizard() {
             <header className="mb-8 text-center">
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">2. Seleccione Fecha y Hora</h1>
                 <p className="text-lg text-slate-500">
-                    Turnos disponibles para <span className="font-semibold text-slate-800">{selectedDoctor?.gender === 'female' ? 'Dra.' : 'Dr.'} {selectedDoctor?.lastName}, {selectedDoctor?.firstName}</span>
+                    Turnos disponibles para <span className="font-semibold text-slate-800">
+                        {selectedDoctor?.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                            selectedDoctor?.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                `${selectedDoctor?.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor?.lastName}, ${selectedDoctor?.firstName}`}
+                    </span>
                 </p>
             </header>
 
@@ -569,7 +582,11 @@ export function BookingWizard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <p className="text-sm text-slate-500 mb-1">Profesional</p>
-                            <p className="font-semibold text-lg text-slate-900">{selectedDoctor?.lastName}, {selectedDoctor?.firstName}</p>
+                            <p className="font-semibold text-lg text-slate-900">
+                                {selectedDoctor?.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                                    selectedDoctor?.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                        `${selectedDoctor?.lastName}, ${selectedDoctor?.firstName}`}
+                            </p>
                             <Badge variant="outline" className="mt-1">{selectedDoctor?.specialty}</Badge>
                         </div>
                         <div>
@@ -621,7 +638,11 @@ export function BookingWizard() {
                     <p className="font-bold text-2xl text-green-900">{selectedTime} hs</p>
                     <p className="font-medium text-lg text-green-800 capitalize">{format(selectedDate!, "EEEE d 'de' MMMM", { locale: es })}</p>
                     <div className="w-16 h-1 bg-green-200 mx-auto my-3 rounded-full"></div>
-                    <p className="text-green-700">{selectedDoctor?.gender === 'female' ? 'Dra.' : 'Dr.'} {selectedDoctor?.lastName}</p>
+                    <p className="text-green-700">
+                        {selectedDoctor?.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                            selectedDoctor?.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                `${selectedDoctor?.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor?.lastName}`}
+                    </p>
                 </CardContent>
             </Card>
 

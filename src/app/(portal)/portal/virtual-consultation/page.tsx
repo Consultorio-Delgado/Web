@@ -14,6 +14,11 @@ import { doctorService } from "@/services/doctorService";
 import type { Doctor } from "@/types";
 import Link from "next/link";
 
+const DOCTOR_PHOTOS: Record<string, string> = {
+    'capparelli': '/images/doc_male.png',
+    'secondi': '/images/doc_female.png',
+};
+
 interface VirtualConsultationFormData {
     doctorId: string;
     nombre: string;
@@ -140,7 +145,11 @@ export default function VirtualConsultationPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...formData,
-                    doctorName: selectedDoctor ? `${selectedDoctor.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor.lastName}` : "",
+                    doctorName: selectedDoctor ? (
+                        selectedDoctor.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                            selectedDoctor.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                `${selectedDoctor.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor.lastName}`
+                    ) : "",
                     attachments
                 }),
             });
@@ -223,14 +232,38 @@ export default function VirtualConsultationPage() {
                                             key={doc.id}
                                             onClick={() => handleSelectChange("doctorId", doc.id)}
                                             className={`
-                                                cursor-pointer rounded-full border py-3 px-4 text-center transition-all font-medium select-none
+                                                cursor-pointer rounded-xl border p-4 transition-all select-none flex items-center gap-4
                                                 ${isSelected
-                                                    ? "bg-slate-200 border-slate-300 text-slate-900 shadow-inner"
-                                                    : "bg-white border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-slate-50"
+                                                    ? "bg-slate-900 border-slate-900 text-white shadow-md ring-2 ring-offset-2 ring-slate-900"
+                                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                                                 }
                                             `}
                                         >
-                                            {doc.gender === 'female' ? 'Dra.' : 'Dr.'} {doc.firstName} {doc.lastName}
+                                            <div className={`h-12 w-12 rounded-full overflow-hidden flex-shrink-0 border-2 ${isSelected ? 'border-slate-700' : 'border-slate-100'}`}>
+                                                {doc.photoURL || DOCTOR_PHOTOS[doc.id] ? (
+                                                    <img
+                                                        src={doc.photoURL || DOCTOR_PHOTOS[doc.id]}
+                                                        alt={`${doc.firstName} ${doc.lastName}`}
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="h-full w-full bg-slate-100 flex items-center justify-center">
+                                                        <span className="text-xs font-bold text-slate-400">
+                                                            {doc.firstName.charAt(0)}{doc.lastName.charAt(0)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col text-left">
+                                                <span className={`font-semibold ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                                                    {doc.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                                                        doc.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                                            `${doc.gender === 'female' ? 'Dra.' : 'Dr.'} ${doc.lastName}`}
+                                                </span>
+                                                <span className={`text-xs ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                                                    {doc.specialty}
+                                                </span>
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -241,16 +274,22 @@ export default function VirtualConsultationPage() {
 
                         {formData.doctorId === 'capparelli' && (
                             <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center space-y-4 shadow-sm animate-in fade-in zoom-in-95 duration-300">
-                                <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                                <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                    <AlertTriangle className="h-8 w-8 text-red-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-red-800 mb-2">No se reciben nuevas consultas</h3>
-                                    <p className="text-red-700 font-medium">
+                                    <h3 className="text-xl font-bold text-red-900 mb-4">Consulta Dr. Capparelli</h3>
+                                    <p className="text-red-800 font-medium text-lg leading-relaxed mb-6">
                                         Estimado paciente, por la gran cantidad de consultas recibidas, por el momento no se recibirán nuevas hasta poder dar curso a las ya recibidas.
                                     </p>
+                                    <div className="bg-white/50 rounded-lg p-4 text-left flex items-start gap-3">
+                                        <div className="text-2xl font-bold text-red-600">!</div>
+                                        <p className="text-red-900 text-sm font-medium">
+                                            Si solicita la consulta virtual esté atento al teléfono que deja de contacto. Tenga en cuenta que la llamada puede ser de un número Privado.
+                                        </p>
+                                    </div>
                                 </div>
-                                <p className="text-sm text-red-600">Sepa disculpar las molestias.</p>
+                                <p className="text-sm text-red-700 pt-2">Sepa disculpar las molestias.</p>
                             </div>
                         )}
 

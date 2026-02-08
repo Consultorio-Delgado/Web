@@ -157,7 +157,11 @@ export default function PrescriptionsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...formData,
-                    doctorName: selectedDoctor ? `${selectedDoctor.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor.lastName}` : "",
+                    doctorName: selectedDoctor ? (
+                        selectedDoctor.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                            selectedDoctor.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                `${selectedDoctor.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor.lastName}`
+                    ) : "",
                     attachments
                 }),
             });
@@ -245,7 +249,9 @@ export default function PrescriptionsPage() {
                                                 }
                                             `}
                                         >
-                                            {doc.gender === 'female' ? 'Dra.' : 'Dr.'} {doc.firstName} {doc.lastName}
+                                            {doc.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                                                doc.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                                    `${doc.gender === 'female' ? 'Dra.' : 'Dr.'} ${doc.firstName} ${doc.lastName}`}
                                         </div>
                                     );
                                 })}

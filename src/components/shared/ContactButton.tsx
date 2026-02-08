@@ -102,7 +102,7 @@ export function ContactButton({ variant = 'floating', className = '' }: ContactB
                             Contáctenos
                         </DialogTitle>
                         <DialogDescription>
-                            Complete el formulario y nos pondremos en contacto a la brevedad.
+                            Complete el formulario para consultas administrativas SOLAMENTE y nos pondremos en contacto a la brevedad.
                         </DialogDescription>
                     </DialogHeader>
 
