@@ -15,10 +15,11 @@ import Link from "next/link";
 function AuthActionContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-
+    
+    // Firebase auth mode: 'resetPassword', 'recoverEmail', 'verifyEmail'
     const mode = searchParams.get("mode");
     const oobCode = searchParams.get("oobCode");
-
+    
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -28,30 +29,38 @@ function AuthActionContent() {
     const [success, setSuccess] = useState(false);
 
     useEffect(() => {
-        if (mode === "resetPassword" && oobCode) {
+        if (!oobCode) {
+            setError("Código inválido o faltante.");
+            setVerifying(false);
+            return;
+        }
+
+        if (mode === "resetPassword") {
             verifyPasswordResetCode(auth, oobCode)
                 .then((email) => {
                     setEmail(email);
                     setVerifying(false);
                 })
-                .catch(() => {
+                .catch((error) => {
+                    console.error("Error verifying code:", error);
                     setError("El enlace ha expirado o ya fue utilizado. Solicitá uno nuevo.");
                     setVerifying(false);
                 });
         } else {
-            setError("Enlace inválido.");
+            // For now only handle resetPassword, others can be added here
+            setError("Acción no soportada o enlace inválido.");
             setVerifying(false);
         }
     }, [mode, oobCode]);
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
-
+        
         if (newPassword !== confirmPassword) {
             setError("Las contraseñas no coinciden.");
             return;
         }
-
+        
         if (newPassword.length < 6) {
             setError("La contraseña debe tener al menos 6 caracteres.");
             return;
@@ -64,6 +73,7 @@ function AuthActionContent() {
             await confirmPasswordReset(auth, oobCode!, newPassword);
             setSuccess(true);
         } catch (err: any) {
+            console.error("Error resetting password:", err);
             if (err.code === "auth/expired-action-code") {
                 setError("El enlace ha expirado. Solicitá uno nuevo.");
             } else if (err.code === "auth/weak-password") {
@@ -106,7 +116,7 @@ function AuthActionContent() {
         );
     }
 
-    if (error && !email) {
+    if (error) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
                 <Card className="w-full max-w-md">
@@ -150,7 +160,7 @@ function AuthActionContent() {
                                 placeholder="Mínimo 6 caracteres"
                             />
                         </div>
-
+                        
                         <div className="space-y-2">
                             <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
                             <PasswordInput
