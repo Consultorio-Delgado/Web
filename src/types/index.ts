@@ -62,6 +62,7 @@ export interface Appointment {
     insurance?: string; // e.g. "OSDE"
     createdAt: Date;
     updatedAt?: Date;
+    arrivedAt?: Date; // Time patient arrived in waiting room
 }
 
 export interface MedicalRecord {

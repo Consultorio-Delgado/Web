@@ -132,17 +132,21 @@ export default function DashboardPage() {
                                     </Avatar>
                                     <div className="grid gap-1">
                                         <p className="text-sm font-medium leading-none">
-                                            {log.action.replace(/_/g, ' ')}
+                                            {log.action === 'APPOINTMENT_CREATED' ? 'Turno Reservado' :
+                                                log.action === 'APPOINTMENT_CANCELLED' ? 'Turno Cancelado' :
+                                                    log.action === 'MEDICAL_NOTE_ADDED' ? 'Evolución Médica' :
+                                                        log.action === 'PATIENT_FILE_UPLOADED' ? 'Archivo Adjunto' :
+                                                            log.action.replace(/_/g, ' ')}
                                         </p>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-col gap-1">
                                             <p className={cn("text-xs text-muted-foreground", privacyMode && "blur-sm")}>
-                                                {log.performedBy}
+                                                {log.metadata?.patientName ? `Paciente: ${log.metadata.patientName}` : `ID: ${log.performedBy}`}
                                             </p>
-                                            <span className="text-[10px] text-muted-foreground">•</span>
-                                            <p className="text-xs text-muted-foreground">
-                                                {/* Simple relative time or use date-fns relative */}
-                                                Hace un momento
-                                            </p>
+                                            {log.metadata?.doctorName && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Dr: {log.metadata.doctorName}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

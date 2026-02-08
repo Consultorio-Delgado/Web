@@ -57,7 +57,8 @@ service cloud.firestore {
     // 2. Doctors Collection (Public Profiles)
     match /doctors/{doctorId} {
       allow read: if true; // Publicly visible for booking
-      allow write: if isAdmin(); // Only admins manage doctors
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == doctorId); // Doctor can update profile
+      allow create, delete: if isAdmin(); // Only admins create/delete doctors
     }
 
     // 3. Appointments (appointments/{appointmentId})

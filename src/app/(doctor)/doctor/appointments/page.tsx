@@ -36,6 +36,8 @@ export default function AppointmentsPage() {
     const [loading, setLoading] = useState(false);
     const { profile } = useAuth(); // Need doctor profile for schedule
     const [doctor, setDoctor] = useState<Doctor | null>(null);
+    const [busyDays, setBusyDays] = useState<Set<string>>(new Set()); // Days with appointments
+    const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 
     // Fetch Doctor Profile (Self)
     useEffect(() => {
@@ -43,6 +45,42 @@ export default function AppointmentsPage() {
             doctorService.getDoctorById(profile.uid).then(setDoctor);
         }
     }, [profile]);
+
+    // Fetch busy days for the current month
+    useEffect(() => {
+        if (!doctor) return;
+        const fetchBusyDays = async () => {
+            try {
+                const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+
+                // Fetch all appointments for the month
+                const { collection, query, where, getDocs, Timestamp } = await import("firebase/firestore");
+                const { db } = await import("@/lib/firebase");
+
+                const q = query(
+                    collection(db, "appointments"),
+                    where("doctorId", "==", doctor.id),
+                    where("date", ">=", Timestamp.fromDate(startOfMonth)),
+                    where("date", "<=", Timestamp.fromDate(endOfMonth)),
+                    where("status", "in", ["confirmed", "pending", "arrived", "completed"])
+                );
+
+                const snapshot = await getDocs(q);
+                const days = new Set<string>();
+                snapshot.docs.forEach(doc => {
+                    const date = doc.data().date?.toDate();
+                    if (date && doc.data().patientId !== 'blocked') {
+                        days.add(format(date, 'yyyy-MM-dd'));
+                    }
+                });
+                setBusyDays(days);
+            } catch (error) {
+                console.error("Failed to fetch busy days:", error);
+            }
+        };
+        fetchBusyDays();
+    }, [doctor, currentMonth]);
 
     // Fetch slots whenever selectedDate or doctor changes
     useEffect(() => {
@@ -242,23 +280,17 @@ export default function AppointmentsPage() {
                                 mode="single"
                                 selected={selectedDate}
                                 onSelect={setSelectedDate}
+                                onMonthChange={setCurrentMonth}
                                 className="rounded-md border shadow-sm"
                                 locale={es}
                                 modifiers={{
-                                    occupied: (date) => {
-                                        // Logic to determine if a day has appointments (black)
-                                        // This requires fetching monthly availability which might be expensive.
-                                        // For MVP, we stick to standard styles or implementing a light-weight monthly fetcher.
-                                        return false;
-                                    },
-                                    blocked: (date) => {
-                                        // Logic for blocked days (red/grey)
-                                        return false;
-                                    }
+                                    hasBusy: (date) => busyDays.has(format(date, 'yyyy-MM-dd'))
                                 }}
-                                modifiersStyles={{
-                                    occupied: { fontWeight: 'bold', color: 'black' },
-                                    blocked: { color: 'red' }
+                                modifiersClassNames={{
+                                    hasBusy: "font-bold text-black"
+                                }}
+                                classNames={{
+                                    day: "text-gray-400 hover:bg-accent hover:text-accent-foreground"
                                 }}
                             />
                         </CardContent>

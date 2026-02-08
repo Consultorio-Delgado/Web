@@ -27,7 +27,9 @@ export const appointmentService = {
             await auditService.logAction('APPOINTMENT_CREATED', actorId, {
                 appointmentId: docRef.id,
                 date: appointmentData.date,
-                patientId: appointmentData.patientId // Log who the appointment is for
+                patientId: appointmentData.patientId,
+                patientName: appointmentData.patientName,
+                doctorName: appointmentData.doctorName
             });
 
             // Send Email Confirmation (Fire and Forget)
@@ -126,6 +128,9 @@ export const appointmentService = {
             if (updates.date) {
                 dataToUpdate.date = Timestamp.fromDate(updates.date);
             }
+            if (updates.arrivedAt) {
+                dataToUpdate.arrivedAt = Timestamp.fromDate(updates.arrivedAt);
+            }
             if (updates.updatedAt) {
                 dataToUpdate.updatedAt = Timestamp.now();
             } else {
@@ -160,6 +165,16 @@ export const appointmentService = {
                 // Best place: The UI calling this service usually has the data. 
                 // BUT, the prompt said "Modify appointmentService...".
                 // So we should try our best here.
+
+                // Audit Cancellation
+                const { auth } = await import("@/lib/firebase");
+                const actorId = auth.currentUser?.uid || 'unknown';
+                await auditService.logAction('APPOINTMENT_CANCELLED', actorId, {
+                    appointmentId: appointmentId,
+                    patientName: appt.patientName,
+                    doctorName: appt.doctorName,
+                    reason: 'Cancelled by user'
+                });
 
                 // Let's attempt to send what we have.
                 if (appt.patientEmail) {
