@@ -45,10 +45,21 @@ export default function DoctorsPage() {
     const handleCreate = async (data: any) => {
         setIsInternalLoading(true);
         try {
+            // Get the current user's ID token for authentication
+            const { auth } = await import("@/lib/firebase");
+            const user = auth.currentUser;
+            if (!user) {
+                throw new Error("No estás autenticado");
+            }
+            const token = await user.getIdToken(true); // Force refresh to get latest claims
+
             // Use API to create Auth User + Firestore Profile
             const response = await fetch("/api/admin/doctors", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify(data),
             });
 
@@ -62,7 +73,7 @@ export default function DoctorsPage() {
             fetchDoctors(); // Refresh list
         } catch (error: any) {
             console.error(error);
-            alert(error.message || "Error al crear doctor");
+            toast.error(error.message || "Error al crear doctor");
         } finally {
             setIsInternalLoading(false);
         }
