@@ -12,6 +12,7 @@ export const appointmentService = {
                 ...appointmentData,
                 status: 'confirmed', // Auto-confirm for now
                 createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now(),
                 date: Timestamp.fromDate(appointmentData.date) // Ensure Date is saved as Timestamp
             });
 

@@ -12,12 +12,18 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    function isAdmin() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    function isDoctor() {
+      return exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
     }
 
-    // --- Schema Validation Functions ---
+    // ...
+
+    // 1. Users Collection (Patients)
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isDoctor());
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated(); 
+    }
 
     function isValidAppointment() {
       let data = request.resource.data;
@@ -35,6 +41,13 @@ service cloud.firestore {
         (data.patientId == request.auth.uid || data.doctorId == request.auth.uid || isAdmin()) &&
         // Optional Fields Check
         !data.keys().hasAny(['isAdmin', 'role', 'permissions']);
+    }
+
+    function isValidAuditLog() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['action', 'timestamp', 'userId']) &&
+             data.timestamp is timestamp &&
+             data.userId == request.auth.uid;
     }
 
     // ...

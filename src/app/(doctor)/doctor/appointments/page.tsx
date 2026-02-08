@@ -24,6 +24,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -323,6 +324,7 @@ export default function AppointmentsPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Detalles del Turno</DialogTitle>
+                        <DialogDescription>Información completa de la cita</DialogDescription>
                     </DialogHeader>
                     {selectedAppointment && (
                         <div className="space-y-4">
@@ -364,6 +366,7 @@ export default function AppointmentsPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Reservar Turno: {bookingSlot}</DialogTitle>
+                        <DialogDescription>Búsqueda y asignación de paciente para el turno.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <Label>Buscar Paciente</Label>
