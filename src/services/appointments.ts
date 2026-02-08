@@ -40,9 +40,12 @@ export const appointmentService = {
     async createAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'status'> & { createdAt?: Date }): Promise<string> {
         try {
             // Check if patient already has an active appointment with THIS specific doctor
-            const activeWithDoctor = await this.countActiveAppointments(appointmentData.patientId, appointmentData.doctorId);
-            if (activeWithDoctor >= 1) {
-                throw new Error("LIMIT_EXCEEDED: Ya tienes un turno activo con este profesional. Puedes sacar turno con otro profesional.");
+            // Skip this check for blocked slots or if patientId is 'blocked'
+            if (appointmentData.patientId !== 'blocked') {
+                const activeWithDoctor = await this.countActiveAppointments(appointmentData.patientId, appointmentData.doctorId);
+                if (activeWithDoctor >= 1) {
+                    throw new Error("LIMIT_EXCEEDED: Ya tienes un turno activo con este profesional. Puedes sacar turno con otro profesional.");
+                }
             }
 
             // Use transaction to atomically check slot availability and create appointment
