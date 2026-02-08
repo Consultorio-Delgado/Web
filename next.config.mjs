@@ -41,7 +41,7 @@ const nextConfig = {
             img-src 'self' blob: data: https://*.googleapis.com https://*.gstatic.com https://*.firebaseapp.com https://lh3.googleusercontent.com;
             font-src 'self' data: https://fonts.gstatic.com;
             connect-src 'self' https://*.googleapis.com https://*.gstatic.com https://*.firebaseapp.com https://vitals.vercel-insights.com https://*.vercel.live https://consultorio-delgado.firebaseapp.com;
-            frame-src 'self' https://*.firebaseapp.com https://consultorio-delgado.firebaseapp.com;
+            frame-src 'self' https://*.firebaseapp.com https://consultorio-delgado.firebaseapp.com https://www.google.com;
             object-src 'none';
             base-uri 'self';
             form-action 'self';
