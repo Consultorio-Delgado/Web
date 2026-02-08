@@ -22,6 +22,7 @@ export interface Doctor {
     lastName: string;
     specialty: string;
     bio?: string;
+    gender?: 'male' | 'female'; // For Dr./Dra. title
     imageUrl?: string;
     schedule: {
         startHour: string; // "09:00"

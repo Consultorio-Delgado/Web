@@ -182,22 +182,6 @@ export default async function LandingPage() {
               </div>
             )}
 
-            {/* More */}
-            <div className="group border-t border-slate-300 py-12 cursor-pointer hover:bg-white/50 transition-colors px-4 -mx-4 rounded-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                <div className="flex items-start gap-6">
-                  <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl font-bold text-slate-500 shrink-0">
-                    +
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-medium text-slate-900 group-hover:text-blue-600 transition-colors">Más Especialidades</h3>
-                    <p className="text-slate-600 font-medium mb-1">Dermatología, Nutrición, Psicología</p>
-                    <p className="text-slate-500 max-w-md">Consultanos por otros profesionales de nuestra cartilla.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div className="border-t border-slate-300"></div>
           </div>
         </div>

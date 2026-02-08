@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { PatientSearch } from "@/components/doctor/PatientSearch";
 
 import { useState, useEffect } from "react";
@@ -14,7 +15,7 @@ import { doctorService } from "@/services/doctorService";
 import { availabilityService } from "@/services/availabilityService";
 import { exceptionService } from "@/services/exceptionService";
 import { Appointment, Doctor } from "@/types";
-import { Loader2, Unlock, ShieldAlert } from "lucide-react";
+import { Loader2, Unlock, ShieldAlert, User, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -79,24 +80,42 @@ export default function AppointmentsPage() {
             const [hours, minutes] = bookingSlot.split(':').map(Number);
             date.setHours(hours, minutes, 0, 0);
 
-            await appointmentService.createAppointment({
-                patientId: patient.uid,
-                patientName: `${patient.firstName} ${patient.lastName}`,
-                patientEmail: patient.email,
-                doctorId: doctor.id,
-                doctorName: `${doctor.firstName} ${doctor.lastName}`,
-                date: date, // Correct Date object
-                time: bookingSlot,
-                status: 'confirmed',
-                type: 'Consulta',
-                notes: 'Reservado manualmente desde Agenda'
-            } as any);
+            // Check if we are overriding a blocked slot
+            const existingBlock = daySlots.find(s => s.time === bookingSlot && s.status === 'blocked')?.appointment;
+
+            if (existingBlock) {
+                // Update existing block to be a confirmed appointment
+                await appointmentService.updateAppointment(existingBlock.id, {
+                    patientId: patient.uid,
+                    patientName: `${patient.firstName} ${patient.lastName}`,
+                    patientEmail: patient.email,
+                    // doctorId and date remain same
+                    status: 'confirmed',
+                    type: 'Consulta',
+                    notes: 'Reservado sobre Bloqueo (Agenda)'
+                });
+                toast.success(`Turno desbloqueado y reservado para ${patient.firstName} ${patient.lastName}`);
+            } else {
+                // Create new appointment
+                await appointmentService.createAppointment({
+                    patientId: patient.uid,
+                    patientName: `${patient.firstName} ${patient.lastName}`,
+                    patientEmail: patient.email,
+                    doctorId: doctor.id,
+                    doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                    date: date, // Correct Date object
+                    time: bookingSlot,
+                    status: 'confirmed',
+                    type: 'Consulta',
+                    notes: 'Reservado manualmente desde Agenda'
+                } as any);
+                toast.success(`Turno reservado para ${patient.firstName} ${patient.lastName}`);
+            }
 
             // Refresh
             const appointments = await adminService.getDailyAppointments(selectedDate);
             const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
             setDaySlots(slots);
-            toast.success(`Turno reservado para ${patient.firstName} ${patient.lastName}`);
             setBookingSlot(null);
         } catch (error) {
             console.error(error);
@@ -293,7 +312,7 @@ export default function AppointmentsPage() {
                                                     <span className="text-green-600 font-medium">Libre</span>
                                                 ) : slot.status === 'blocked' ? (
                                                     <div>
-                                                        <span className="text-red-700 font-bold block">Bloqueado</span>
+                                                        <span className="text-red-700 font-bold block">BLOQUEADO</span>
                                                         <span className="text-sm text-red-600">No disponible</span>
                                                     </div>
                                                 ) : (
@@ -322,20 +341,40 @@ export default function AppointmentsPage() {
                                                 </div>
                                             )}
                                             {slot.status === 'blocked' && slot.appointment && (
-                                                <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-800 hover:bg-red-100" onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleUnblockSingleSlot(slot.appointment!.id);
-                                                }}>
-                                                    <Unlock className="h-4 w-4 mr-2" /> Desbloquear
-                                                </Button>
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="outline" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setBookingSlot(slot.time);
+                                                    }}>
+                                                        Reservar
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-800 hover:bg-red-100" onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleUnblockSingleSlot(slot.appointment!.id);
+                                                    }}>
+                                                        <Unlock className="h-4 w-4 mr-2" /> Desbloquear
+                                                    </Button>
+                                                </div>
                                             )}
                                             {(slot.status === 'occupied') && (
-                                                <Button size="sm" variant="ghost" onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (slot.appointment) setSelectedAppointment(slot.appointment);
-                                                }}>
-                                                    Ver Detalles
-                                                </Button>
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="ghost" onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (slot.appointment) setSelectedAppointment(slot.appointment);
+                                                    }}>
+                                                        Ver Detalles
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        if (!confirm("¿Está seguro que desea eliminar este turno?")) return;
+                                                        if (slot.appointment) {
+                                                            await handleUnblockSingleSlot(slot.appointment.id); // Reusing cancel logic
+                                                            toast.success("Turno eliminado");
+                                                        }
+                                                    }}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -382,6 +421,11 @@ export default function AppointmentsPage() {
                             )}
 
                             <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                                <Link href={`/doctor/patients/${selectedAppointment.patientId}`} passHref>
+                                    <Button variant="outline" className="gap-2">
+                                        <User className="h-4 w-4" /> Ver Perfil
+                                    </Button>
+                                </Link>
                                 {(selectedAppointment.status === 'confirmed' || selectedAppointment.status === 'pending') && (
                                     <>
                                         <Button

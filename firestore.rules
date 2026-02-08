@@ -16,14 +16,11 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
     }
 
-    // ...
-
-    // 1. Users Collection (Patients)
-    match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isDoctor());
-      allow update: if isAuthenticated() && request.auth.uid == userId;
-      allow create: if isAuthenticated(); 
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
+
 
     function isValidAppointment() {
       let data = request.resource.data;
@@ -50,12 +47,11 @@ service cloud.firestore {
              data.performedBy == request.auth.uid;
     }
 
-    // ...
-
     // 1. Users Collection (Patients)
     match /users/{userId} {
-      allow read, update: if isAuthenticated() && request.auth.uid == userId;
-      allow create: if isAuthenticated(); // Allow user to create their own profile on signup
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isDoctor());
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isDoctor());
+      allow create: if isAuthenticated(); 
     }
 
     // 2. Doctors Collection (Public Profiles)

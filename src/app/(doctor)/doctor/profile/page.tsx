@@ -26,6 +26,7 @@ export default function DoctorProfilePage() {
     // Form states
     const [bio, setBio] = useState("");
     const [specialty, setSpecialty] = useState("");
+    const [gender, setGender] = useState<'male' | 'female'>("male");
     const [slotDuration, setSlotDuration] = useState(20);
     const [startHour, setStartHour] = useState("09:00");
     const [endHour, setEndHour] = useState("17:00");
@@ -43,6 +44,7 @@ export default function DoctorProfilePage() {
                     setDoctor(docData);
                     setBio(docData.bio || "");
                     setSpecialty(docData.specialty);
+                    setGender(docData.gender || "male");
                     setSlotDuration(docData.slotDuration);
                     setStartHour(docData.schedule.startHour);
                     setEndHour(docData.schedule.endHour);
@@ -76,6 +78,7 @@ export default function DoctorProfilePage() {
                 lastName: profile.lastName,
                 specialty: specialty || "General",
                 bio: bio,
+                gender: gender,
                 color: doctor?.color || "blue",
                 slotDuration: slotDuration,
                 schedule: {

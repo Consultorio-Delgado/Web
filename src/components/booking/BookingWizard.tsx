@@ -284,7 +284,7 @@ export function BookingWizard() {
             <header className="mb-8 text-center">
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">2. Seleccione Fecha y Hora</h1>
                 <p className="text-lg text-slate-500">
-                    Turnos disponibles para <span className="font-semibold text-slate-800">{selectedDoctor?.lastName}, {selectedDoctor?.firstName}</span>
+                    Turnos disponibles para <span className="font-semibold text-slate-800">{selectedDoctor?.gender === 'female' ? 'Dra.' : 'Dr.'} {selectedDoctor?.lastName}, {selectedDoctor?.firstName}</span>
                 </p>
             </header>
 
@@ -527,7 +527,7 @@ export function BookingWizard() {
                     <p className="font-bold text-2xl text-green-900">{selectedTime} hs</p>
                     <p className="font-medium text-lg text-green-800 capitalize">{format(selectedDate!, "EEEE d 'de' MMMM", { locale: es })}</p>
                     <div className="w-16 h-1 bg-green-200 mx-auto my-3 rounded-full"></div>
-                    <p className="text-green-700">Dr. {selectedDoctor?.lastName}</p>
+                    <p className="text-green-700">{selectedDoctor?.gender === 'female' ? 'Dra.' : 'Dr.'} {selectedDoctor?.lastName}</p>
                 </CardContent>
             </Card>
 

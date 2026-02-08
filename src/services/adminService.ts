@@ -164,5 +164,19 @@ export const adminService = {
             console.error("Error updating patient:", error);
             throw error;
         }
+    },
+
+    async getPatientById(uid: string): Promise<UserProfile | null> {
+        try {
+            const { getDoc, doc: docRef } = await import("firebase/firestore");
+            const docSnap = await getDoc(docRef(db, "users", uid));
+            if (docSnap.exists()) {
+                return docSnap.data() as UserProfile;
+            }
+            return null;
+        } catch (error) {
+            console.error("Error fetching patient by ID:", error);
+            return null;
+        }
     }
 };

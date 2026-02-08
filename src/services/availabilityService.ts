@@ -68,7 +68,11 @@ export const availabilityService = {
             );
 
             if (foundAppt) {
-                status = 'occupied';
+                if (foundAppt.type === 'Bloqueado' || foundAppt.patientId === 'blocked') {
+                    status = 'blocked';
+                } else {
+                    status = 'occupied';
+                }
                 appointment = foundAppt;
             }
 
