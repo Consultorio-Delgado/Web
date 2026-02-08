@@ -5,26 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, PlusCircle, ArrowRight, Video } from "lucide-react";
 
-// ... (lines 7-86)
 
-<div className="w-full md:w-auto flex flex-col md:flex-row gap-4">
-    <Link href="/portal/virtual-consultation" className="block w-full md:w-auto">
-        <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 font-medium transition-transform hover:scale-105">
-            <Video className="mr-2 h-5 w-5" />
-            Consulta Virtual
-        </Button>
-    </Link>
-    <Link href="/portal/prescriptions" className="block w-full md:w-auto">
-        <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-primary text-primary hover:bg-primary/5 font-medium transition-transform hover:scale-105">
-            Solicitar Receta
-        </Button>
-    </Link>
-    <Link href="/portal/new-appointment" className="block w-full md:w-auto">
-        <Button size="lg" className="w-full md:w-auto h-12 px-8 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-cyan-900/10 text-white font-medium transition-transform hover:scale-105">
-            Solicitar Nuevo Turno
-        </Button>
-    </Link>
-</div>
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { Appointment } from "@/types";
@@ -106,6 +87,12 @@ export default function PortalDashboard() {
                     </div>
                 </div>
                 <div className="w-full md:w-auto flex flex-col md:flex-row gap-4">
+                    <Link href="/portal/virtual-consultation" className="block w-full md:w-auto">
+                        <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 font-medium transition-transform hover:scale-105">
+                            <Video className="mr-2 h-5 w-5" />
+                            Consulta Virtual
+                        </Button>
+                    </Link>
                     <Link href="/portal/prescriptions" className="block w-full md:w-auto">
                         <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-primary text-primary hover:bg-primary/5 font-medium transition-transform hover:scale-105">
                             Solicitar Receta
