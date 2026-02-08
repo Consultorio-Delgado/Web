@@ -45,9 +45,9 @@ service cloud.firestore {
 
     function isValidAuditLog() {
       let data = request.resource.data;
-      return data.keys().hasAll(['action', 'timestamp', 'userId']) &&
+      return data.keys().hasAll(['action', 'timestamp', 'performedBy']) &&
              data.timestamp is timestamp &&
-             data.userId == request.auth.uid;
+             data.performedBy == request.auth.uid;
     }
 
     // ...

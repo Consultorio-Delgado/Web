@@ -17,9 +17,17 @@ export const appointmentService = {
             });
 
             // Audit
-            await auditService.logAction('APPOINTMENT_CREATED', appointmentData.patientId, {
+            // We need to pass the ID of the user performing the action (Doctor or Patient)
+            // Since this runs client-side (mostly), we can get it from auth.
+            // However, this is a service function. Ideally, the caller passes the actorId or we get it from auth.
+            // Let's import auth.
+            const { auth } = await import("@/lib/firebase");
+            const actorId = auth.currentUser?.uid || 'unknown';
+
+            await auditService.logAction('APPOINTMENT_CREATED', actorId, {
                 appointmentId: docRef.id,
-                date: appointmentData.date
+                date: appointmentData.date,
+                patientId: appointmentData.patientId // Log who the appointment is for
             });
 
             // Send Email Confirmation (Fire and Forget)
