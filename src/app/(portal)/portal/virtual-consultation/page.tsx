@@ -151,6 +151,12 @@ export default function VirtualConsultationPage() {
 
             setSuccess(true);
             setFiles([]);
+            setFormData(prev => ({
+                ...prev,
+                doctorId: "",
+                tipoConsulta: "",
+                consulta: ""
+            }));
             toast.success("¡Solicitud enviada correctamente!");
         } catch (error) {
             console.error(error);
@@ -205,7 +211,7 @@ export default function VirtualConsultationPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
                         {/* Doctor Selection */}
                         <div className="space-y-2">
                             <Label>Seleccione Profesional *</Label>

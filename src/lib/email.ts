@@ -255,6 +255,7 @@ export const emailService = {
             await resend.emails.send({
                 from: FROM_EMAIL,
                 to: doctorEmail,
+                cc: data.email,
                 replyTo: data.email,
                 subject: `Solicitud de Receta - ${data.nombre} ${data.apellido}`,
                 html: html,
@@ -336,6 +337,7 @@ export const emailService = {
             await resend.emails.send({
                 from: FROM_EMAIL,
                 to: doctorEmail,
+                cc: data.email,
                 replyTo: data.email,
                 subject: `Consulta Virtual - ${data.nombre} ${data.apellido}`,
                 html: html,

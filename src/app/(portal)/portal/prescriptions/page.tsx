@@ -168,6 +168,12 @@ export default function PrescriptionsPage() {
 
             setSuccess(true);
             setFiles([]); // Reset files
+            setFormData(prev => ({
+                ...prev,
+                doctorId: "",
+                medicamentos: "",
+                token: ""
+            }));
             toast.success("¡Solicitud enviada! La receta llegará dentro de los 5 días hábiles.");
         } catch (error) {
             console.error(error);
@@ -220,7 +226,7 @@ export default function PrescriptionsPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
                         {/* Doctor Selection */}
                         <div className="space-y-2">
                             <Label>Seleccione Profesional *</Label>
