@@ -146,7 +146,9 @@ export const appointmentService = {
                     id: doc.id,
                     ...data,
                     date: data.date.toDate(), // Convert Timestamp back to Date
-                    createdAt: data.createdAt.toDate()
+                    createdAt: data.createdAt.toDate(),
+                    arrivedAt: data.arrivedAt?.toDate(),
+                    updatedAt: data.updatedAt?.toDate()
                 } as Appointment;
             }).sort((a, b) => b.date.getTime() - a.date.getTime()); // Sort newest first
 
@@ -170,12 +172,17 @@ export const appointmentService = {
             );
 
             const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                date: doc.data().date.toDate(),
-                createdAt: doc.data().createdAt?.toDate() || new Date()
-            } as Appointment));
+            return querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    date: data.date.toDate(),
+                    createdAt: data.createdAt?.toDate() || new Date(),
+                    arrivedAt: data.arrivedAt?.toDate(),
+                    updatedAt: data.updatedAt?.toDate()
+                } as Appointment;
+            });
         } catch (error) {
             console.error("Error fetching doctor appointments:", error);
             return [];
