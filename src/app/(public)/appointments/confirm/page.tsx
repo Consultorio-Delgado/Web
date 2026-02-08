@@ -66,7 +66,8 @@ function ConfirmContent() {
 
     const generateGoogleCalendarUrl = () => {
         if (!appointment) return "#";
-        const title = encodeURIComponent(`Turno Médico - Dr. ${appointment.doctorName}`);
+        const prefix = appointment.doctorName.toLowerCase().includes('secondi') ? 'Dra.' : 'Dr.';
+        const title = encodeURIComponent(`Turno Médico - ${prefix} ${appointment.doctorName}`);
         const details = encodeURIComponent(`Turno confirmado en Consultorio Delgado`);
         const location = encodeURIComponent("Delgado 588, 1°C (1426) CABA");
         return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}`;
@@ -100,7 +101,7 @@ function ConfirmContent() {
                             <p className="font-semibold">{appointment.patientName}</p>
 
                             <p className="text-sm text-muted-foreground mt-3">Profesional</p>
-                            <p className="font-semibold">Dr. {appointment.doctorName}</p>
+                            <p className="font-semibold">{appointment.doctorName.toLowerCase().includes('secondi') ? 'Dra.' : 'Dr.'} {appointment.doctorName}</p>
 
                             <p className="text-sm text-muted-foreground mt-3">Fecha y Hora</p>
                             <p className="font-semibold">{appointment.date} a las {appointment.time}</p>
@@ -137,7 +138,7 @@ function ConfirmContent() {
                         </p>
                         <div className="bg-slate-50 rounded-lg p-4 space-y-2">
                             <p className="font-semibold">{appointment.date} a las {appointment.time}</p>
-                            <p className="text-sm">Dr. {appointment.doctorName}</p>
+                            <p className="text-sm">{appointment.doctorName.toLowerCase().includes('secondi') ? 'Dra.' : 'Dr.'} {appointment.doctorName}</p>
                         </div>
                         <p className="text-xs text-center text-muted-foreground">
                             Te esperamos. Por favor llega 10 minutos antes.

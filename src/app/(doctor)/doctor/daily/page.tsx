@@ -591,7 +591,7 @@ export default function DailyAgendaPage() {
                                                     <span className="font-bold text-lg">{appt.patientName}</span>
                                                     {!isMySlot && (
                                                         <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 text-xs">
-                                                            Dr. {slot.doctor.lastName}
+                                                            {slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {slot.doctor.lastName}
                                                         </Badge>
                                                     )}
                                                     <Link href={`/doctor/patients/${appt.patientId}`}>
@@ -624,7 +624,9 @@ export default function DailyAgendaPage() {
                                                         <Lock className="h-3 w-3" /> BLOQUEADO
                                                     </span>
                                                     {!isMySlot && (
-                                                        <span className="text-xs text-slate-500">(Dr. {slot.doctor.lastName})</span>
+                                                        <span className="text-xs text-slate-500">
+                                                            ({slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {slot.doctor.lastName})
+                                                        </span>
                                                     )}
                                                 </div>
                                                 {isMySlot && <p className="text-sm text-red-600">No disponible para turnos.</p>}
@@ -635,7 +637,7 @@ export default function DailyAgendaPage() {
                                         {slot.status === 'free' && !isSelectionMode && (
                                             <div className="flex items-center gap-2">
                                                 <span className="text-slate-500 italic mr-2 text-sm">
-                                                    Disponible {isMySlot ? "" : `(Dr. ${slot.doctor.lastName})`}
+                                                    Disponible {isMySlot ? "" : `(${slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} ${slot.doctor.lastName})`}
                                                 </span>
                                                 <Button
                                                     size="sm"
@@ -643,7 +645,7 @@ export default function DailyAgendaPage() {
                                                     className={`h-8 gap-1 ${!isMySlot ? "border-orange-200 text-orange-700 hover:bg-orange-50" : ""}`}
                                                     onClick={() => setBookingSlot({ time: slot.time, doctorId: slot.doctor.id })}
                                                 >
-                                                    <CalendarPlus className="h-3 w-3" /> Reservar {!isMySlot && `Dr. ${slot.doctor.lastName}`}
+                                                    <CalendarPlus className="h-3 w-3" /> Reservar {!isMySlot && `${slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} ${slot.doctor.lastName}`}
                                                 </Button>
                                                 <Button
                                                     size="sm"

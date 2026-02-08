@@ -10,6 +10,13 @@ interface AbsenceEmailProps {
     time: string;
 }
 
+export const paragraph = {
+    fontSize: '14px',
+    lineHeight: '24px',
+    color: '#000',
+    marginBottom: '20px',
+};
+
 export const AbsenceEmail = ({
     patientName,
     doctorName,
@@ -27,14 +34,20 @@ export const AbsenceEmail = ({
                 <Text className="text-[14px] leading-[24px] text-black">
                     Hola <strong>{patientName}</strong>,
                 </Text>
-                <Text className="text-[14px] leading-[24px] text-black">
-                    Notamos que no pudiste asistir a tu turno programado para hoy, {date} a las {time} hs, con {prefix} {doctorName}.
+                <Text style={paragraph}>
+                    Le recordamos que un turno <strong>AUSENTE</strong> o cancelado en el día es un turno desaprovechado y dejó sin atención a alguien que realmente lo necesitaba.
                 </Text>
-                <Text className="text-[14px] leading-[24px] text-black">
-                    Entendemos que pueden surgir imprevistos, pero un turno ausente implica un turno menos disponible para alguien que lo necesitaba. Por favor cancelar el turno 48hs antes por la web, para que otro paciente pueda tomarlo.
+                <Text style={paragraph}>
+                    Esto genera perjuicio tanto a pacientes como a los Dres.
                 </Text>
-                <Text className="text-[14px] leading-[24px] text-black">
-                    Si crees que esto es un error, por favor comunícate con nosotros por el formulario de CONTACTO de la web.
+                <Text style={paragraph}>
+                    Es una época de mucha dificultad para el sistema de Salud, Debemos ser solidarios, <strong>TODOS</strong>.
+                </Text>
+                <Text style={paragraph}>
+                    Hay mucha gente en espera, es época de mucha demanda ya que quedan pocos prestadores en las cartillas y cada vez menos por esta entre otras razones.
+                </Text>
+                <Text style={paragraph}>
+                    Atte Recepción Consultorio Delgado
                 </Text>
             </Section>
 
