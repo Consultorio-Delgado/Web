@@ -33,7 +33,7 @@ export interface Doctor {
     acceptedInsurances?: string[]; // Array of strings from INSURANCE_PROVIDERS
 }
 
-export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived' | 'absent';
 
 export interface DayOff {
     id: string;
@@ -57,6 +57,7 @@ export interface Appointment {
     attachments?: { name: string; url: string; type: string; }[]; // PDF/JPG attachments
     type?: string; // "Consulta", "Control", etc.
     createdAt: Date;
+    updatedAt?: Date;
 }
 
 export interface MedicalRecord {

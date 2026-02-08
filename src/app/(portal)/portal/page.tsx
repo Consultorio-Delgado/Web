@@ -8,7 +8,10 @@ import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { Appointment } from "@/types";
 import { appointmentService } from "@/services/appointments";
+import { doctorService } from "@/services/doctorService";
 import { format } from "date-fns";
+
+
 import { es } from "date-fns/locale";
 import { AppointmentCard } from "@/components/portal/AppointmentCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,6 +30,23 @@ export default function PortalDashboard() {
 
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loadingAppts, setLoadingAppts] = useState(true);
+    const [doctorsMap, setDoctorsMap] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        const fetchDoctors = async () => {
+            try {
+                const doctors = await doctorService.getAllDoctors();
+                const map: Record<string, string> = {};
+                doctors.forEach(d => {
+                    map[d.id] = d.specialty;
+                });
+                setDoctorsMap(map);
+            } catch (error) {
+                console.error("Error fetching doctors for specialties:", error);
+            }
+        };
+        fetchDoctors();
+    }, []);
 
     const fetchAppts = useCallback(async () => {
         if (user) {
@@ -60,7 +80,7 @@ export default function PortalDashboard() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
                 <div className="flex items-center gap-4">
                     <div>
-                        <h1 className="text-3xl font-serif font-medium text-slate-900 mb-1">Hola, {profile?.firstName || 'Paciente'}</h1>
+                        <h1 className="text-3xl font-serif font-medium text-slate-900 mb-1">Hola, {profile?.firstName || user?.displayName?.split(' ')[0] || 'Paciente'}</h1>
                         <p className="text-slate-500 font-light">Bienvenido a tu portal de salud.</p>
                     </div>
                 </div>
@@ -88,6 +108,7 @@ export default function PortalDashboard() {
                                     key={appt.id}
                                     appointment={appt}
                                     onStatusChange={fetchAppts}
+                                    doctorSpecialty={doctorsMap[appt.doctorId]}
                                 />
                             ))}
                         </div>
@@ -113,6 +134,7 @@ export default function PortalDashboard() {
                                     key={appt.id}
                                     appointment={appt}
                                     onStatusChange={fetchAppts}
+                                    doctorSpecialty={doctorsMap[appt.doctorId]}
                                 />
                             ))}
                         </div>

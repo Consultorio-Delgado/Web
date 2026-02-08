@@ -42,7 +42,7 @@ export const ConfirmationEmail = ({
                     <strong>Hora:</strong> {time} hs
                 </Text>
                 <Text className="m-0 text-[14px] leading-[24px]">
-                    <strong>Dirección:</strong> Av. Delgado 1234
+                    <strong>Dirección:</strong> Delgado 588, 1°C (1426) CABA
                 </Text>
             </Section>
 

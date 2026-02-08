@@ -115,6 +115,29 @@ export const appointmentService = {
             throw error;
         }
     },
+
+    async updateAppointment(appointmentId: string, updates: Partial<Appointment>): Promise<void> {
+        try {
+            const docRef = doc(db, "appointments", appointmentId);
+            // We should sanitized 'updates' to prevent overwriting critical immutable fields if necessary, 
+            // but for now we trust the caller (admin/doctor).
+            // Convert Date objects to Timestamps if present in updates
+            const dataToUpdate: any = { ...updates };
+            if (updates.date) {
+                dataToUpdate.date = Timestamp.fromDate(updates.date);
+            }
+            if (updates.updatedAt) {
+                dataToUpdate.updatedAt = Timestamp.now();
+            } else {
+                dataToUpdate.updatedAt = Timestamp.now();
+            }
+
+            await updateDoc(docRef, dataToUpdate);
+        } catch (error) {
+            console.error("Error updating appointment:", error);
+            throw error;
+        }
+    },
     async cancelAppointment(appointmentId: string): Promise<void> {
         try {
             const docRef = doc(db, "appointments", appointmentId);

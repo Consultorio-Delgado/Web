@@ -55,12 +55,36 @@ export function Navbar() {
                 <div className="flex items-center gap-4">
                     {user ? (
                         <div className="flex items-center gap-4">
+                            {/* Direct Links based on Role */}
+                            {role === 'admin' || role === 'doctor' ? (
+                                <Link href="/doctor/dashboard">
+                                    <Button variant="ghost" className="text-slate-600 hover:text-primary hover:bg-slate-50">
+                                        Portal Médico
+                                    </Button>
+                                </Link>
+                            ) : (
+                                <>
+                                    <Link href="/portal">
+                                        <Button variant="ghost" className="text-slate-600 hover:text-primary hover:bg-slate-50">
+                                            Portal Paciente
+                                        </Button>
+                                    </Link>
+                                    <Link href="/portal/profile">
+                                        <Button variant="ghost" className="text-slate-600 hover:text-primary hover:bg-slate-50">
+                                            Mi Perfil
+                                        </Button>
+                                    </Link>
+                                </>
+                            )}
+
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                                        <Avatar className="h-8 w-8">
+                                    <Button variant="ghost" className="relative h-8 w-8 rounded-full ml-2">
+                                        <Avatar className="h-8 w-8 border border-slate-200">
                                             <AvatarImage src="" />
-                                            <AvatarFallback>{profile?.firstName?.[0] || user.email?.[0]?.toUpperCase()}</AvatarFallback>
+                                            <AvatarFallback className="bg-primary/5 text-primary">
+                                                {profile?.firstName?.[0] || user.email?.[0]?.toUpperCase()}
+                                            </AvatarFallback>
                                         </Avatar>
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -72,14 +96,7 @@ export function Navbar() {
                                         </div>
                                     </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => {
-                                        if (role === 'admin' || role === 'doctor') router.push("/doctor/dashboard");
-                                        else router.push("/portal");
-                                    }}>
-                                        {role === 'admin' || role === 'doctor' ? "Portal Médico" : "Portal Paciente"}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={handleLogout}>
+                                    <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-700 focus:bg-red-50">
                                         Cerrar Sesión
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>

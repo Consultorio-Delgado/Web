@@ -22,7 +22,7 @@ export const settingsService = {
                 return {
                     name: "Consultorio Delgado",
                     phone: "+54 11 1234-5678",
-                    address: "Av. Delgado 1234"
+                    address: "Delgado 588, 1°C (1426) CABA"
                 };
             }
         } catch (error) {

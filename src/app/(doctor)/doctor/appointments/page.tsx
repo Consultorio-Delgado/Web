@@ -381,7 +381,49 @@ export default function AppointmentsPage() {
                                 </div>
                             )}
 
-                            <div className="flex justify-end gap-2 pt-4">
+                            <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                                {(selectedAppointment.status === 'confirmed' || selectedAppointment.status === 'pending') && (
+                                    <>
+                                        <Button
+                                            variant="destructive"
+                                            onClick={async () => {
+                                                try {
+                                                    await appointmentService.updateAppointment(selectedAppointment.id, { status: 'absent' });
+                                                    toast.success("Marcado como Ausente");
+                                                    setSelectedAppointment(null);
+                                                    // Trigger refresh if possible, or user will refresh main list manually. 
+                                                    // Ideally we should trigger the fetch data effect.
+                                                    // For now, we rely on the user closing the dialog and the UI updating on next fetch or we force it?
+                                                    // Let's force a reload of the day keys or just close. 
+                                                    // To properly refresh, we need to lift state or expose the fetch function.
+                                                    // A simple workaround is to just close and let the user see it updated next time or manually refresh types?
+                                                    // actually, we should trigger a refresh.
+                                                    // The simplest way without refactoring everything is to just close, 
+                                                    // but to be nice let's try to update the local list if we can?
+                                                    // We can't easily access setDaySlots here without more code.
+                                                    // We will assume the user interacts and updates naturally, or we can trigger a window reload (bad).
+                                                    // Let's just close for now.
+                                                    window.location.reload(); // Quick fix to ensure UI updates, or we can just hope real-time listener? No real-time.
+                                                } catch (e) { toast.error("Error al actualizar"); }
+                                            }}
+                                        >
+                                            Ausente
+                                        </Button>
+                                        <Button
+                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                            onClick={async () => {
+                                                try {
+                                                    await appointmentService.updateAppointment(selectedAppointment.id, { status: 'completed' });
+                                                    toast.success("Marcado como Asistió");
+                                                    setSelectedAppointment(null);
+                                                    window.location.reload();
+                                                } catch (e) { toast.error("Error al actualizar"); }
+                                            }}
+                                        >
+                                            Asistió
+                                        </Button>
+                                    </>
+                                )}
                                 <Button variant="outline" onClick={() => setSelectedAppointment(null)}>Cerrar</Button>
                             </div>
                         </div>
