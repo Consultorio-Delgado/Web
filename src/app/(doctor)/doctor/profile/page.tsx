@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Loader2, Save, CalendarOff } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { INSURANCE_PROVIDERS } from "@/constants";
 
 export default function DoctorProfilePage() {
@@ -132,12 +132,6 @@ export default function DoctorProfilePage() {
                     <h1 className="text-3xl font-bold mb-2">Perfil Profesional</h1>
                     <p className="text-muted-foreground">Administra tu información pública y horarios de atención.</p>
                 </div>
-                <Link href="/doctor/exceptions">
-                    <Button variant="outline">
-                        <CalendarOff className="mr-2 h-4 w-4" />
-                        Gestionar Ausencias
-                    </Button>
-                </Link>
             </div>
 
             <div className="grid gap-6">

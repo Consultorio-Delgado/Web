@@ -69,14 +69,17 @@ service cloud.firestore {
       
       // Update: Admin, Doctor (Owner), or Patient (Cancel only)
       allow update: if isAuthenticated() && (
+        (resource.data.doctorId == request.auth.uid) || // Doctor can update their own appointments (Check FIRST)
         isAdmin() || 
-        (resource.data.doctorId == request.auth.uid) || // Doctor can update their own appointments
         (resource.data.patientId == request.auth.uid && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
          request.resource.data.status == 'cancelled')
       );
       
-      allow delete: if isAdmin() || (isAuthenticated() && resource.data.doctorId == request.auth.uid);
+      allow delete: if isAuthenticated() && (
+        (resource.data.doctorId == request.auth.uid) ||  // Owner first
+        isAdmin()
+      );
     }
 
     // 4. Exceptions (Blocked Days)

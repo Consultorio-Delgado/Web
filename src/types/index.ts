@@ -58,6 +58,8 @@ export interface Appointment {
     medicalNotes?: string; // Evolution/Diagnosis from Doctor
     attachments?: { name: string; url: string; type: string; }[]; // PDF/JPG attachments
     type?: string; // "Consulta", "Control", etc.
+    patientPhone?: string; // contact
+    insurance?: string; // e.g. "OSDE"
     createdAt: Date;
     updatedAt?: Date;
 }

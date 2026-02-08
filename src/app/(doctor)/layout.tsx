@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Calendar, Users, LogOut, Settings, UserCircle, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, LogOut, Settings, UserCircle, ShieldAlert, Clock } from "lucide-react";
 
 export default function DoctorLayout({
     children,
@@ -35,6 +35,7 @@ export default function DoctorLayout({
 
     const navItems = [
         { name: "Tablero Principal", href: "/doctor/dashboard", icon: LayoutDashboard },
+        { name: "Agenda Diaria", href: "/doctor/daily", icon: Clock },
         { name: "Agenda Mensual", href: "/doctor/appointments", icon: Calendar },
         { name: "Pacientes", href: "/doctor/patients", icon: Users },
         { name: "Doctores", href: "/doctor/doctors", icon: UserCircle },

@@ -273,14 +273,15 @@ export default function AppointmentsPage() {
                         </h2>
                         <div className="flex gap-2">
                             {/* Block Button (if NO slots are blocked by exception) */}
-                            {daySlots.length > 0 && !daySlots.some(s => s.status === 'blocked') && (
+                            {/* Block Button: Show if there are any free slots to block */}
+                            {daySlots.some(s => s.status === 'free') && (
                                 <Button variant="secondary" onClick={handleBlockDay} disabled={loading}>
                                     <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear Día
                                 </Button>
                             )}
 
-                            {/* Unlock Button if ANY slot is blocked (implies Day Exception) */}
-                            {daySlots.length > 0 && daySlots.some(s => s.status === 'blocked') && (
+                            {/* Unlock Button: Show if any slot is blocked by Exception (no appointment object implies exception) */}
+                            {daySlots.some(s => s.status === 'blocked' && !s.appointment) && (
                                 <Button variant="destructive" onClick={handleUnlock} disabled={loading}>
                                     <Unlock className="mr-2 h-4 w-4" /> Desbloquear Día
                                 </Button>
