@@ -103,7 +103,7 @@ export default async function LandingPage() {
               </div>
               <h3 className="text-2xl font-serif text-slate-900 mb-3">Ginecología</h3>
               <p className="text-slate-500 leading-relaxed">
-                Check-ups anuales, control de embarazo y salud reproductiva integral.
+                Control ginecológico, Anticoncepción, Climaterio, Patología Cervical, ETS, Test de HPV. Una mirada integral hacia una Longevidad saludable.
               </p>
             </div>
 
