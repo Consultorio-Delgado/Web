@@ -230,12 +230,7 @@ export default function PrescriptionsPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-                        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-amber-800">
-                            <strong>Importante:</strong> Si solicita una receta para un familiar que es paciente, complete todos los datos del paciente en cuestión.
-                        </p>
-                    </div>
+                    {/* Warning removed and merged below */}
 
                     <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
                         {/* Doctor Selection */}
@@ -286,6 +281,9 @@ export default function PrescriptionsPage() {
                                             <p>
                                                 Luego de completar el formulario recibirá por mail las mismas en el transcurso de la semana.
                                             </p>
+                                            <p className="text-amber-700 font-medium">
+                                                Si solicita una receta para un familiar que es paciente, complete todos los datos del paciente en cuestión.
+                                            </p>
                                         </div>
                                     </div>
                                 ) : (
@@ -298,6 +296,7 @@ export default function PrescriptionsPage() {
                                                     <li>La receta llegará dentro de los <strong>5 días hábiles</strong>.</li>
                                                     <li>Solo se realizan recetas de medicación indicada por el profesional.</li>
                                                     <li>La prescripción está reservada a pacientes con historia clínica y controles actualizados.</li>
+                                                    <li><strong>Si solicita una receta para un familiar que es paciente, complete todos los datos del paciente en cuestión.</strong></li>
                                                 </ul>
                                             </div>
                                         </div>

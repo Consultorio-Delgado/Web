@@ -23,6 +23,9 @@ export async function POST(request: Request) {
                 // Usually triggered by Cron, but can be manual
                 result = await emailService.sendReminder(data);
                 break;
+            case 'absence':
+                result = await emailService.sendAbsence(data);
+                break;
             default:
                 return NextResponse.json({ error: 'Invalid email type' }, { status: 400 });
         }

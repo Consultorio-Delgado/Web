@@ -176,9 +176,31 @@ export default function DailyAgendaPage() {
     const handleMarkAbsent = async (appointmentId: string) => {
         setActionLoading(appointmentId);
         try {
+            // Find appointment details for email
+            const slot = slots.find(s => s.appointment?.id === appointmentId);
+            const appt = slot?.appointment;
+
             await appointmentService.updateAppointment(appointmentId, {
                 status: 'absent'
             });
+
+            if (appt && appt.patientEmail) {
+                fetch('/api/emails', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'absence',
+                        data: {
+                            to: appt.patientEmail,
+                            patientName: appt.patientName,
+                            doctorName: appt.doctorName || 'Consultorio Delgado',
+                            date: format(appt.date, "dd/MM/yyyy"),
+                            time: appt.time
+                        }
+                    })
+                }).catch(err => console.error("Failed to send absence email:", err));
+            }
+
             toast.success("Paciente marcado como ausente");
             fetchSlots();
         } catch (error) {
