@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Section, Text, Button } from '@react-email/components';
 import EmailLayout from './EmailLayout';
+import { getDoctorPrefix } from '@/lib/doctorPrefix';
 
 interface ReminderEmailProps {
     patientName: string;
@@ -15,9 +16,11 @@ export const ReminderEmail = ({
     date,
     time,
 }: ReminderEmailProps) => {
+    const prefix = getDoctorPrefix(doctorName);
+
     return (
         <EmailLayout
-            previewText={`Recordatorio de turno: Mañana con Dr. ${doctorName}`}
+            previewText={`Recordatorio de turno: Mañana con ${prefix} ${doctorName}`}
             heading="Recordatorio de Turno"
         >
             <Section className="my-[20px]">
@@ -34,7 +37,7 @@ export const ReminderEmail = ({
 
             <Section className="bg-blue-50 rounded-lg p-4 my-4 border border-blue-100">
                 <Text className="m-0 text-[14px] leading-[24px]">
-                    <strong>Profesional:</strong> Dr. {doctorName}
+                    <strong>Profesional:</strong> {prefix} {doctorName}
                 </Text>
                 <Text className="m-0 text-[14px] leading-[24px]">
                     <strong>Fecha:</strong> {date}

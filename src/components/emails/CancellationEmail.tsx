@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Section, Text, Button } from '@react-email/components';
 import EmailLayout from './EmailLayout';
+import { getDoctorPrefix } from '@/lib/doctorPrefix';
 
 interface CancellationEmailProps {
     patientName: string;
@@ -15,9 +16,11 @@ export const CancellationEmail = ({
     date,
     time,
 }: CancellationEmailProps) => {
+    const prefix = getDoctorPrefix(doctorName);
+
     return (
         <EmailLayout
-            previewText={`Cancelación de turno con Dr. ${doctorName}`}
+            previewText={`Cancelación de turno con ${prefix} ${doctorName}`}
             heading="Turno Cancelado"
         >
             <Section className="my-[20px]">
@@ -34,7 +37,7 @@ export const CancellationEmail = ({
                     Detalles del turno cancelado:
                 </Text>
                 <Text className="m-0 text-[14px] leading-[24px] text-red-800">
-                    Dr. {doctorName} - {date} a las {time} hs
+                    {prefix} {doctorName} - {date} a las {time} hs
                 </Text>
             </Section>
 
@@ -51,3 +54,4 @@ export const CancellationEmail = ({
 };
 
 export default CancellationEmail;
+

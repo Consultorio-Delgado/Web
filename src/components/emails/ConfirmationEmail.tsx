@@ -1,13 +1,14 @@
 import * as React from 'react';
 import { Section, Text, Button } from '@react-email/components';
 import EmailLayout from './EmailLayout';
+import { getDoctorPrefix } from '@/lib/doctorPrefix';
 
 interface ConfirmationEmailProps {
     patientName: string;
     doctorName: string;
     date: string;
     time: string;
-    appointmentId: string; // Used for "Manage Appointment" link
+    appointmentId: string;
 }
 
 export const ConfirmationEmail = ({
@@ -17,9 +18,11 @@ export const ConfirmationEmail = ({
     time,
     appointmentId
 }: ConfirmationEmailProps) => {
+    const prefix = getDoctorPrefix(doctorName);
+
     return (
         <EmailLayout
-            previewText={`Confirmación de turno con Dr. ${doctorName}`}
+            previewText={`Confirmación de turno con ${prefix} ${doctorName}`}
             heading="¡Turno Confirmado!"
         >
             <Section className="my-[20px]">
@@ -33,7 +36,7 @@ export const ConfirmationEmail = ({
 
             <Section className="bg-slate-50 rounded-lg p-4 my-4 border border-slate-100">
                 <Text className="m-0 text-[14px] leading-[24px]">
-                    <strong>Profesional:</strong> Dr. {doctorName}
+                    <strong>Profesional:</strong> {prefix} {doctorName}
                 </Text>
                 <Text className="m-0 text-[14px] leading-[24px]">
                     <strong>Fecha:</strong> {date}
