@@ -1,57 +1,56 @@
 import { db } from '@/lib/firebaseAdmin';
 import { emailService } from '@/lib/email';
 import { NextResponse } from 'next/server';
-import { addDays, startOfDay, endOfDay } from 'date-fns';
+import { addHours, format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://consultoriodelgado.com';
 
 // Vercel Cron automatically sends a header to secure the endpoint.
-// In dev, you can just call it manually.
 export async function GET(request: Request) {
     // 0. Security Check
     const authHeader = request.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        // Allow in development without secret for easier testing, OR enforce it.
-        // For strict security:
         if (process.env.NODE_ENV === 'production') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        // In dev, we might just warn or proceed.
-        console.warn('[Cron] Running in DEV mode without strict auth check.');
+        console.warn('[Cron/ActionReminders] Running in DEV mode without strict auth check.');
     }
 
     try {
-        // 1. Calculate "Tomorrow"
-        const tomorrow = addDays(new Date(), 1);
-        const start = startOfDay(tomorrow);
-        const end = endOfDay(tomorrow);
+        // 1. Calculate window: 48 to 72 hours from now
+        const now = new Date();
+        const start48h = addHours(now, 48);
+        const end72h = addHours(now, 72);
 
-        console.log(`[Cron/Reminders] Running for date: ${start.toISOString()}`);
+        console.log(`[Cron/ActionReminders] Running for window: ${start48h.toISOString()} to ${end72h.toISOString()}`);
 
-        // 2. Query Appointments for Tomorrow using Admin SDK (bypasses rules)
+        // 2. Query PENDING Appointments in the 48-72h window
         const snapshot = await db.collection('appointments')
-            .where('date', '>=', start)
-            .where('date', '<=', end)
-            .where('status', '==', 'confirmed')
+            .where('date', '>=', start48h)
+            .where('date', '<=', end72h)
+            .where('status', '==', 'pending')
             .get();
 
         if (snapshot.empty) {
-            console.log('[Cron/Reminders] No appointments found for tomorrow.');
+            console.log('[Cron/ActionReminders] No pending appointments found in window.');
             return NextResponse.json({ success: true, count: 0 });
         }
 
-        console.log(`[Cron/Reminders] Found ${snapshot.size} appointments.`);
+        console.log(`[Cron/ActionReminders] Found ${snapshot.size} pending appointments.`);
 
         let sentCount = 0;
         const errors: any[] = [];
 
-        // 3. Iterate and Send Emails
-        // Note in a real large-scale app, we might use a queue (Inngest/bullmq)
+        // 3. Iterate and Send Action Reminder Emails
         for (const doc of snapshot.docs) {
             const appointment = doc.data();
             const appointmentId = doc.id;
 
-            // We need doctor details.
-            // Optimization: Fetch all doctors once or cache them.
-            // For now, fetch individually (N+1 but N is small for a clinic).
+            // Skip blocked slots
+            if (appointment.patientId === 'blocked') continue;
+
+            // Get doctor name
             let doctorName = "Su Profesional";
             try {
                 const docSnap = await db.collection('doctors').doc(appointment.doctorId).get();
@@ -60,20 +59,29 @@ export async function GET(request: Request) {
                     doctorName = `${docData?.lastName}, ${docData?.firstName}`;
                 }
             } catch (err) {
-                console.error(`[Cron/Reminders] Failed to fetch doctor for appt ${appointmentId}`, err);
+                console.error(`[Cron/ActionReminders] Failed to fetch doctor for appt ${appointmentId}`, err);
             }
 
             if (appointment.patientEmail) {
-                const result = await emailService.sendReminder({
+                // Generate confirmation URL with token (patientId for validation)
+                const confirmUrl = `${BASE_URL}/appointments/confirm?id=${appointmentId}&token=${appointment.patientId}`;
+
+                // Format date nicely
+                const appointmentDate = appointment.date.toDate();
+                const formattedDate = format(appointmentDate, "EEEE d 'de' MMMM", { locale: es });
+
+                const result = await emailService.sendActionReminder({
                     to: appointment.patientEmail,
                     patientName: appointment.patientName,
                     doctorName: doctorName,
-                    date: appointment.date.toDate().toLocaleDateString(), // Firestore Admin returns Timestamp
-                    time: appointment.time
+                    date: formattedDate,
+                    time: appointment.time,
+                    confirmUrl: confirmUrl
                 });
 
                 if (result.success) {
                     sentCount++;
+                    console.log(`[Cron/ActionReminders] Sent to ${appointment.patientEmail}`);
                 } else {
                     errors.push({ id: appointmentId, error: result.error });
                 }
@@ -88,7 +96,7 @@ export async function GET(request: Request) {
         });
 
     } catch (error) {
-        console.error('[Cron/Reminders] Critical Error:', error);
+        console.error('[Cron/ActionReminders] Critical Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

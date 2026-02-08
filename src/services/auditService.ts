@@ -9,7 +9,11 @@ export type AuditAction =
     | 'APPOINTMENT_ARRIVED'
     | 'MEDICAL_NOTE_ADDED'
     | 'PATIENT_FILE_UPLOADED'
-    | 'PATIENT_PROFILE_UPDATED';
+    | 'PATIENT_PROFILE_UPDATED'
+    | 'PATIENT_DELETED'
+    | 'PATIENT_RESTORED'
+    | 'DOCTOR_DELETED'
+    | 'DOCTOR_RESTORED';
 
 export const auditService = {
     async logAction(action: AuditAction, performedBy: string, metadata: any = {}) {

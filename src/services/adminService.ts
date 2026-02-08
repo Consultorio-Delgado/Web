@@ -219,14 +219,23 @@ export const adminService = {
         try {
             const q = query(
                 collection(db, "users"),
-                where("role", "==", "patient")
+                where("role", "==", "patient"),
+                where("isDeleted", "!=", true)
             );
             const querySnapshot = await getDocs(q);
             return querySnapshot.docs.map(doc => doc.data() as UserProfile);
-            return querySnapshot.docs.map(doc => doc.data() as UserProfile);
         } catch (error) {
             console.error("Error fetching patients:", error);
-            return [];
+            // Fallback: filter client-side for backwards compatibility
+            try {
+                const fallbackQ = query(collection(db, "users"), where("role", "==", "patient"));
+                const fallbackSnapshot = await getDocs(fallbackQ);
+                return fallbackSnapshot.docs
+                    .filter(doc => !doc.data().isDeleted)
+                    .map(doc => doc.data() as UserProfile);
+            } catch (fallbackError) {
+                return [];
+            }
         }
     },
 
@@ -251,12 +260,56 @@ export const adminService = {
             const { getDoc, doc: docRef } = await import("firebase/firestore");
             const docSnap = await getDoc(docRef(db, "users", uid));
             if (docSnap.exists()) {
-                return docSnap.data() as UserProfile;
+                const data = docSnap.data();
+                // Return null if soft-deleted
+                if (data.isDeleted) {
+                    return null;
+                }
+                return data as UserProfile;
             }
             return null;
         } catch (error) {
             console.error("Error fetching patient by ID:", error);
             return null;
+        }
+    },
+
+    // Soft delete patient - mark as deleted instead of removing
+    async deletePatient(uid: string): Promise<void> {
+        try {
+            const docRef = doc(db, "users", uid);
+            await updateDoc(docRef, {
+                isDeleted: true,
+                deletedAt: new Date()
+            });
+
+            // Audit
+            await auditService.logAction('PATIENT_DELETED', auth.currentUser?.uid || 'admin', {
+                patientId: uid
+            });
+        } catch (error) {
+            console.error(`Error soft-deleting patient ${uid}:`, error);
+            throw error;
+        }
+    },
+
+    // Restore a soft-deleted patient
+    async restorePatient(uid: string): Promise<void> {
+        try {
+            const docRef = doc(db, "users", uid);
+            await updateDoc(docRef, {
+                isDeleted: false,
+                deletedAt: null,
+                restoredAt: new Date()
+            });
+
+            // Audit
+            await auditService.logAction('PATIENT_RESTORED', auth.currentUser?.uid || 'admin', {
+                patientId: uid
+            });
+        } catch (error) {
+            console.error(`Error restoring patient ${uid}:`, error);
+            throw error;
         }
     }
 };

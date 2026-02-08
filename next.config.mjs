@@ -5,6 +5,27 @@ const nextConfig = {
         serverComponentsExternalPackages: ["undici", "firebase-admin"],
     },
 
+    // Image domains for Firebase Storage and Google Auth profile pictures
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'lh3.googleusercontent.com',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'firebasestorage.googleapis.com',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: '*.googleapis.com',
+                pathname: '/**',
+            },
+        ],
+    },
+
     webpack: (config) => {
         // Esto le dice a Next.js: "Si ves 'undici' en el frontend, ignóralo"
         config.resolve.alias.undici = false;

@@ -1,6 +1,6 @@
 import { db } from "@/lib/firebase";
 import { Doctor } from "@/types";
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where } from "firebase/firestore";
 
 // Helper to remove undefined fields recursively
 function cleanUndefined(obj: any): any {
@@ -20,14 +20,31 @@ function cleanUndefined(obj: any): any {
 export const doctorService = {
     async getAllDoctors(): Promise<Doctor[]> {
         try {
-            const querySnapshot = await getDocs(collection(db, "doctors"));
+            // Filter out soft-deleted doctors
+            const q = query(
+                collection(db, "doctors"),
+                where("isDeleted", "!=", true)
+            );
+            const querySnapshot = await getDocs(q);
             return querySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             } as Doctor));
         } catch (error) {
             console.error("Error fetching doctors:", error);
-            return [];
+            // Fallback: get all and filter client-side (for backwards compatibility with existing data)
+            try {
+                const allDocs = await getDocs(collection(db, "doctors"));
+                return allDocs.docs
+                    .filter(doc => !doc.data().isDeleted)
+                    .map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    } as Doctor));
+            } catch (fallbackError) {
+                console.error("Fallback also failed:", fallbackError);
+                return [];
+            }
         }
     },
 
@@ -36,7 +53,12 @@ export const doctorService = {
             const docRef = doc(db, "doctors", id);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                return { id: docSnap.id, ...docSnap.data() } as Doctor;
+                const data = docSnap.data();
+                // Return null if soft-deleted
+                if (data.isDeleted) {
+                    return null;
+                }
+                return { id: docSnap.id, ...data } as Doctor;
             }
             return null;
         } catch (error) {
@@ -59,7 +81,7 @@ export const doctorService = {
     // Create doctor if not exists (for seeding/admin)
     async createDoctor(doctor: Doctor): Promise<void> {
         try {
-            const safeData = cleanUndefined(doctor);
+            const safeData = cleanUndefined({ ...doctor, isDeleted: false });
             await setDoc(doc(db, "doctors", doctor.id), safeData, { merge: true });
         } catch (error) {
             console.error(`Error creating doctor ${doctor.id}:`, error);
@@ -67,12 +89,46 @@ export const doctorService = {
         }
     },
 
+    // Soft delete - mark as deleted instead of removing
     async deleteDoctor(id: string): Promise<void> {
         try {
-            await deleteDoc(doc(db, "doctors", id));
+            const docRef = doc(db, "doctors", id);
+            await updateDoc(docRef, {
+                isDeleted: true,
+                deletedAt: new Date()
+            });
         } catch (error) {
-            console.error(`Error deleting doctor ${id}:`, error);
+            console.error(`Error soft-deleting doctor ${id}:`, error);
             throw error;
+        }
+    },
+
+    // Restore a soft-deleted doctor (admin function)
+    async restoreDoctor(id: string): Promise<void> {
+        try {
+            const docRef = doc(db, "doctors", id);
+            await updateDoc(docRef, {
+                isDeleted: false,
+                deletedAt: null,
+                restoredAt: new Date()
+            });
+        } catch (error) {
+            console.error(`Error restoring doctor ${id}:`, error);
+            throw error;
+        }
+    },
+
+    // Get all doctors including deleted (for admin recovery)
+    async getAllDoctorsIncludingDeleted(): Promise<Doctor[]> {
+        try {
+            const querySnapshot = await getDocs(collection(db, "doctors"));
+            return querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as Doctor));
+        } catch (error) {
+            console.error("Error fetching all doctors:", error);
+            return [];
         }
     }
 };

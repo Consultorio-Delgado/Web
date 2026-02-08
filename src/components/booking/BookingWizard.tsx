@@ -51,6 +51,10 @@ export function BookingWizard() {
     // Processing
     const [bookingProcessing, setBookingProcessing] = useState(false);
 
+    // Appointment limit check
+    const [hasReachedLimit, setHasReachedLimit] = useState(false);
+    const [checkingLimit, setCheckingLimit] = useState(true);
+
     // Auth Guard
     useEffect(() => {
         if (!loading && !user) {
@@ -59,6 +63,26 @@ export function BookingWizard() {
             router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
         }
     }, [user, loading, router, pathname, searchParams]);
+
+    // Check appointment limit
+    useEffect(() => {
+        if (!user) return;
+
+        const checkLimit = async () => {
+            try {
+                const activeCount = await appointmentService.countActiveAppointments(user.uid);
+                if (activeCount >= 2) {
+                    setHasReachedLimit(true);
+                }
+            } catch (error) {
+                console.error("Error checking appointment limit:", error);
+            } finally {
+                setCheckingLimit(false);
+            }
+        };
+
+        checkLimit();
+    }, [user]);
 
     // Load initial data and handle params
     useEffect(() => {
@@ -187,9 +211,14 @@ export function BookingWizard() {
             // 4. Show success screen
             setStep(4);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Error al confirmar el turno. Intente nuevamente.");
+            if (error?.message?.includes('LIMIT_EXCEEDED')) {
+                toast.error("Ya tienes 2 turnos activos. No puedes sacar más turnos.");
+                setHasReachedLimit(true);
+            } else {
+                toast.error("Error al confirmar el turno. Intente nuevamente.");
+            }
         } finally {
             setBookingProcessing(false);
         }
@@ -199,12 +228,37 @@ export function BookingWizard() {
     const morningSlots = availableSlots.filter(t => parseInt(t.split(':')[0]) < 13);
     const afternoonSlots = availableSlots.filter(t => parseInt(t.split(':')[0]) >= 13);
 
-    if (loading) {
+    if (loading || checkingLimit) {
         return <div className="flex justify-center items-center min-h-[400px]"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>;
     }
 
     if (!user) {
         return null; // Prevents flashing content before redirect
+    }
+
+    // Show limit reached blocker
+    if (hasReachedLimit) {
+        return (
+            <div className="flex justify-center items-center min-h-[400px] p-4">
+                <Card className="max-w-md w-full text-center border-orange-300 bg-orange-50">
+                    <CardHeader>
+                        <div className="mx-auto bg-orange-100 rounded-full p-4 w-fit mb-4">
+                            <AlertCircle className="h-12 w-12 text-orange-600" />
+                        </div>
+                        <CardTitle className="text-orange-700">Límite de Turnos Alcanzado</CardTitle>
+                        <CardDescription>
+                            Ya tienes <strong>2 turnos activos</strong>. No puedes sacar más turnos hasta que alguno de ellos finalice o sea cancelado.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button onClick={() => router.push('/portal')} className="w-full">
+                            <ArrowRight className="mr-2 h-4 w-4" />
+                            Ver Mis Turnos
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
     }
 
     // --- Steps Render ---

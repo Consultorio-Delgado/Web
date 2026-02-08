@@ -187,17 +187,19 @@ export default function DailyAgendaPage() {
                         const isCompleted = appt?.status === 'completed';
                         const isAbsent = appt?.status === 'absent';
                         const isCancelled = appt?.status === 'cancelled';
-                        const isConfirmed = appt?.status === 'confirmed' || appt?.status === 'pending';
+                        const isPending = appt?.status === 'pending';
+                        const isConfirmed = appt?.status === 'confirmed';
 
                         return (
                             <Card key={index} className={cn(
                                 "transition-colors",
-                                isArrived ? "border-amber-300 bg-amber-50/50 ring-2 ring-amber-300" :
-                                    isCompleted ? "border-green-300 bg-green-50/50" :
-                                        isAbsent || isCancelled ? "border-red-200 bg-red-50/30 opacity-60" :
-                                            slot.status === 'occupied' ? "border-blue-200 bg-blue-50/50" :
-                                                slot.status === 'blocked' ? "border-red-200 bg-red-50/50" :
-                                                    slot.status === 'free' ? "hover:border-green-300" : "opacity-60 bg-slate-50"
+                                isPending ? "border-orange-400 bg-orange-50/50 ring-2 ring-orange-300 animate-pulse" :
+                                    isArrived ? "border-amber-300 bg-amber-50/50 ring-2 ring-amber-300" :
+                                        isCompleted ? "border-green-300 bg-green-50/50" :
+                                            isAbsent || isCancelled ? "border-red-200 bg-red-50/30 opacity-60" :
+                                                slot.status === 'occupied' ? "border-blue-200 bg-blue-50/50" :
+                                                    slot.status === 'blocked' ? "border-red-200 bg-red-50/50" :
+                                                        slot.status === 'free' ? "hover:border-green-300" : "opacity-60 bg-slate-50"
                             )}>
                                 <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                     <div className="flex items-center gap-4 min-w-[120px]">

@@ -1,31 +1,93 @@
 import { db } from "@/lib/firebase";
 import { Appointment } from "@/types";
-import { addDoc, collection, doc, updateDoc, query, where, getDocs, Timestamp } from "firebase/firestore";
+import { addDoc, collection, doc, updateDoc, query, where, getDocs, Timestamp, runTransaction } from "firebase/firestore";
 import { startOfDay, endOfDay } from "date-fns";
 
 import { auditService } from "./auditService";
 
 export const appointmentService = {
-    async createAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'status'> & { createdAt?: Date }): Promise<string> {
+    // Count active (future, non-cancelled) appointments for a patient
+    async countActiveAppointments(patientId: string): Promise<number> {
         try {
-            const docRef = await addDoc(collection(db, "appointments"), {
-                ...appointmentData,
-                status: 'confirmed', // Auto-confirm for now
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
-                date: Timestamp.fromDate(appointmentData.date) // Ensure Date is saved as Timestamp
+            const now = new Date();
+            const q = query(
+                collection(db, "appointments"),
+                where("patientId", "==", patientId),
+                where("date", ">=", Timestamp.fromDate(now))
+            );
+
+            const querySnapshot = await getDocs(q);
+            // Filter out cancelled/absent/completed appointments client-side
+            const activeStatuses = ['pending', 'confirmed', 'arrived'];
+            const activeAppointments = querySnapshot.docs.filter(doc => {
+                const data = doc.data();
+                return activeStatuses.includes(data.status);
             });
 
-            // Audit
-            // We need to pass the ID of the user performing the action (Doctor or Patient)
-            // Since this runs client-side (mostly), we can get it from auth.
-            // However, this is a service function. Ideally, the caller passes the actorId or we get it from auth.
-            // Let's import auth.
+            return activeAppointments.length;
+        } catch (error) {
+            console.error("Error counting active appointments:", error);
+            return 0;
+        }
+    },
+
+    async createAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'status'> & { createdAt?: Date }): Promise<string> {
+        try {
+            // Check if patient already has 2 active appointments
+            const activeCount = await this.countActiveAppointments(appointmentData.patientId);
+            if (activeCount >= 2) {
+                throw new Error("LIMIT_EXCEEDED: Ya tienes 2 turnos activos. No puedes sacar más turnos hasta que alguno finalice.");
+            }
+
+            // Use transaction to atomically check slot availability and create appointment
+            const newAppointmentId = await runTransaction(db, async (transaction) => {
+                // 1. Check if slot is already taken (same doctor, same date, same time)
+                const appointmentDate = appointmentData.date;
+                const startOfSlot = startOfDay(appointmentDate);
+                const endOfSlot = endOfDay(appointmentDate);
+
+                // Query for conflicting appointments
+                const conflictQuery = query(
+                    collection(db, "appointments"),
+                    where("doctorId", "==", appointmentData.doctorId),
+                    where("date", ">=", Timestamp.fromDate(startOfSlot)),
+                    where("date", "<=", Timestamp.fromDate(endOfSlot))
+                );
+
+                const conflictSnapshot = await getDocs(conflictQuery);
+
+                // Check if any appointment has the same time and is active
+                const activeStatuses = ['pending', 'confirmed', 'arrived'];
+                const hasConflict = conflictSnapshot.docs.some(doc => {
+                    const data = doc.data();
+                    return data.time === appointmentData.time &&
+                        activeStatuses.includes(data.status) &&
+                        data.patientId !== 'blocked'; // Allow booking on top of blocked only by admin
+                });
+
+                if (hasConflict) {
+                    throw new Error("SLOT_TAKEN: Lo sentimos, este turno fue tomado hace un instante. Por favor elige otro horario.");
+                }
+
+                // 2. Create the new appointment document
+                const newDocRef = doc(collection(db, "appointments"));
+                transaction.set(newDocRef, {
+                    ...appointmentData,
+                    status: 'confirmed',
+                    createdAt: Timestamp.now(),
+                    updatedAt: Timestamp.now(),
+                    date: Timestamp.fromDate(appointmentData.date)
+                });
+
+                return newDocRef.id;
+            });
+
+            // Audit (outside transaction - fire and forget)
             const { auth } = await import("@/lib/firebase");
             const actorId = auth.currentUser?.uid || 'unknown';
 
             await auditService.logAction('APPOINTMENT_CREATED', actorId, {
-                appointmentId: docRef.id,
+                appointmentId: newAppointmentId,
                 date: appointmentData.date,
                 patientId: appointmentData.patientId,
                 patientName: appointmentData.patientName,
@@ -44,17 +106,22 @@ export const appointmentService = {
                         doctorName: appointmentData.doctorName || 'Dr. (Consultar en Portal)',
                         date: appointmentData.date.toLocaleDateString(),
                         time: appointmentData.time,
-                        appointmentId: docRef.id
+                        appointmentId: newAppointmentId
                     }
                 })
             }).catch(err => console.error("Failed to send email:", err));
 
-            return docRef.id;
-        } catch (error) {
+            return newAppointmentId;
+        } catch (error: any) {
             console.error("Error creating appointment:", error);
+            // Re-throw with clean message for SLOT_TAKEN errors
+            if (error?.message?.includes('SLOT_TAKEN')) {
+                throw new Error("SLOT_TAKEN: Lo sentimos, este turno fue tomado hace un instante. Por favor elige otro horario.");
+            }
             throw error;
         }
     },
+
 
     async getMyAppointments(patientId: string): Promise<Appointment[]> {
         try {
