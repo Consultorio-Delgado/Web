@@ -14,32 +14,38 @@ export const availabilityService = {
         const slotDuration = doctor.slotDuration;
         const dateString = format(date, 'yyyy-MM-dd');
 
-        // 0. Check Exceptions
+        // 0. Check Exceptional Schedule (Overrides Work Day & Regular Hours)
+        const exceptionalDay = doctor.exceptionalSchedule?.find(s => s.date === dateString);
+
+        // 1. Check Exceptions (Blocked Days) - only if no exceptional schedule or if logic requires
+        // If there is an exceptional schedule, we assume it's a "Working Day" with custom hours, unless blocked explicitly.
+        // But usually "Exceptional Day" implies "Working".
+        // Let's keep exceptionService check for global blocks or specific blocks.
         const { exceptionService } = await import('./exceptionService');
         const exceptions = await exceptionService.getByDate(dateString);
         const isBlockedGlobal = exceptions.some(e => !e.doctorId);
         const isBlockedDoctor = exceptions.some(e => e.doctorId === doctor.id);
 
-        // 1. Validate Work Day
+        // 2. Validate Work Day
         const dayOfWeek = date.getDay(); // 0 = Sunday
-        const isWorkDay = workDays.includes(dayOfWeek);
+        const isRegularWorkDay = workDays.includes(dayOfWeek);
+
+        const isWorkDay = exceptionalDay ? true : isRegularWorkDay;
 
         if (!isWorkDay || isBlockedGlobal || isBlockedDoctor) {
-            // If marked as blocked explicitly in exceptions, return entire day as blocked?
-            // Or just return empty if it's not a work day.
-            // Requirement: "si esta bloqueado, poner un boton que diga desbloquear"
-            // So we need to return distinct state for blocked vs non-work day.
-            // For now, let's treat them similarly for slot generation (no slots), 
-            // but the UI will handle the "Unlock" button based on the *Day* status, not slots.
-            // However, for the "Day View" listing, if it blocked, we might want to show slots as "Blocked"?
-            // Let's generate slots anyway but mark them as blocked if it is a workday but has an exception.
             if (!isWorkDay) return [];
-            // If it IS a workday but blocked by exception, we proceed but mark status as blocked.
+            // If blocked by exception service, return empty or blocked slots?
+            // Existing logic returns empty if not workday, but if blocked it proceeds to mark slots as blocked.
+            // Let's stick to existing logic for blocks.
         }
 
-        // 2. Parsers
-        const [startH, startM] = startHour.split(':').map(Number);
-        const [endH, endM] = endHour.split(':').map(Number);
+        // 3. Parsers
+        // Use Exceptional Hours if available, else Regular Hours
+        const startHourToUse = exceptionalDay ? exceptionalDay.startHour : startHour;
+        const endHourToUse = exceptionalDay ? exceptionalDay.endHour : endHour;
+
+        const [startH, startM] = startHourToUse.split(':').map(Number);
+        const [endH, endM] = endHourToUse.split(':').map(Number);
 
         let currentTime = new Date(date);
         currentTime.setHours(startH, startM, 0, 0);

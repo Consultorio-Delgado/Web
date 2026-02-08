@@ -125,7 +125,10 @@ export default function VirtualConsultationPage() {
             return;
         }
 
-        if (formData.doctorId === 'capparelli') {
+        const selectedDoctor = doctors.find(d => d.id === formData.doctorId);
+        const isCapparelli = selectedDoctor?.lastName?.toLowerCase().includes('capparelli');
+
+        if (isCapparelli) {
             toast.error("El Dr. Capparelli no está recibiendo consultas virtuales por el momento.");
             return;
         }
@@ -133,8 +136,6 @@ export default function VirtualConsultationPage() {
         setLoading(true);
 
         try {
-            const selectedDoctor = doctors.find(d => d.id === formData.doctorId);
-
             const attachments = await Promise.all(files.map(async (file) => ({
                 filename: file.name,
                 content: await convertToBase64(file)
@@ -147,7 +148,7 @@ export default function VirtualConsultationPage() {
                     ...formData,
                     doctorName: selectedDoctor ? (
                         selectedDoctor.id === 'secondi' ? 'Dra. María Verónica Secondi' :
-                            selectedDoctor.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                            isCapparelli ? 'Dr. Germán Capparelli' :
                                 `${selectedDoctor.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor.lastName}`
                     ) : "",
                     attachments
@@ -207,6 +208,9 @@ export default function VirtualConsultationPage() {
         );
     }
 
+    const selectedDoctorForRender = doctors.find(d => d.id === formData.doctorId);
+    const isCapparelliSelected = selectedDoctorForRender?.lastName?.toLowerCase().includes('capparelli');
+
     return (
         <div className="container mx-auto px-4 py-8 max-w-2xl">
             <Card>
@@ -227,6 +231,8 @@ export default function VirtualConsultationPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {doctors.map((doc) => {
                                     const isSelected = formData.doctorId === doc.id;
+                                    const isDocCapparelli = doc.lastName.toLowerCase().includes('capparelli');
+
                                     return (
                                         <div
                                             key={doc.id}
@@ -240,9 +246,9 @@ export default function VirtualConsultationPage() {
                                             `}
                                         >
                                             <div className={`h-12 w-12 rounded-full overflow-hidden flex-shrink-0 border-2 ${isSelected ? 'border-slate-700' : 'border-slate-100'}`}>
-                                                {doc.photoURL || DOCTOR_PHOTOS[doc.id] ? (
+                                                {doc.photoURL || DOCTOR_PHOTOS[doc.id] || (isDocCapparelli ? DOCTOR_PHOTOS['capparelli'] : null) || (doc.lastName.toLowerCase().includes('secondi') ? DOCTOR_PHOTOS['secondi'] : null) ? (
                                                     <img
-                                                        src={doc.photoURL || DOCTOR_PHOTOS[doc.id]}
+                                                        src={doc.photoURL || DOCTOR_PHOTOS[doc.id] || (isDocCapparelli ? DOCTOR_PHOTOS['capparelli'] : null) || (doc.lastName.toLowerCase().includes('secondi') ? DOCTOR_PHOTOS['secondi'] : null) || ""}
                                                         alt={`${doc.firstName} ${doc.lastName}`}
                                                         className="h-full w-full object-cover"
                                                     />
@@ -257,7 +263,7 @@ export default function VirtualConsultationPage() {
                                             <div className="flex flex-col text-left">
                                                 <span className={`font-semibold ${isSelected ? 'text-white' : 'text-slate-900'}`}>
                                                     {doc.id === 'secondi' ? 'Dra. María Verónica Secondi' :
-                                                        doc.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                                        isDocCapparelli ? 'Dr. Germán Capparelli' :
                                                             `${doc.gender === 'female' ? 'Dra.' : 'Dr.'} ${doc.lastName}`}
                                                 </span>
                                                 <span className={`text-xs ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
@@ -272,7 +278,7 @@ export default function VirtualConsultationPage() {
 
                         <div className="border-t pt-4" />
 
-                        {formData.doctorId === 'capparelli' && (
+                        {isCapparelliSelected && (
                             <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center space-y-4 shadow-sm animate-in fade-in zoom-in-95 duration-300">
                                 <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
                                     <AlertTriangle className="h-8 w-8 text-red-600" />
@@ -293,7 +299,7 @@ export default function VirtualConsultationPage() {
                             </div>
                         )}
 
-                        {formData.doctorId && formData.doctorId !== 'capparelli' && (
+                        {formData.doctorId && !isCapparelliSelected && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
                                 {/* Payment Link Banner */}

@@ -34,6 +34,11 @@ export interface Doctor {
     color: string; // For calendar UI
     acceptedInsurances?: string[]; // Array of strings from INSURANCE_PROVIDERS
     maxDaysAhead?: number; // Maximum days in future for booking
+    exceptionalSchedule?: {
+        date: string; // YYYY-MM-DD
+        startHour: string; // "09:00"
+        endHour: string;   // "17:00"
+    }[];
 }
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived' | 'absent';

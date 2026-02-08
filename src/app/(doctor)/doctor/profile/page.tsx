@@ -33,6 +33,12 @@ export default function DoctorProfilePage() {
     const [workDays, setWorkDays] = useState<number[]>([]);
     const [acceptedInsurances, setAcceptedInsurances] = useState<string[]>([]);
     const [maxDaysAhead, setMaxDaysAhead] = useState(30);
+    const [exceptionalSchedule, setExceptionalSchedule] = useState<{ date: string; startHour: string; endHour: string }[]>([]);
+
+    // New state for adding exceptional day
+    const [newExceptionalDate, setNewExceptionalDate] = useState("");
+    const [newExceptionalStart, setNewExceptionalStart] = useState("09:00");
+    const [newExceptionalEnd, setNewExceptionalEnd] = useState("17:00");
 
     useEffect(() => {
         const fetchDoctor = async () => {
@@ -51,6 +57,7 @@ export default function DoctorProfilePage() {
                     setWorkDays(docData.schedule.workDays);
                     setAcceptedInsurances(docData.acceptedInsurances || []);
                     setMaxDaysAhead(docData.maxDaysAhead || 30);
+                    setExceptionalSchedule(docData.exceptionalSchedule || []);
                 }
             } catch (err) {
                 console.error(err);
@@ -88,6 +95,7 @@ export default function DoctorProfilePage() {
                 },
                 acceptedInsurances: acceptedInsurances,
                 maxDaysAhead: maxDaysAhead,
+                exceptionalSchedule: exceptionalSchedule,
                 ...(doctor?.imageUrl ? { imageUrl: doctor.imageUrl } : {}),
                 ...(doctor?.email ? { email: doctor.email } : {})
             };
@@ -117,6 +125,33 @@ export default function DoctorProfilePage() {
         } else {
             setAcceptedInsurances([...acceptedInsurances, insurance]);
         }
+    };
+
+    const addExceptionalDay = () => {
+        if (!newExceptionalDate) {
+            toast.error("Seleccione una fecha");
+            return;
+        }
+        // Validate date is not already added
+        if (exceptionalSchedule.some(s => s.date === newExceptionalDate)) {
+            toast.error("Ya existe una configuración para esta fecha");
+            return;
+        }
+
+        // Add new exceptional day
+        const newSchedule = [...exceptionalSchedule, {
+            date: newExceptionalDate,
+            startHour: newExceptionalStart,
+            endHour: newExceptionalEnd
+        }].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        setExceptionalSchedule(newSchedule);
+        setNewExceptionalDate("");
+        toast.success("Día excepcional agregado");
+    };
+
+    const removeExceptionalDay = (dateToRemove: string) => {
+        setExceptionalSchedule(exceptionalSchedule.filter(s => s.date !== dateToRemove));
     };
 
     if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>;
