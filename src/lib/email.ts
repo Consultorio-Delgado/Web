@@ -158,7 +158,7 @@ export const emailService = {
 
             await resend.emails.send({
                 from: FROM_EMAIL,
-                to: 'recepcion@consultoriodelgado.com',
+                to: 'turnosconsultoriodelgado@gmail.com',
                 replyTo: data.email,
                 subject: `Nuevo mensaje de contacto: ${data.name}`,
                 html: html

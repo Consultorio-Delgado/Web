@@ -54,6 +54,9 @@ export function BookingWizard() {
     // Appointment limit check - now per-doctor (handled on doctor selection)
     const [doctorLimitReached, setDoctorLimitReached] = useState<string | null>(null); // Stores doctor name if limit reached
 
+    // Track which doctors patient already has active appointments with
+    const [existingAppointmentDoctors, setExistingAppointmentDoctors] = useState<{ id: string, name: string }[]>([]);
+
     // Auth Guard
     useEffect(() => {
         if (!loading && !user) {
@@ -73,12 +76,28 @@ export function BookingWizard() {
                 const data = await doctorService.getAllDoctors();
                 setDoctors(data);
 
+                // Fetch which doctors patient already has active appointments with
+                const existingDoctors: { id: string, name: string }[] = [];
+                for (const doc of data) {
+                    const activeCount = await appointmentService.countActiveAppointments(user.uid, doc.id);
+                    if (activeCount > 0) {
+                        existingDoctors.push({ id: doc.id, name: `${doc.lastName}, ${doc.firstName}` });
+                    }
+                }
+                setExistingAppointmentDoctors(existingDoctors);
+
                 // Handle preselection logic
                 if (preselectedDoctorId) {
                     const doc = data.find(d => d.id === preselectedDoctorId);
                     if (doc) {
-                        setSelectedDoctor(doc);
-                        setStep(2); // Skip directly to Date/Time selection
+                        // Check if already has appointment with this doctor
+                        const hasExisting = existingDoctors.some(ed => ed.id === preselectedDoctorId);
+                        if (hasExisting) {
+                            setDoctorLimitReached(`${doc.lastName}, ${doc.firstName}`);
+                        } else {
+                            setSelectedDoctor(doc);
+                            setStep(2); // Skip directly to Date/Time selection
+                        }
                     }
                 }
             } catch (err) {
@@ -89,7 +108,7 @@ export function BookingWizard() {
             }
         };
         fetchDoctors();
-    }, [preselectedDoctorId]);
+    }, [preselectedDoctorId, user]);
 
     // Fetch exceptions when doctor changes
     useEffect(() => {
@@ -274,6 +293,29 @@ export function BookingWizard() {
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900">1. Seleccione un Profesional</h1>
                     <p className="text-slate-500 mt-2">Elija el médico con el que desea atenderse.</p>
                 </header>
+
+                {/* Banner showing existing appointments */}
+                {existingAppointmentDoctors.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <h3 className="font-semibold text-blue-800">
+                                {existingAppointmentDoctors.length === 1
+                                    ? "Ya tienes un turno activo"
+                                    : "Ya tienes turnos activos"}
+                            </h3>
+                            <p className="text-blue-700 text-sm mt-1">
+                                No puedes sacar más turnos con{" "}
+                                <span className="font-bold">
+                                    {existingAppointmentDoctors.map(d => d.name).join(" y ")}
+                                </span>.
+                                {existingAppointmentDoctors.length < 2 && (
+                                    <span className="block mt-1">Puedes elegir otro profesional para tu próximo turno.</span>
+                                )}
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {!hasDoctors && profile?.insurance && (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 flex items-start gap-3">
