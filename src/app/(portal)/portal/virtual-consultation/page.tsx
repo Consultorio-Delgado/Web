@@ -27,7 +27,7 @@ interface VirtualConsultationFormData {
     fechaNacimiento: string;
     telefono: string;
     email: string;
-    tipoConsulta: string;
+
     consulta: string;
 }
 
@@ -46,7 +46,7 @@ export default function VirtualConsultationPage() {
         fechaNacimiento: profile?.birthDate || "",
         telefono: profile?.phone || "",
         email: user?.email || "",
-        tipoConsulta: "",
+
         consulta: "",
     });
 
@@ -164,7 +164,7 @@ export default function VirtualConsultationPage() {
             setFormData(prev => ({
                 ...prev,
                 doctorId: "",
-                tipoConsulta: "",
+
                 consulta: ""
             }));
             toast.success("¡Solicitud enviada correctamente!");
@@ -366,19 +366,7 @@ export default function VirtualConsultationPage() {
                                     <Input id="email" type="email" value={formData.email} onChange={handleChange} required disabled={loading} />
                                 </div>
 
-                                <div>
-                                    <Label htmlFor="tipoConsulta">Tipo de consulta *</Label>
-                                    <Select onValueChange={(v) => handleSelectChange("tipoConsulta", v)} value={formData.tipoConsulta}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Elegir forma de comunicación" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="videollamada">Videollamada</SelectItem>
-                                            <SelectItem value="llamada">Llamada Telefónica</SelectItem>
-                                            <SelectItem value="chat">Chat / Email</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+
 
                                 <div>
                                     <Label htmlFor="consulta">Consulta *</Label>

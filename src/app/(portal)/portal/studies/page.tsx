@@ -14,7 +14,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { Loader2, FileText, Send, CheckCircle, AlertTriangle, Paperclip, XCircle } from "lucide-react";
+import { Loader2, FileText, Send, CheckCircle, AlertTriangle, Paperclip, XCircle, Microscope } from "lucide-react";
 import { toast } from "sonner";
 import { doctorService } from "@/services/doctorService";
 import type { Doctor } from "@/types";
@@ -28,7 +28,7 @@ const COBERTURAS = [
     "Otra"
 ];
 
-interface PrescriptionFormData {
+interface StudyFormData {
     doctorId: string;
     nombre: string;
     apellido: string;
@@ -39,15 +39,15 @@ interface PrescriptionFormData {
     numeroAfiliado: string;
     plan: string;
     token: string;
-    medicamentos: string;
+    pedido: string;
 }
 
-export default function PrescriptionsPage() {
+export default function StudiesPage() {
     const { user, profile, loading: authLoading } = useAuth();
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
-    const [formData, setFormData] = useState<PrescriptionFormData>({
+    const [formData, setFormData] = useState<StudyFormData>({
         doctorId: "",
         nombre: profile?.firstName || "",
         apellido: profile?.lastName || "",
@@ -58,7 +58,7 @@ export default function PrescriptionsPage() {
         numeroAfiliado: "",
         plan: "",
         token: "",
-        medicamentos: "",
+        pedido: "",
     });
 
     const [files, setFiles] = useState<File[]>([]);
@@ -152,7 +152,7 @@ export default function PrescriptionsPage() {
                 content: await convertToBase64(file)
             })));
 
-            const response = await fetch("/api/prescriptions", {
+            const response = await fetch("/api/studies", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -175,10 +175,10 @@ export default function PrescriptionsPage() {
             setFormData(prev => ({
                 ...prev,
                 doctorId: "",
-                medicamentos: "",
+                pedido: "",
                 token: ""
             }));
-            toast.success("¡Solicitud enviada! La receta llegará dentro de los 5 días hábiles.");
+            toast.success("¡Solicitud enviada! La orden llegará dentro de los 5 días hábiles.");
         } catch (error) {
             console.error(error);
             toast.error("Error al enviar la solicitud. Intente nuevamente.");
@@ -200,16 +200,16 @@ export default function PrescriptionsPage() {
             <div className="container mx-auto px-4 py-8 max-w-2xl">
                 <Card>
                     <CardContent className="pt-8 pb-8 text-center">
-                        <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <CheckCircle className="h-8 w-8 text-green-600" />
+                        <div className="h-16 w-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <CheckCircle className="h-8 w-8 text-purple-600" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Solicitud Enviada!</h2>
-                        <p className="text-slate-600 mb-2">Tu pedido de receta fue enviado correctamente.</p>
+                        <p className="text-slate-600 mb-2">Tu pedido de estudios fue enviado correctamente.</p>
                         <p className="text-sm text-slate-500 mb-6">
-                            La receta llegará dentro de los <strong>5 días hábiles</strong>.
+                            La orden llegará dentro de los <strong>5 días hábiles</strong>.
                         </p>
-                        <Button onClick={() => setSuccess(false)}>
-                            Solicitar Otra Receta
+                        <Button onClick={() => setSuccess(false)} className="bg-purple-600 hover:bg-purple-700">
+                            Solicitar Otro Estudio
                         </Button>
                     </CardContent>
                 </Card>
@@ -221,19 +221,19 @@ export default function PrescriptionsPage() {
         <div className="container mx-auto px-4 py-8 max-w-2xl">
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-primary" />
-                        Solicitar Receta Médica
+                    <CardTitle className="flex items-center gap-2 text-purple-700">
+                        <Microscope className="h-6 w-6" />
+                        Solicitar Estudios / PAPs
                     </CardTitle>
                     <CardDescription>
-                        Complete el formulario para solicitar una receta médica a su profesional.
+                        Complete el formulario para solicitar órdenes de estudios o PAPs a su profesional.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start gap-3">
                         <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-amber-800">
-                            <strong>Importante:</strong> Si solicita una receta para un familiar que es paciente, complete todos los datos del paciente en cuestión.
+                            <strong>Importante:</strong> Si solicita una orden para un familiar que es paciente, complete todos los datos del paciente en cuestión.
                         </p>
                     </div>
 
@@ -251,8 +251,8 @@ export default function PrescriptionsPage() {
                                             className={`
                                                 cursor-pointer rounded-full border py-3 px-4 text-center transition-all font-medium select-none
                                                 ${isSelected
-                                                    ? "bg-slate-200 border-slate-300 text-slate-900 shadow-inner"
-                                                    : "bg-white border-slate-200 text-slate-600 hover:border-primary/50 hover:bg-slate-50"
+                                                    ? "bg-purple-100 border-purple-300 text-purple-900 shadow-inner"
+                                                    : "bg-white border-slate-200 text-slate-600 hover:border-purple-200 hover:bg-purple-50"
                                                 }
                                             `}
                                         >
@@ -268,41 +268,19 @@ export default function PrescriptionsPage() {
                         {/* Conditional Form Content */}
                         {formData.doctorId && (
                             <>
-                                {formData.doctorId === 'capparelli' ? (
-                                    <div className="space-y-4">
-                                        <div className="bg-white border-l-4 border-red-500 p-4 shadow-sm">
-                                            <h3 className="text-lg font-bold text-red-600 mb-2">
-                                                CON LA NUEVA DISPOSICION DE RECETAS DIGITALES DEL MINISTERIO DE SALUD EN EL 2023 LAS RECETAS SERÁN TODAS CON CODIGO DE BARRA INCLUSIVE LAS DE PSICOFARMACO
-                                            </h3>
-                                        </div>
-
-                                        <div className="text-sm text-slate-700 space-y-3">
-                                            <p>
-                                                Tiene <strong>SWISSMEDICAL, LUIS PASTEUR, GALENO u OMINT</strong>, como la receta se genera automáticamente por una red ajena a nosotros, a veces tiene errores, verifique que su receta debajo del código de barras comience con el número <strong>9207</strong> y al pie de la receta salga la palabra <strong>FARMALINK</strong> y un número, sino es así avísenos para poder rehacerla.
-                                            </p>
-                                            <p>
-                                                Complete todo el formulario para solicitar una receta cumpliendo los requerimientos de cada cobertura, <strong className="text-green-600">RECUERDE SI TIENE OMINT O SWISSMEDICAL COLOCAR EL TOKEN. PARA GALENO Y OSDE SE SOLICITARÁ POR WHATSAPP.</strong>
-                                            </p>
-                                            <p>
-                                                Luego de completar el formulario recibirá por mail las mismas en el transcurso de la semana.
-                                            </p>
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                                    <div className="flex items-start gap-2">
+                                        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                        <div className="text-sm text-amber-800">
+                                            <p className="font-semibold">MUY IMPORTANTE:</p>
+                                            <ul className="list-disc pl-4 mt-1 space-y-1">
+                                                <li>La orden llegará dentro de los <strong>5 días hábiles</strong>.</li>
+                                                <li>Solo se realizan órdenes de estudios indicados por el profesional.</li>
+                                                <li>La prescripción está reservada a pacientes con historia clínica y controles actualizados.</li>
+                                            </ul>
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
-                                        <div className="flex items-start gap-2">
-                                            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                                            <div className="text-sm text-amber-800">
-                                                <p className="font-semibold">MUY IMPORTANTE:</p>
-                                                <ul className="list-disc pl-4 mt-1 space-y-1">
-                                                    <li>La receta llegará dentro de los <strong>5 días hábiles</strong>.</li>
-                                                    <li>Solo se realizan recetas de medicación indicada por el profesional.</li>
-                                                    <li>La prescripción está reservada a pacientes con historia clínica y controles actualizados.</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                                </div>
 
                                 <div className="border-t pt-4" />
 
@@ -382,7 +360,7 @@ export default function PrescriptionsPage() {
                                         </SelectContent>
                                     </Select>
                                     <p className="text-xs text-slate-500">
-                                        Si no se encuentra en el listado seleccione "Otra" y especifíquela abajo junto al pedido de la medicación.
+                                        Si no se encuentra en el listado seleccione "Otra" y especifíquela abajo junto al pedido.
                                     </p>
                                 </div>
 
@@ -426,15 +404,15 @@ export default function PrescriptionsPage() {
 
                                 <div className="border-t pt-4" />
 
-                                {/* Medications */}
+                                {/* Order Request */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="medicamentos">Medicamentos que necesita *</Label>
+                                    <Label htmlFor="pedido">Estudios que necesita *</Label>
                                     <Textarea
-                                        id="medicamentos"
+                                        id="pedido"
                                         required
                                         rows={4}
-                                        placeholder="Coloque qué medicamentos y dosis necesita para poder confeccionar correctamente la receta."
-                                        value={formData.medicamentos}
+                                        placeholder="Coloque qué estudios o prácticas necesita."
+                                        value={formData.pedido}
                                         onChange={handleChange}
                                         disabled={loading}
                                     />
@@ -501,7 +479,7 @@ export default function PrescriptionsPage() {
                                             <div className="flex items-start gap-2 mt-4 pt-4 border-t border-slate-200">
                                                 <div className="h-5 w-5 flex items-center justify-center rounded-full bg-red-100 text-red-600 font-bold text-xs">!</div>
                                                 <p className="text-slate-500 text-xs">
-                                                    Recuerde revisar la bandeja de SPAM ya que la misma puede entrar a dicha casilla, la receta puede ir desde el remitente DrApp , RCTA TU RECETA DIGITAL o SWISSMEDICAL.
+                                                    Recuerde revisar la bandeja de SPAM ya que la misma puede entrar a dicha casilla, la orden puede ir desde el remitente DrApp , RCTA TU RECETA DIGITAL o SWISSMEDICAL.
                                                 </p>
                                             </div>
                                         </>
@@ -514,7 +492,7 @@ export default function PrescriptionsPage() {
                                     )}
                                 </div>
 
-                                <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                                <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white" size="lg" disabled={loading}>
                                     {loading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, PlusCircle, ArrowRight, Video } from "lucide-react";
+import { CalendarDays, PlusCircle, ArrowRight, Video, Microscope } from "lucide-react";
 
 
 import Link from "next/link";
@@ -96,6 +96,12 @@ export default function PortalDashboard() {
                     <Link href="/portal/prescriptions" className="block w-full md:w-auto">
                         <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-primary text-primary hover:bg-primary/5 font-medium transition-transform hover:scale-105">
                             Solicitar Receta
+                        </Button>
+                    </Link>
+                    <Link href="/portal/studies" className="block w-full md:w-auto">
+                        <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-purple-600 text-purple-600 hover:bg-purple-50 font-medium transition-transform hover:scale-105">
+                            <Microscope className="mr-2 h-5 w-5" />
+                            Solicitar Estudios
                         </Button>
                     </Link>
                     <Link href="/portal/new-appointment" className="block w-full md:w-auto">
