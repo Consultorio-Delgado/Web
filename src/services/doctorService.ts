@@ -26,10 +26,27 @@ export const doctorService = {
                 where("isDeleted", "!=", true)
             );
             const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            } as Doctor));
+            return querySnapshot.docs.map(doc => {
+                const data = doc.data() as Doctor;
+                // Specific Bio Overrides (User Request)
+                if (doc.id === 'secondi') {
+                    data.bio = `Especialista en Ginecología. Ministerio de Salud. UA. AMA. SOGIBA.
+Certificación médica Ginecología y Obstetricia. Academia Nacional de Medicina.
+Docente Adscripta UBA.
+Miembro Plenario de la Sociedad Argentina de Ginecología y Obstetricia de Buenos Aires (SOGIBA).
+Miembro Titular de la Sociedad Argentina de Patología del TGI y Colposcopia (SAPYGIyC).`;
+                } else if (doc.id === 'capparelli') {
+                    data.bio = `Especialista Universitario en Medicina Interna UBA.
+Especialista en Clínica Médica. Ministerio de Salud. AMA.
+Docente UBA.
+Especialista Recertificado CRMA (Asociación Médica Argentina).`;
+                }
+
+                return {
+                    ...data,
+                    id: doc.id
+                } as Doctor;
+            });
         } catch (error) {
             console.error("Error fetching doctors:", error);
             // Fallback: get all and filter client-side (for backwards compatibility with existing data)
