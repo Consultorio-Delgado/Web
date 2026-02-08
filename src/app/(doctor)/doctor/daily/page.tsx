@@ -396,6 +396,30 @@ export default function DailyAgendaPage() {
             setLoading(false);
         }
     };
+    const handleUnblockSelectedSlots = async () => {
+        if (!doctor || selectedSlots.size === 0) return;
+        setLoading(true);
+        try {
+            const promises = Array.from(selectedSlots).map(async (time) => {
+                const slot = slots.find(s => s.time === time);
+                if (slot?.appointment?.id) {
+                    return appointmentService.cancelAppointment(slot.appointment.id);
+                }
+            });
+
+            await Promise.all(promises);
+
+            toast.success(`${selectedSlots.size} horarios desbloqueados.`);
+            setIsSelectionMode(false);
+            setSelectedSlots(new Set());
+            fetchSlots();
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al desbloquear horarios seleccionados");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (!profile || profile.role !== 'doctor') return <div className="p-8">Acceso denegado</div>;
 
@@ -462,16 +486,27 @@ export default function DailyAgendaPage() {
                     </Button>
                 )}
 
-                {/* Bulk Block Button */}
+                {/* Bulk Actions */}
                 {isSelectionMode && selectedSlots.size > 0 && (
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleBlockSelectedSlots}
-                        disabled={loading}
-                    >
-                        <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear ({selectedSlots.size})
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBlockSelectedSlots}
+                            disabled={loading}
+                        >
+                            <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear ({selectedSlots.size})
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-green-600 border-green-300 hover:bg-green-50"
+                            onClick={handleUnblockSelectedSlots}
+                            disabled={loading}
+                        >
+                            <Unlock className="mr-2 h-4 w-4" /> Desbloquear ({selectedSlots.size})
+                        </Button>
+                    </div>
                 )}
             </div>
 
@@ -496,10 +531,13 @@ export default function DailyAgendaPage() {
 
                         const isMySlot = doctor && slot.doctor.id === doctor.id;
 
+                        // Check if selectable
+                        const isSelectable = isSelectionMode && isMySlot && (slot.status === 'free' || slot.status === 'blocked');
+
                         return (
                             <Card key={`${index}-${slot.time}-${slot.doctor.id}`}
                                 onClick={() => {
-                                    if (isSelectionMode && slot.status === 'free' && isMySlot) {
+                                    if (isSelectable) {
                                         toggleSlotSelection(slot.time);
                                     }
                                 }}
@@ -515,18 +553,19 @@ export default function DailyAgendaPage() {
                                                             slot.status === 'free' ?
                                                                 (isMySlot ? "hover:border-green-300" : "bg-orange-50/50 border-orange-100") // Orange for others
                                                                 : "opacity-60 bg-slate-50",
-                                    isSelectionMode && slot.status === 'free' && isMySlot && "cursor-pointer hover:bg-slate-50",
+                                    isSelectable && "cursor-pointer hover:bg-slate-50",
                                     isSelectionMode && selectedSlots.has(slot.time) && "ring-2 ring-primary border-primary bg-primary/5",
                                     !isMySlot && !isSelectionMode && "opacity-90" // Slight dim for others
                                 )}>
                                 <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                     <div className="flex items-center gap-4 min-w-[140px]">
-                                        {isSelectionMode && slot.status === 'free' && isMySlot && (
+                                        {isSelectable && (
                                             <Checkbox
                                                 checked={selectedSlots.has(slot.time)}
                                                 onCheckedChange={() => toggleSlotSelection(slot.time)}
                                             />
                                         )}
+
                                         <div className={cn("border rounded-md p-2 flex flex-col items-center gap-1 shadow-sm w-[70px]",
                                             !isMySlot ? "bg-orange-100/50 border-orange-200" : "bg-white"
                                         )}>
