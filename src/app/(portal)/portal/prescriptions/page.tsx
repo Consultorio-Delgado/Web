@@ -470,10 +470,11 @@ export default function PrescriptionsPage() {
 
                                 {/* Payment Info */}
                                 <div className="bg-slate-50 border rounded-lg p-4 text-sm text-slate-600">
-                                    <p className="font-medium text-slate-800 mb-2">Si tiene coseguro o diferencial:</p>
                                     {formData.doctorId === 'capparelli' ? (
                                         <>
-                                            <p className="mb-1">Realizar la transferencia al Alias: <strong>dr.capparelli</strong></p>
+                                            <p className="font-bold text-slate-800 mb-2 uppercase">
+                                                Recuerde que si tiene coseguro o diferencial realizar la transferencia al Alias: DR.CAPPARELLI
+                                            </p>
                                             <p className="mb-4">CBU: <strong>0150509201000115863100</strong></p>
 
                                             <div className="flex items-start gap-2 mt-4 pt-4 border-t border-slate-200">
@@ -485,6 +486,7 @@ export default function PrescriptionsPage() {
                                         </>
                                     ) : (
                                         <>
+                                            <p className="font-medium text-slate-800 mb-2">Si tiene coseguro o diferencial:</p>
                                             <p className="mb-1">Realizar la transferencia al Alias: <strong>SECONDI.CONSULTORIO</strong></p>
                                             <p>CBU: <strong>0150509201000119792673</strong></p>
                                         </>

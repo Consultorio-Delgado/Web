@@ -20,7 +20,7 @@ export function Footer() {
                         <h4 className="text-lg font-serif text-white mb-2 mt-6">Dirección</h4>
                         <div className="flex items-start justify-center md:justify-start gap-2 text-slate-400">
                             <MapPin className="h-4 w-4 mt-1 flex-shrink-0" />
-                            <p>Delgado 588, CABA</p>
+                            <p>Delgado 588 1°C, CABA</p>
                         </div>
                     </div>
 
