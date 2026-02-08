@@ -155,8 +155,16 @@ export default async function LandingPage() {
               <div key={doctor.id} className="group border-t border-slate-300 py-12 cursor-pointer hover:bg-white/50 transition-colors px-4 -mx-4 rounded-lg">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                   <div className="flex items-start gap-6">
-                    <div className={`h-16 w-16 rounded-full flex items-center justify-center text-2xl font-bold shrink-0 ${getAvatarColor(doctor.color)}`}>
-                      {getInitials(doctor.firstName, doctor.lastName)}
+                    <div className={`h-16 w-16 rounded-full overflow-hidden flex items-center justify-center shrink-0 border-2 ${getAvatarColor(doctor.color).replace('bg-', 'border-').replace('text-', 'border-')}`}>
+                      {(doctor.id === 'capparelli' || doctor.lastName.toLowerCase().includes('capparelli')) ? (
+                        <img src="/assets/doctors/Ger_perfil.jpeg" alt="Dr. Capparelli" className="h-full w-full object-cover" />
+                      ) : (doctor.id === 'secondi' || doctor.lastName.toLowerCase().includes('secondi')) ? (
+                        <img src="/assets/doctors/Vero_perfil.jpeg" alt="Dra. Secondi" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className={`h-full w-full flex items-center justify-center ${getAvatarColor(doctor.color)}`}>
+                          {getInitials(doctor.firstName, doctor.lastName)}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <h3 className="text-2xl font-medium text-slate-900 group-hover:text-blue-600 transition-colors">

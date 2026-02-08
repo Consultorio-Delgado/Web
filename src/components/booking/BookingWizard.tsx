@@ -20,8 +20,8 @@ import { cn } from "@/lib/utils";
 import { INSURANCE_PROVIDERS } from "@/constants";
 
 const DOCTOR_PHOTOS: Record<string, string> = {
-    'capparelli': '/images/doc_male.png',
-    'secondi': '/images/doc_female.png',
+    'capparelli': '/assets/doctors/Ger_perfil.jpeg',
+    'secondi': '/assets/doctors/Vero_perfil.jpeg',
 };
 
 export function BookingWizard() {
