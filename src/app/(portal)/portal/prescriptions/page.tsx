@@ -263,7 +263,7 @@ export default function PrescriptionsPage() {
                         {/* Conditional Form Content */}
                         {formData.doctorId && (
                             <>
-                                {formData.doctorId === 'capparelli' ? (
+                                {(formData.doctorId === 'capparelli' || doctors.find(d => d.id === formData.doctorId)?.lastName.toLowerCase().includes('capparelli')) ? (
                                     <div className="space-y-4">
                                         <div className="bg-white border-l-4 border-red-500 p-4 shadow-sm">
                                             <h3 className="text-lg font-bold text-red-600 mb-2">
@@ -488,7 +488,8 @@ export default function PrescriptionsPage() {
 
                                 {/* Payment Info */}
                                 <div className="bg-slate-50 border rounded-lg p-4 text-sm text-slate-600">
-                                    {formData.doctorId === 'capparelli' ? (
+
+                                    {(formData.doctorId === 'capparelli' || doctors.find(d => d.id === formData.doctorId)?.lastName.toLowerCase().includes('capparelli')) ? (
                                         <>
                                             <p className="font-bold text-slate-800 mb-2">
                                                 Si tiene coseguro o diferencial:
