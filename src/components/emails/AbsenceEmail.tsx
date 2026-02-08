@@ -31,19 +31,19 @@ export const AbsenceEmail = ({
                     Notamos que no pudiste asistir a tu turno programado para hoy, {date} a las {time} hs, con {prefix} {doctorName}.
                 </Text>
                 <Text className="text-[14px] leading-[24px] text-black">
-                    Entendemos que pueden surgir imprevistos. Te invitamos a reprogramar tu visita a través de nuestro portal de pacientes o contactándonos por WhatsApp.
+                    Entendemos que pueden surgir imprevistos, pero un turno ausente implica un turno menos disponible para alguien que lo necesitaba. Por favor cancelar el turno 48hs antes por la web, para que otro paciente pueda tomarlo.
                 </Text>
                 <Text className="text-[14px] leading-[24px] text-black">
-                    Si crees que esto es un error, por favor comunícate con nosotros.
+                    Si crees que esto es un error, por favor comunícate con nosotros por el formulario de CONTACTO de la web.
                 </Text>
             </Section>
 
             <Section className="text-center mt-[32px] mb-[32px]">
                 <Button
                     className="bg-[#2563eb] rounded text-white text-[12px] font-semibold no-underline text-center px-5 py-3"
-                    href={`https://consultoriodelgado.com/portal/new-appointment`}
+                    href={`https://consultoriodelgado.com`}
                 >
-                    Reprogramar Turno
+                    Ir al Sitio Web
                 </Button>
             </Section>
         </EmailLayout>
