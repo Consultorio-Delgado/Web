@@ -17,6 +17,7 @@ type EmailData = {
     date: string;
     time: string;
     appointmentId?: string; // Optional for confirmation
+    specialty?: string; // Ginecología, Clínica Médica, etc.
 };
 
 type ActionReminderData = EmailData & {
@@ -31,7 +32,8 @@ export const emailService = {
                 doctorName: data.doctorName,
                 date: data.date,
                 time: data.time,
-                appointmentId: data.appointmentId || ''
+                appointmentId: data.appointmentId || '',
+                specialty: data.specialty
             }));
 
             await resend.emails.send({

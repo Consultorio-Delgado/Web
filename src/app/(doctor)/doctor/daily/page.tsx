@@ -15,7 +15,6 @@ import {
     Clock,
     User,
     FileText,
-    Phone,
     MapPin,
     ChevronLeft,
     ChevronRight,
@@ -604,7 +603,20 @@ export default function DailyAgendaPage() {
                                                     )}
                                                 </div>
                                                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
-                                                    <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {appt.patientPhone || '-'}</span>
+                                                    {/* Show intake info instead of phone */}
+                                                    {appt.isFirstVisit && (
+                                                        <span className="flex items-center gap-1 text-purple-600 font-medium">
+                                                            <User className="h-3 w-3" /> Primera vez
+                                                        </span>
+                                                    )}
+                                                    {appt.consultationType && (
+                                                        <span className="flex items-center gap-1 text-blue-600 font-medium">
+                                                            <FileText className="h-3 w-3" />
+                                                            {appt.consultationType === 'consulta-ginecologica' ? 'Consulta Ginecológica' :
+                                                                appt.consultationType === 'pap-colpo' ? 'Pap y Colpo' :
+                                                                    appt.consultationType === 'prueba-hpv' ? 'Prueba de HPV' : appt.consultationType}
+                                                        </span>
+                                                    )}
                                                     {appt.insurance && (
                                                         <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> {appt.insurance}</span>
                                                     )}

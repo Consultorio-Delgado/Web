@@ -104,6 +104,13 @@ export const appointmentService = {
             });
 
             // Send Email Confirmation (Fire and Forget)
+            // Determine specialty based on doctor
+            const specialty = appointmentData.doctorId === 'secondi' || appointmentData.doctorName?.toLowerCase().includes('secondi')
+                ? 'Ginecología'
+                : appointmentData.doctorId === 'capparelli' || appointmentData.doctorName?.toLowerCase().includes('capparelli')
+                    ? 'Clínica Médica'
+                    : undefined;
+
             fetch('/api/emails', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -115,7 +122,8 @@ export const appointmentService = {
                         doctorName: appointmentData.doctorName || 'Dr. (Consultar en Portal)',
                         date: appointmentData.date.toLocaleDateString(),
                         time: appointmentData.time,
-                        appointmentId: newAppointmentId
+                        appointmentId: newAppointmentId,
+                        specialty: specialty
                     }
                 })
             }).catch(err => console.error("Failed to send email:", err));

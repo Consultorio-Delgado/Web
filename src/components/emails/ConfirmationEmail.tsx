@@ -9,6 +9,7 @@ interface ConfirmationEmailProps {
     date: string;
     time: string;
     appointmentId: string;
+    specialty?: string;
 }
 
 export const ConfirmationEmail = ({
@@ -16,7 +17,8 @@ export const ConfirmationEmail = ({
     doctorName,
     date,
     time,
-    appointmentId
+    appointmentId,
+    specialty
 }: ConfirmationEmailProps) => {
     const prefix = getDoctorPrefix(doctorName);
 
@@ -38,6 +40,11 @@ export const ConfirmationEmail = ({
                 <Text className="m-0 text-[14px] leading-[24px]">
                     <strong>Profesional:</strong> {prefix} {doctorName}
                 </Text>
+                {specialty && (
+                    <Text className="m-0 text-[14px] leading-[24px] text-slate-600">
+                        <strong>Especialidad:</strong> {specialty}
+                    </Text>
+                )}
                 <Text className="m-0 text-[14px] leading-[24px]">
                     <strong>Fecha:</strong> {date}
                 </Text>
