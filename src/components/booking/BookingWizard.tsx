@@ -173,6 +173,7 @@ export function BookingWizard() {
                 doctorName: `${selectedDoctor.lastName}, ${selectedDoctor.firstName}`,
                 date: appointmentDate,
                 time: selectedTime,
+                type: 'Consulta' // Required by Firestore rules
             });
 
             // 3. If rescheduling, cancel the old one
