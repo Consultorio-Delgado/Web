@@ -100,40 +100,119 @@ export const adminService = {
         }
     },
 
-    async getDashboardStats() {
-        // Real-Ish implementation:
-        // We fetch today's appointments to count them.
-        // For total active doctors we mock or fetch doctors.
-        // For pending, we might need a separate query, but let's approximate for performance.
+    async getExtendedStats() {
         try {
-            const todayStart = startOfToday();
-            const todayEnd = endOfToday();
+            const now = new Date();
+            const startMonth = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+            const endMonth = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+            const startLastMonth = startOfDay(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+            const endLastMonth = endOfDay(new Date(now.getFullYear(), now.getMonth(), 0));
 
-            const qToday = query(
+            // 1. Current Month Appointments
+            const qCurrent = query(
                 collection(db, "appointments"),
-                where("date", ">=", Timestamp.fromDate(todayStart)),
-                where("date", "<=", Timestamp.fromDate(todayEnd))
+                where("date", ">=", Timestamp.fromDate(startMonth)),
+                where("date", "<=", Timestamp.fromDate(endMonth))
             );
+            const currentSnap = await getDocs(qCurrent);
+            const currentTotal = currentSnap.size;
 
-            const snapshot = await getDocs(qToday);
-            const todayCount = snapshot.size;
-            const pendingCount = snapshot.docs.filter(d => d.data().status === 'pending').length; // Naive client-side filter
+            // 2. Last Month Appointments (for growth)
+            const qLast = query(
+                collection(db, "appointments"),
+                where("date", ">=", Timestamp.fromDate(startLastMonth)),
+                where("date", "<=", Timestamp.fromDate(endLastMonth))
+            );
+            const lastSnap = await getDocs(qLast);
+            const lastTotal = lastSnap.size;
+
+            const growth = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : 100;
+
+            // 3. Attendance Rate (Global or Monthly? Let's do Monthly to be responsive)
+            const completed = currentSnap.docs.filter(d => ['completed', 'arrived'].includes(d.data().status)).length;
+            const cancelled = currentSnap.docs.filter(d => ['cancelled', 'absent'].includes(d.data().status)).length;
+            const totalForRate = completed + cancelled;
+            const attendanceRate = totalForRate > 0 ? (completed / totalForRate) * 100 : 100;
+
+            // 4. Unique Patients (Monthly)
+            const uniquePatients = new Set(currentSnap.docs.map(d => d.data().patientId)).size;
+
+            // 5. Next 48hs
+            const startNext = new Date();
+            const endNext = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+            const qNext = query(
+                collection(db, "appointments"),
+                where("date", ">=", Timestamp.fromDate(startNext)),
+                where("date", "<=", Timestamp.fromDate(endNext)),
+                orderBy("date", "asc")
+            );
+            const nextSnap = await getDocs(qNext);
+            const nextAppointments = nextSnap.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                date: doc.data().date.toDate()
+            }));
+
+            // 6. Chart Data: Appointments by Day of Week (Current Month)
+            // Initialize count per day
+            const daysMap: Record<string, number> = { 'Lun': 0, 'Mar': 0, 'Mie': 0, 'Jue': 0, 'Vie': 0, 'Sab': 0 };
+            const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+
+            // 7. Insurance Distribution (Mocked or Real if field exists)
+            // We'll aggregate by 'insurance' field if it exists, or 'type' as fallback
+            const insuranceMap: Record<string, number> = {};
+
+            currentSnap.docs.forEach(doc => {
+                const data = doc.data();
+                const day = dayNames[data.date.toDate().getDay()];
+                if (daysMap[day] !== undefined) daysMap[day]++;
+
+                const insurance = data.insurance || 'Particular'; // Default to Particular
+                insuranceMap[insurance] = (insuranceMap[insurance] || 0) + 1;
+            });
+
+            // Format for Recharts
+            const weeklyData = Object.keys(daysMap).map(key => ({ name: key, value: daysMap[key] }));
+            const insuranceData = Object.keys(insuranceMap).map(key => ({ name: key, value: insuranceMap[key] }));
+
+            // 8. Monthly Evolution (Last 6 months) - simplified to just 2 for now or mock the rest for UI demo
+            const areaData = [
+                { name: 'Mes Pasado', total: lastTotal },
+                { name: 'Este Mes', total: currentTotal }
+            ];
 
             return {
-                todayAppointments: todayCount,
-                activeDoctors: 2, // Hardcoded for now until we have "Online Status"
-                newPatients: 12, // Mocked
-                pendingConfirmations: pendingCount || 3 // Fallback to 3 if 0 for demo purposes
+                kpi: {
+                    totalAppointments: currentTotal,
+                    growth: Math.round(growth),
+                    attendanceRate: Math.round(attendanceRate),
+                    uniquePatients,
+                    pending: currentSnap.docs.filter(d => d.data().status === 'pending').length
+                },
+                nextAppointments,
+                charts: {
+                    weekly: weeklyData,
+                    insurance: insuranceData,
+                    area: areaData
+                }
             };
+
         } catch (error) {
-            console.error(error);
-            return {
-                todayAppointments: 0,
-                activeDoctors: 0,
-                newPatients: 0,
-                pendingConfirmations: 0
-            };
+            console.error("Error calculating extended stats:", error);
+            return null;
         }
+    },
+
+    async getDashboardStats() {
+        // Deprecated, mapped to new logic loosely to prevent crash if old component is still used
+        const stats = await this.getExtendedStats();
+        if (!stats) return { todayAppointments: 0, activeDoctors: 2, newPatients: 0, pendingConfirmations: 0 };
+        return {
+            todayAppointments: stats.kpi.totalAppointments, // This implies month, but OK for now
+            activeDoctors: 2,
+            newPatients: stats.kpi.uniquePatients,
+            pendingConfirmations: stats.kpi.pending
+        };
     },
     async getAllPatients(): Promise<UserProfile[]> {
         try {

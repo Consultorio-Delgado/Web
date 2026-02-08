@@ -93,8 +93,10 @@ service cloud.firestore {
     match /audit_logs/{logId} {
       // Strict Creation (System/User logs)
       allow create: if isAuthenticated() && isValidAuditLog();
-      // Read/Delete: Admin only
-      allow read, delete: if isAdmin();
+      // Read: Admin or Doctor (for Dashboard Activity Feed)
+      allow read: if isAdmin() || isDoctor();
+      // Delete: Admin only
+      allow delete: if isAdmin();
       // No updates allowed
       allow update: if false; 
     }

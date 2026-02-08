@@ -24,5 +24,24 @@ export const auditService = {
             console.error("Failed to log audit action:", error);
             // Don't throw, we don't want to break the app flow if logging fails
         }
+    },
+    async getRecentLogs(limitCount: number = 10) {
+        try {
+            const { query, orderBy, limit, getDocs } = await import("firebase/firestore");
+            const q = query(
+                collection(db, "audit_logs"),
+                orderBy("timestamp", "desc"),
+                limit(limitCount)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                timestamp: doc.data().timestamp?.toDate() || new Date()
+            }));
+        } catch (error) {
+            console.error("Failed to fetch audit logs:", error);
+            return [];
+        }
     }
 };
