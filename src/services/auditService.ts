@@ -8,7 +8,8 @@ export type AuditAction =
     | 'APPOINTMENT_COMPLETED'
     | 'APPOINTMENT_ARRIVED'
     | 'MEDICAL_NOTE_ADDED'
-    | 'PATIENT_FILE_UPLOADED';
+    | 'PATIENT_FILE_UPLOADED'
+    | 'PATIENT_PROFILE_UPDATED';
 
 export const auditService = {
     async logAction(action: AuditAction, performedBy: string, metadata: any = {}) {

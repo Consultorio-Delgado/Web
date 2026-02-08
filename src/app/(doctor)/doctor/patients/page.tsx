@@ -72,7 +72,20 @@ export default function PatientsPage() {
                     <p className="text-muted-foreground ml-2">Cargando directorio...</p>
                 </div>
             ) : (
-                <PatientsTable data={patients} />
+                <PatientsTable
+                    data={patients}
+                    onUpdate={() => {
+                        const fetchPatients = async () => {
+                            try {
+                                const data = await adminService.getAllPatients();
+                                setPatients(data);
+                            } catch (error) {
+                                console.error("Failed to fetch patients", error);
+                            }
+                        };
+                        fetchPatients();
+                    }}
+                />
             )}
         </div>
     );

@@ -143,9 +143,26 @@ export const adminService = {
             );
             const querySnapshot = await getDocs(q);
             return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+            return querySnapshot.docs.map(doc => doc.data() as UserProfile);
         } catch (error) {
             console.error("Error fetching patients:", error);
             return [];
+        }
+    },
+
+    async updatePatientProfile(uid: string, data: Partial<UserProfile>): Promise<void> {
+        try {
+            const docRef = doc(db, "users", uid);
+            await updateDoc(docRef, data);
+
+            // Audit
+            await auditService.logAction('PATIENT_PROFILE_UPDATED', auth.currentUser?.uid || 'admin', {
+                patientId: uid,
+                updatedFields: Object.keys(data)
+            });
+        } catch (error) {
+            console.error("Error updating patient:", error);
+            throw error;
         }
     }
 };

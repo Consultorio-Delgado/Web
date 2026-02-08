@@ -13,13 +13,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, FileText, Edit } from "lucide-react";
+import { EditPatientDialog } from "./EditPatientDialog";
 
 interface Props {
     data: UserProfile[];
+    onUpdate?: () => void;
 }
 
-export function PatientsTable({ data }: Props) {
+export function PatientsTable({ data, onUpdate }: Props) {
     const [filter, setFilter] = useState("");
+    const [editingPatient, setEditingPatient] = useState<UserProfile | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const filteredData = data.filter((patient) => {
         const term = filter.toLowerCase();
@@ -29,6 +33,11 @@ export function PatientsTable({ data }: Props) {
 
         return fullName.includes(term) || dni.includes(term) || email.includes(term);
     });
+
+    const handleEdit = (patient: UserProfile) => {
+        setEditingPatient(patient);
+        setIsDialogOpen(true);
+    };
 
     return (
         <div className="space-y-4">
@@ -42,7 +51,6 @@ export function PatientsTable({ data }: Props) {
                         onChange={(e) => setFilter(e.target.value)}
                     />
                 </div>
-                {/* Placeholder for future specific filters */}
             </div>
 
             <div className="rounded-md border bg-white">
@@ -76,7 +84,12 @@ export function PatientsTable({ data }: Props) {
                                         <Button variant="ghost" size="icon" title="Ver Historia Clínica">
                                             <FileText className="h-4 w-4 text-slate-500" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" title="Editar Datos">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            title="Editar Datos"
+                                            onClick={() => handleEdit(patient)}
+                                        >
                                             <Edit className="h-4 w-4 text-slate-500" />
                                         </Button>
                                     </TableCell>
@@ -86,9 +99,19 @@ export function PatientsTable({ data }: Props) {
                     </TableBody>
                 </Table>
             </div>
+
             <div className="text-xs text-muted-foreground">
                 Mostrando {filteredData.length} de {data.length} pacientes.
             </div>
+
+            <EditPatientDialog
+                patient={editingPatient}
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+                onSuccess={() => {
+                    if (onUpdate) onUpdate();
+                }}
+            />
         </div>
     );
 }

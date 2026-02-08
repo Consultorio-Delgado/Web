@@ -185,6 +185,25 @@ export default function AppointmentsPage() {
         }
     };
 
+    // Handle Unblock Single Slot
+    const handleUnblockSingleSlot = async (appointmentId: string) => {
+        if (!selectedDate || !doctor) return;
+        try {
+            setLoading(true);
+            await appointmentService.cancelAppointment(appointmentId);
+            // Refresh
+            const appointments = await adminService.getDailyAppointments(selectedDate);
+            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
+            setDaySlots(slots);
+            toast.success("Horario desbloqueado.");
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al desbloquear horario");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div>
@@ -258,37 +277,37 @@ export default function AppointmentsPage() {
                                 <p className="text-muted-foreground text-center py-8">No hay horarios disponibles para este día (Día no laboral).</p>
                             ) : (
                                 daySlots.map((slot, index) => (
-                                    <div key={index}
+                                    <div
+                                        key={index}
                                         className={cn(
-                                            "flex items-center justify-between p-4 rounded-lg border transition-colors",
-                                            slot.status === 'free' && "bg-white hover:bg-slate-50 cursor-pointer border-slate-200",
-                                            slot.status === 'occupied' && "bg-blue-50 border-blue-200",
-                                            slot.status === 'blocked' && "bg-red-50 border-red-200 opacity-70",
-                                            slot.status === 'past' && "bg-slate-100 border-slate-200 text-slate-400"
+                                            "flex items-center justify-between p-4 rounded-lg border",
+                                            slot.status === 'free' ? "border-slate-200 bg-white" :
+                                                slot.status === 'blocked' ? "border-red-200 bg-red-50" :
+                                                    "border-blue-200 bg-blue-50"
                                         )}
-                                        onClick={() => {
-                                            if (slot.status === 'free') {
-                                                // Open Manual Booking Modal
-                                                // setBookingSlot(slot.time);
-                                            }
-                                        }}
                                     >
                                         <div className="flex items-center gap-4">
-                                            <span className="font-mono font-bold text-lg">{slot.time}</span>
-
-                                            {slot.status === 'free' && <span className="text-green-600 font-medium">Libre</span>}
-
-                                            {slot.status === 'occupied' && (
-                                                <div className="flex flex-col">
-                                                    <span className="font-semibold text-blue-900">{slot.appointment?.patientName}</span>
-                                                    <span className="text-xs text-blue-700">{slot.appointment?.type}</span>
-                                                </div>
-                                            )}
-
-                                            {slot.status === 'blocked' && <span className="text-red-600 font-medium">Bloqueado</span>}
-                                            {slot.status === 'past' && <span className="text-slate-500">Pasado</span>}
+                                            <span className="text-lg font-bold w-16">{slot.time}</span>
+                                            <div>
+                                                {slot.status === 'free' ? (
+                                                    <span className="text-green-600 font-medium">Libre</span>
+                                                ) : slot.status === 'blocked' ? (
+                                                    <div>
+                                                        <span className="text-red-700 font-bold block">Bloqueado</span>
+                                                        <span className="text-sm text-red-600">No disponible</span>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <span className="text-blue-900 font-bold block">
+                                                            {slot.appointment?.patientName || "Paciente"}
+                                                        </span>
+                                                        <span className="text-sm text-blue-600 capitalize">
+                                                            {slot.appointment?.type || "Consulta"}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-
                                         <div>
                                             {/* Actions based on status */}
                                             {slot.status === 'free' && (
@@ -302,7 +321,15 @@ export default function AppointmentsPage() {
                                                     </Button>
                                                 </div>
                                             )}
-                                            {(slot.status === 'occupied' || slot.appointment?.type === 'Bloqueado') && (
+                                            {slot.status === 'blocked' && slot.appointment && (
+                                                <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-800 hover:bg-red-100" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUnblockSingleSlot(slot.appointment!.id);
+                                                }}>
+                                                    <Unlock className="h-4 w-4 mr-2" /> Desbloquear
+                                                </Button>
+                                            )}
+                                            {(slot.status === 'occupied') && (
                                                 <Button size="sm" variant="ghost" onClick={(e) => {
                                                     e.stopPropagation();
                                                     if (slot.appointment) setSelectedAppointment(slot.appointment);
