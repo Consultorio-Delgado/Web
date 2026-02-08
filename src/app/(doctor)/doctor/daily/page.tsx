@@ -282,16 +282,41 @@ export default function DailyAgendaPage() {
                                                     </>
                                                 )}
                                                 {isArrived && (
-                                                    <Button
-                                                        variant="default"
-                                                        size="sm"
-                                                        className="bg-green-600 hover:bg-green-700"
-                                                        onClick={() => handleMarkCompleted(appt.id)}
-                                                        disabled={actionLoading === appt.id}
-                                                    >
-                                                        {actionLoading === appt.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3 mr-1" />}
-                                                        Finalizar
-                                                    </Button>
+                                                    <>
+                                                        <Button
+                                                            variant="default"
+                                                            size="sm"
+                                                            className="bg-green-600 hover:bg-green-700"
+                                                            onClick={() => handleMarkCompleted(appt.id)}
+                                                            disabled={actionLoading === appt.id}
+                                                        >
+                                                            {actionLoading === appt.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3 mr-1" />}
+                                                            Finalizar
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-slate-400 hover:text-slate-600"
+                                                            onClick={async () => {
+                                                                setActionLoading(appt.id);
+                                                                try {
+                                                                    await appointmentService.updateAppointment(appt.id, {
+                                                                        status: 'confirmed',
+                                                                        arrivedAt: null
+                                                                    } as any);
+                                                                    toast.success("Estado revertido a Confirmado");
+                                                                    fetchSlots();
+                                                                } catch (error) {
+                                                                    toast.error("Error al revertir estado");
+                                                                } finally {
+                                                                    setActionLoading(null);
+                                                                }
+                                                            }}
+                                                            disabled={actionLoading === appt.id}
+                                                        >
+                                                            Deshacer
+                                                        </Button>
+                                                    </>
                                                 )}
                                             </>
                                         )}

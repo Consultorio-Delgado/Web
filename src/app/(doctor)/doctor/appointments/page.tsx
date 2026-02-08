@@ -9,6 +9,7 @@ import { es } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { adminService } from "@/services/adminService";
 import { appointmentService } from "@/services/appointments";
 import { doctorService } from "@/services/doctorService";
@@ -38,6 +39,10 @@ export default function AppointmentsPage() {
     const [doctor, setDoctor] = useState<Doctor | null>(null);
     const [busyDays, setBusyDays] = useState<Set<string>>(new Set()); // Days with appointments
     const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+
+    // Multi-Select State
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
 
     // Fetch Doctor Profile (Self)
     useEffect(() => {
@@ -264,6 +269,58 @@ export default function AppointmentsPage() {
         }
     };
 
+    const toggleSlotSelection = (time: string) => {
+        const newSelected = new Set(selectedSlots);
+        if (newSelected.has(time)) {
+            newSelected.delete(time);
+        } else {
+            newSelected.add(time);
+        }
+        setSelectedSlots(newSelected);
+    };
+
+    const handleBlockSelectedSlots = async () => {
+        if (!selectedDate || !doctor || selectedSlots.size === 0) return;
+        setLoading(true);
+        try {
+            const date = new Date(selectedDate);
+            const promises = Array.from(selectedSlots).map(async (time) => {
+                const [hours, minutes] = time.split(':').map(Number);
+                const slotDate = new Date(date);
+                slotDate.setHours(hours, minutes, 0, 0);
+
+                return appointmentService.createAppointment({
+                    patientId: 'blocked',
+                    patientName: 'Bloqueado',
+                    patientEmail: '',
+                    doctorId: doctor.id,
+                    doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                    date: slotDate,
+                    time: time,
+                    type: 'Bloqueado',
+                    status: 'confirmed',
+                    notes: 'Bloqueado masivamente'
+                } as any);
+            });
+
+            await Promise.all(promises);
+
+            toast.success(`${selectedSlots.size} horarios bloqueados.`);
+            setIsSelectionMode(false);
+            setSelectedSlots(new Set());
+
+            // Refresh
+            const appointments = await adminService.getDailyAppointments(selectedDate);
+            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
+            setDaySlots(slots);
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al bloquear horarios seleccionados");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div>
@@ -307,16 +364,40 @@ export default function AppointmentsPage() {
                             {selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Seleccione Fecha"}
                         </h2>
                         <div className="flex gap-2">
+                            {/* Selection Mode Toggle */}
+                            {daySlots.length > 0 && (
+                                <Button
+                                    variant={isSelectionMode ? "default" : "outline"}
+                                    onClick={() => {
+                                        setIsSelectionMode(!isSelectionMode);
+                                        setSelectedSlots(new Set()); // Clear on toggle
+                                    }}
+                                >
+                                    {isSelectionMode ? "Cancelar Selección" : "Selección Múltiple"}
+                                </Button>
+                            )}
+
+                            {/* Bulk Block Button */}
+                            {isSelectionMode && selectedSlots.size > 0 && (
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleBlockSelectedSlots}
+                                    disabled={loading}
+                                >
+                                    <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear ({selectedSlots.size})
+                                </Button>
+                            )}
+
                             {/* Block Button (if NO slots are blocked by exception) */}
                             {/* Block Button: Show if there are any free slots to block */}
-                            {daySlots.some(s => s.status === 'free') && (
+                            {!isSelectionMode && daySlots.some(s => s.status === 'free') && (
                                 <Button variant="secondary" onClick={handleBlockDay} disabled={loading}>
                                     <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear Día
                                 </Button>
                             )}
 
                             {/* Unlock Button: Show if any slot is blocked by Exception (no appointment object implies exception) */}
-                            {daySlots.some(s => s.status === 'blocked' && !s.appointment) && (
+                            {!isSelectionMode && daySlots.some(s => s.status === 'blocked' && !s.appointment) && (
                                 <Button variant="destructive" onClick={handleUnlock} disabled={loading}>
                                     <Unlock className="mr-2 h-4 w-4" /> Desbloquear Día
                                 </Button>
@@ -334,14 +415,27 @@ export default function AppointmentsPage() {
                                 daySlots.map((slot, index) => (
                                     <div
                                         key={index}
+                                        onClick={() => {
+                                            if (isSelectionMode && slot.status === 'free') {
+                                                toggleSlotSelection(slot.time);
+                                            }
+                                        }}
                                         className={cn(
-                                            "flex items-center justify-between p-4 rounded-lg border",
+                                            "flex items-center justify-between p-4 rounded-lg border transition-colors cursor-default",
                                             slot.status === 'free' ? "border-slate-200 bg-white" :
                                                 slot.status === 'blocked' ? "border-red-200 bg-red-50" :
-                                                    "border-blue-200 bg-blue-50"
+                                                    "border-blue-200 bg-blue-50",
+                                            isSelectionMode && slot.status === 'free' && "cursor-pointer hover:bg-slate-50",
+                                            isSelectionMode && selectedSlots.has(slot.time) && "ring-2 ring-primary border-primary bg-primary/5"
                                         )}
                                     >
                                         <div className="flex items-center gap-4">
+                                            {isSelectionMode && slot.status === 'free' && (
+                                                <Checkbox
+                                                    checked={selectedSlots.has(slot.time)}
+                                                    onCheckedChange={() => toggleSlotSelection(slot.time)}
+                                                />
+                                            )}
                                             <span className="text-lg font-bold w-16">{slot.time}</span>
                                             <div>
                                                 {slot.status === 'free' ? (
@@ -365,7 +459,7 @@ export default function AppointmentsPage() {
                                         </div>
                                         <div>
                                             {/* Actions based on status */}
-                                            {slot.status === 'free' && (
+                                            {!isSelectionMode && slot.status === 'free' && (
                                                 <div className="flex gap-2">
                                                     <Button size="sm" variant="outline" onClick={(e) => {
                                                         e.stopPropagation();
@@ -376,7 +470,7 @@ export default function AppointmentsPage() {
                                                     </Button>
                                                 </div>
                                             )}
-                                            {slot.status === 'blocked' && slot.appointment && (
+                                            {!isSelectionMode && slot.status === 'blocked' && slot.appointment && (
                                                 <div className="flex gap-2">
                                                     <Button size="sm" variant="outline" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={(e) => {
                                                         e.stopPropagation();
@@ -392,7 +486,7 @@ export default function AppointmentsPage() {
                                                     </Button>
                                                 </div>
                                             )}
-                                            {(slot.status === 'occupied') && (
+                                            {!isSelectionMode && (slot.status === 'occupied') && (
                                                 <div className="flex gap-2">
                                                     <Button size="sm" variant="ghost" onClick={(e) => {
                                                         e.stopPropagation();

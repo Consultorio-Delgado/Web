@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
+import { db, auth } from "@/lib/firebase"; // auth needed for password update
+import { doc, updateDoc } from "firebase/firestore";
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 import { INSURANCE_PROVIDERS } from "@/constants";
@@ -34,6 +37,11 @@ export default function DoctorProfilePage() {
     const [acceptedInsurances, setAcceptedInsurances] = useState<string[]>([]);
     const [maxDaysAhead, setMaxDaysAhead] = useState(30);
     const [exceptionalSchedule, setExceptionalSchedule] = useState<{ date: string; startHour: string; endHour: string }[]>([]);
+
+    // Password State
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
 
     // New state for adding exceptional day
     const [newExceptionalDate, setNewExceptionalDate] = useState("");
@@ -72,6 +80,46 @@ export default function DoctorProfilePage() {
             setLoading(false);
         }
     }, [user, profile]);
+
+    const handleChangePassword = async () => {
+        if (!user || !user.email) return;
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            toast.error("Complete todos los campos de contraseña");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            toast.error("Las nuevas contraseñas no coinciden");
+            return;
+        }
+        if (newPassword.length < 6) {
+            toast.error("La contraseña debe tener al menos 6 caracteres");
+            return;
+        }
+
+        setSaving(true);
+        try {
+            // 1. Re-authenticate
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+
+            // 2. Update Password
+            await updatePassword(user, newPassword);
+
+            toast.success("Contraseña actualizada correctamente");
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (error: any) {
+            console.error(error);
+            if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                toast.error("La contraseña actual es incorrecta");
+            } else {
+                toast.error("Error al actualizar la contraseña");
+            }
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const handleSave = async () => {
         if (!user || !profile) return;
@@ -185,6 +233,56 @@ export default function DoctorProfilePage() {
                             <div className="space-y-2">
                                 <Label>Apellido</Label>
                                 <Input value={profile.lastName} disabled />
+                            </div>
+                        </div>
+
+                        {/* Change Password Section */}
+                        <div className="pt-6 border-t border-slate-100">
+                            <h3 className="font-semibold text-slate-900 mb-4">Seguridad</h3>
+                            <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="currentPassword">Contraseña Actual</Label>
+                                        <Input
+                                            id="currentPassword"
+                                            type="password"
+                                            placeholder="••••••"
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                                        <Input
+                                            id="newPassword"
+                                            type="password"
+                                            placeholder="••••••"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirmPassword">Confirmar Nueva</Label>
+                                        <Input
+                                            id="confirmPassword"
+                                            type="password"
+                                            placeholder="••••••"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex items-end">
+                                        <Button
+                                            type="button"
+                                            disabled={saving}
+                                            onClick={handleChangePassword}
+                                            variant="outline"
+                                            className="w-full"
+                                        >
+                                            Actualizar Contraseña
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
