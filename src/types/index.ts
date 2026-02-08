@@ -31,6 +31,7 @@ export interface Doctor {
     slotDuration: number; // Minutes per appointment (e.g. 20, 30, 60)
     color: string; // For calendar UI
     acceptedInsurances?: string[]; // Array of strings from INSURANCE_PROVIDERS
+    maxDaysAhead?: number; // Maximum days in future for booking
 }
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived' | 'absent';

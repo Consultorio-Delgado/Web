@@ -314,6 +314,13 @@ export function BookingWizard() {
                                 const dateString = format(date, 'yyyy-MM-dd');
                                 if (doctorExceptions.some(e => e.date === dateString)) return true;
 
+                                // 4. Max days ahead (Appointment Limits)
+                                const maxDays = selectedDoctor?.maxDaysAhead || 30;
+                                const maxDate = new Date();
+                                maxDate.setDate(today.getDate() + maxDays);
+                                maxDate.setHours(23, 59, 59, 999);
+                                if (date > maxDate) return true;
+
                                 return false;
                             }}
                             initialFocus

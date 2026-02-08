@@ -31,6 +31,7 @@ export default function DoctorProfilePage() {
     const [endHour, setEndHour] = useState("17:00");
     const [workDays, setWorkDays] = useState<number[]>([]);
     const [acceptedInsurances, setAcceptedInsurances] = useState<string[]>([]);
+    const [maxDaysAhead, setMaxDaysAhead] = useState(30);
 
     useEffect(() => {
         const fetchDoctor = async () => {
@@ -47,6 +48,7 @@ export default function DoctorProfilePage() {
                     setEndHour(docData.schedule.endHour);
                     setWorkDays(docData.schedule.workDays);
                     setAcceptedInsurances(docData.acceptedInsurances || []);
+                    setMaxDaysAhead(docData.maxDaysAhead || 30);
                 }
             } catch (err) {
                 console.error(err);
@@ -82,6 +84,7 @@ export default function DoctorProfilePage() {
                     workDays
                 },
                 acceptedInsurances: acceptedInsurances,
+                maxDaysAhead: maxDaysAhead,
                 ...(doctor?.imageUrl ? { imageUrl: doctor.imageUrl } : {}),
                 ...(doctor?.email ? { email: doctor.email } : {})
             };
@@ -241,20 +244,33 @@ export default function DoctorProfilePage() {
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label>Duración del Turno (minutos)</Label>
-                            <Select value={slotDuration.toString()} onValueChange={(v) => setSlotDuration(parseInt(v))}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Duración" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="15">15 minutos</SelectItem>
-                                    <SelectItem value="20">20 minutos</SelectItem>
-                                    <SelectItem value="30">30 minutos</SelectItem>
-                                    <SelectItem value="40">40 minutos</SelectItem>
-                                    <SelectItem value="60">60 minutos</SelectItem>
-                                </SelectContent>
-                            </Select>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Duración del Turno (minutos)</Label>
+                                <Select value={slotDuration.toString()} onValueChange={(v) => setSlotDuration(parseInt(v))}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Duración" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="15">15 minutos</SelectItem>
+                                        <SelectItem value="20">20 minutos</SelectItem>
+                                        <SelectItem value="30">30 minutos</SelectItem>
+                                        <SelectItem value="40">40 minutos</SelectItem>
+                                        <SelectItem value="60">60 minutos</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Anticipación Máxima (días)</Label>
+                                <Input
+                                    type="number"
+                                    min="1"
+                                    value={maxDaysAhead}
+                                    onChange={(e) => setMaxDaysAhead(parseInt(e.target.value) || 30)}
+                                    placeholder="Ej: 30"
+                                />
+                                <p className="text-xs text-muted-foreground">Días futuros habilitados para reservar.</p>
+                            </div>
                         </div>
 
                         <div className="space-y-3">

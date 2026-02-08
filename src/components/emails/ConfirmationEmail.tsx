@@ -55,9 +55,10 @@ export const ConfirmationEmail = ({
                 </Button>
             </Section>
 
-            <Text className="text-[12px] text-gray-500 mt-4">
-                Si no realizaste esta reserva, por favor contáctanos inmediatamente.
-            </Text>
+            <div style={{ marginTop: '30px', borderTop: '1px solid #e2e8f0', paddingTop: '20px', textAlign: 'center' as const, fontSize: '13px', color: '#64748b' }}>
+                <p style={{ margin: '0' }}>Este correo fue enviado automáticamente por Consultorio Delgado.</p>
+                <p style={{ margin: '5px 0 0 0' }}>Si no realizaste esta reserva, cancelala clickeando en tu portal.</p>
+            </div>
         </EmailLayout>
     );
 };
