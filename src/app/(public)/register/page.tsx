@@ -118,17 +118,17 @@ export default function RegisterPage() {
                     <form onSubmit={handleRegister} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="firstName">Nombre</Label>
+                                <Label htmlFor="firstName">Nombre <span className="text-red-500">*</span></Label>
                                 <Input id="firstName" required value={formData.firstName} onChange={handleChange} disabled={loading} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="lastName">Apellido</Label>
+                                <Label htmlFor="lastName">Apellido <span className="text-red-500">*</span></Label>
                                 <Input id="lastName" required value={formData.lastName} onChange={handleChange} disabled={loading} />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="dni">DNI</Label>
+                            <Label htmlFor="dni">DNI <span className="text-red-500">*</span></Label>
                             <Input id="dni" type="number" required value={formData.dni} onChange={handleChange} disabled={loading} />
                         </div>
 
@@ -146,12 +146,12 @@ export default function RegisterPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+                            <Label htmlFor="birthDate">Fecha de Nacimiento <span className="text-red-500">*</span></Label>
                             <Input id="birthDate" type="date" required value={formData.birthDate} onChange={handleChange} disabled={loading} />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="insuranceProvider">Obra Social / Prepaga</Label>
+                            <Label htmlFor="insuranceProvider">Obra Social / Prepaga <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleSelectChange(val, 'insuranceProvider')} value={formData.insuranceProvider}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleccione..." />
@@ -166,22 +166,22 @@ export default function RegisterPage() {
 
                         {formData.insuranceProvider && formData.insuranceProvider !== 'PARTICULAR' && (
                             <div className="space-y-2">
-                                <Label htmlFor="insuranceNumber">Número de Credencial / Afiliado</Label>
+                                <Label htmlFor="insuranceNumber">Número de Credencial / Afiliado <span className="text-red-500">*</span></Label>
                                 <Input id="insuranceNumber" required value={formData.insuranceNumber} onChange={handleChange} disabled={loading} />
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
                             <Input id="email" type="email" required value={formData.email} onChange={handleChange} disabled={loading} />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password">Contraseña</Label>
+                            <Label htmlFor="password">Contraseña <span className="text-red-500">*</span></Label>
                             <PasswordInput id="password" required value={formData.password} onChange={handleChange} disabled={loading} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+                            <Label htmlFor="confirmPassword">Confirmar Contraseña <span className="text-red-500">*</span></Label>
                             <PasswordInput id="confirmPassword" required value={formData.confirmPassword} onChange={handleChange} disabled={loading} />
                         </div>
 

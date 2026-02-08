@@ -182,6 +182,7 @@ export const emailService = {
         plan: string;
         token?: string;
         medicamentos: string;
+        attachments?: { filename: string; content: string }[];
     }, doctorEmail: string) {
         try {
             const html = `
@@ -256,7 +257,8 @@ export const emailService = {
                 to: doctorEmail,
                 replyTo: data.email,
                 subject: `Solicitud de Receta - ${data.nombre} ${data.apellido}`,
-                html: html
+                html: html,
+                attachments: data.attachments
             });
             return { success: true };
         } catch (error) {

@@ -84,8 +84,13 @@ export default function PortalDashboard() {
                         <p className="text-slate-500 font-light">Bienvenido a tu portal de salud.</p>
                     </div>
                 </div>
-                <div className="w-full md:w-auto">
-                    <Link href="/portal/new-appointment" className="block w-full">
+                <div className="w-full md:w-auto flex flex-col md:flex-row gap-4">
+                    <Link href="/portal/prescriptions" className="block w-full md:w-auto">
+                        <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-primary text-primary hover:bg-primary/5 font-medium transition-transform hover:scale-105">
+                            Solicitar Receta
+                        </Button>
+                    </Link>
+                    <Link href="/portal/new-appointment" className="block w-full md:w-auto">
                         <Button size="lg" className="w-full md:w-auto h-12 px-8 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-cyan-900/10 text-white font-medium transition-transform hover:scale-105">
                             Solicitar Nuevo Turno
                         </Button>
