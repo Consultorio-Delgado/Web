@@ -7,10 +7,11 @@ import { auditService } from "./auditService";
 
 export const appointmentService = {
     // Count active (future, non-cancelled) appointments for a patient
-    async countActiveAppointments(patientId: string): Promise<number> {
+    // If doctorId is provided, only count appointments with that specific doctor
+    async countActiveAppointments(patientId: string, doctorId?: string): Promise<number> {
         try {
             const now = new Date();
-            const q = query(
+            let q = query(
                 collection(db, "appointments"),
                 where("patientId", "==", patientId),
                 where("date", ">=", Timestamp.fromDate(now))
@@ -21,7 +22,12 @@ export const appointmentService = {
             const activeStatuses = ['pending', 'confirmed', 'arrived'];
             const activeAppointments = querySnapshot.docs.filter(doc => {
                 const data = doc.data();
-                return activeStatuses.includes(data.status);
+                const isActive = activeStatuses.includes(data.status);
+                // If doctorId provided, filter by that doctor
+                if (doctorId) {
+                    return isActive && data.doctorId === doctorId;
+                }
+                return isActive;
             });
 
             return activeAppointments.length;
@@ -33,10 +39,10 @@ export const appointmentService = {
 
     async createAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'status'> & { createdAt?: Date }): Promise<string> {
         try {
-            // Check if patient already has 2 active appointments
-            const activeCount = await this.countActiveAppointments(appointmentData.patientId);
-            if (activeCount >= 2) {
-                throw new Error("LIMIT_EXCEEDED: Ya tienes 2 turnos activos. No puedes sacar más turnos hasta que alguno finalice.");
+            // Check if patient already has an active appointment with THIS specific doctor
+            const activeWithDoctor = await this.countActiveAppointments(appointmentData.patientId, appointmentData.doctorId);
+            if (activeWithDoctor >= 1) {
+                throw new Error("LIMIT_EXCEEDED: Ya tienes un turno activo con este profesional. Puedes sacar turno con otro profesional.");
             }
 
             // Use transaction to atomically check slot availability and create appointment

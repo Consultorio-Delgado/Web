@@ -111,5 +111,62 @@ export const emailService = {
             console.error('[EmailService] ActionReminder Error:', error);
             return { success: false, error };
         }
+    },
+
+    // Contact form email to reception
+    async sendContactForm(data: { name: string; email: string; phone: string; message: string }) {
+        try {
+            const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">📬 Nuevo Mensaje de Contacto</h1>
+    </div>
+    
+    <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 12px; background: white; border: 1px solid #e2e8f0; font-weight: bold; width: 120px;">Nombre:</td>
+                <td style="padding: 12px; background: white; border: 1px solid #e2e8f0;">${data.name}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">Email:</td>
+                <td style="padding: 12px; background: white; border: 1px solid #e2e8f0;"><a href="mailto:${data.email}" style="color: #2563eb;">${data.email}</a></td>
+            </tr>
+            <tr>
+                <td style="padding: 12px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">Teléfono:</td>
+                <td style="padding: 12px; background: white; border: 1px solid #e2e8f0;">${data.phone}</td>
+            </tr>
+        </table>
+        
+        <div style="margin-top: 20px; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h3 style="margin: 0 0 12px 0; color: #1e293b;">Mensaje:</h3>
+            <p style="margin: 0; white-space: pre-wrap;">${data.message}</p>
+        </div>
+        
+        <p style="margin-top: 20px; font-size: 12px; color: #64748b; text-align: center;">
+            Este mensaje fue enviado desde el formulario de contacto del sitio web.
+        </p>
+    </div>
+</body>
+</html>`;
+
+            await resend.emails.send({
+                from: FROM_EMAIL,
+                to: 'recepcion@consultoriodelgado.com',
+                replyTo: data.email,
+                subject: `Nuevo mensaje de contacto: ${data.name}`,
+                html: html
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[EmailService] ContactForm Error:', error);
+            return { success: false, error };
+        }
     }
 };

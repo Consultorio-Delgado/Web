@@ -23,6 +23,7 @@ export default function RegisterPage() {
         password: "",
         confirmPassword: "",
         dni: "",
+        phone: "",
         birthDate: "",
         insuranceProvider: "",
         insuranceNumber: "",
@@ -56,6 +57,12 @@ export default function RegisterPage() {
             return;
         }
 
+        if (!formData.phone || formData.phone.length < 8) {
+            setError("Ingrese un número de celular válido.");
+            setLoading(false);
+            return;
+        }
+
         try {
             // 1. Create Auth User
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
@@ -68,6 +75,7 @@ export default function RegisterPage() {
                 email: formData.email,
                 role: 'patient',
                 dni: formData.dni,
+                phone: formData.phone,
                 birthDate: formData.birthDate,
                 insurance: formData.insuranceProvider,
                 insuranceNumber: formData.insuranceNumber,
@@ -121,6 +129,19 @@ export default function RegisterPage() {
                         <div className="space-y-2">
                             <Label htmlFor="dni">DNI</Label>
                             <Input id="dni" type="number" required value={formData.dni} onChange={handleChange} disabled={loading} />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="phone">Celular <span className="text-red-500">*</span></Label>
+                            <Input
+                                id="phone"
+                                type="tel"
+                                required
+                                placeholder="Ej: 1123456789"
+                                value={formData.phone}
+                                onChange={handleChange}
+                                disabled={loading}
+                            />
                         </div>
 
                         <div className="space-y-2">

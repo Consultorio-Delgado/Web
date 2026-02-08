@@ -201,22 +201,57 @@ export default async function LandingPage() {
               Particular
             </div>
 
-            {/* Standard Providers */}
-            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
-              OSDE (210-550)
+            {/* OSDE with tooltip */}
+            <div className="group relative">
+              <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light cursor-default hover:border-slate-500 transition-colors">
+                OSDE
+              </div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-2 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-10">
+                <p className="text-slate-800 font-medium text-sm">Planes: 210, 310, 410, 450, 510, 550</p>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"></div>
+              </div>
             </div>
-            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
-              Swiss Medical
+
+            {/* Swiss Medical with tooltip */}
+            <div className="group relative">
+              <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light cursor-default hover:border-slate-500 transition-colors">
+                Swiss Medical
+              </div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-2 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-10">
+                <p className="text-slate-800 font-medium text-sm">Todos los planes</p>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"></div>
+              </div>
             </div>
+
+            {/* Galeno */}
             <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
               Galeno**
             </div>
-            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
-              Omint
+
+            {/* Omint with tooltip */}
+            <div className="group relative">
+              <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light cursor-default hover:border-slate-500 transition-colors">
+                Omint
+              </div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-3 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 min-w-[200px]">
+                <p className="text-slate-800 font-medium text-sm whitespace-nowrap">Planes: Skill, O y F, Global,</p>
+                <p className="text-slate-800 font-medium text-sm whitespace-nowrap">3000, 4500, 6500, 8500, Cartilla 4</p>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"></div>
+              </div>
             </div>
-            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
-              Luis Pasteur*
+
+            {/* Luis Pasteur with tooltip */}
+            <div className="group relative">
+              <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light cursor-default hover:border-slate-500 transition-colors">
+                Luis Pasteur*
+              </div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-2 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                <p className="text-slate-800 font-medium text-sm whitespace-nowrap">Planes: E, J, L, M, N, P, S, V, Novo</p>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"></div>
+              </div>
             </div>
+
+            {/* OSA */}
             <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
               OSA*
             </div>

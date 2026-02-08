@@ -23,7 +23,8 @@ export interface Doctor {
     specialty: string;
     bio?: string;
     gender?: 'male' | 'female'; // For Dr./Dra. title
-    imageUrl?: string;
+    imageUrl?: string; // Legacy field
+    photoURL?: string; // Firebase Storage profile image URL
     schedule: {
         startHour: string; // "09:00"
         endHour: string;   // "17:00"

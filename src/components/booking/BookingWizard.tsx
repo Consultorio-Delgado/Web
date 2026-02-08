@@ -51,9 +51,8 @@ export function BookingWizard() {
     // Processing
     const [bookingProcessing, setBookingProcessing] = useState(false);
 
-    // Appointment limit check
-    const [hasReachedLimit, setHasReachedLimit] = useState(false);
-    const [checkingLimit, setCheckingLimit] = useState(true);
+    // Appointment limit check - now per-doctor (handled on doctor selection)
+    const [doctorLimitReached, setDoctorLimitReached] = useState<string | null>(null); // Stores doctor name if limit reached
 
     // Auth Guard
     useEffect(() => {
@@ -63,26 +62,6 @@ export function BookingWizard() {
             router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
         }
     }, [user, loading, router, pathname, searchParams]);
-
-    // Check appointment limit
-    useEffect(() => {
-        if (!user) return;
-
-        const checkLimit = async () => {
-            try {
-                const activeCount = await appointmentService.countActiveAppointments(user.uid);
-                if (activeCount >= 2) {
-                    setHasReachedLimit(true);
-                }
-            } catch (error) {
-                console.error("Error checking appointment limit:", error);
-            } finally {
-                setCheckingLimit(false);
-            }
-        };
-
-        checkLimit();
-    }, [user]);
 
     // Load initial data and handle params
     useEffect(() => {
@@ -145,7 +124,15 @@ export function BookingWizard() {
         }
     }, [selectedDoctor, selectedDate, step]);
 
-    const handleDoctorSelect = (doc: Doctor) => {
+    const handleDoctorSelect = async (doc: Doctor) => {
+        // Check if patient already has an active appointment with this doctor
+        if (user) {
+            const activeWithDoctor = await appointmentService.countActiveAppointments(user.uid, doc.id);
+            if (activeWithDoctor >= 1) {
+                setDoctorLimitReached(`${doc.lastName}, ${doc.firstName}`);
+                return;
+            }
+        }
         setSelectedDoctor(doc);
         setStep(2);
     };
@@ -214,8 +201,8 @@ export function BookingWizard() {
         } catch (error: any) {
             console.error(error);
             if (error?.message?.includes('LIMIT_EXCEEDED')) {
-                toast.error("Ya tienes 2 turnos activos. No puedes sacar más turnos.");
-                setHasReachedLimit(true);
+                toast.error("Ya tienes un turno activo con este profesional.");
+                setDoctorLimitReached(selectedDoctor ? `${selectedDoctor.lastName}, ${selectedDoctor.firstName}` : 'este profesional');
             } else {
                 toast.error("Error al confirmar el turno. Intente nuevamente.");
             }
@@ -228,7 +215,7 @@ export function BookingWizard() {
     const morningSlots = availableSlots.filter(t => parseInt(t.split(':')[0]) < 13);
     const afternoonSlots = availableSlots.filter(t => parseInt(t.split(':')[0]) >= 13);
 
-    if (loading || checkingLimit) {
+    if (loading) {
         return <div className="flex justify-center items-center min-h-[400px]"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>;
     }
 
@@ -236,8 +223,8 @@ export function BookingWizard() {
         return null; // Prevents flashing content before redirect
     }
 
-    // Show limit reached blocker
-    if (hasReachedLimit) {
+    // Show limit reached blocker for specific doctor
+    if (doctorLimitReached) {
         return (
             <div className="flex justify-center items-center min-h-[400px] p-4">
                 <Card className="max-w-md w-full text-center border-orange-300 bg-orange-50">
@@ -245,12 +232,15 @@ export function BookingWizard() {
                         <div className="mx-auto bg-orange-100 rounded-full p-4 w-fit mb-4">
                             <AlertCircle className="h-12 w-12 text-orange-600" />
                         </div>
-                        <CardTitle className="text-orange-700">Límite de Turnos Alcanzado</CardTitle>
+                        <CardTitle className="text-orange-700">Ya tienes turno con este profesional</CardTitle>
                         <CardDescription>
-                            Ya tienes <strong>2 turnos activos</strong>. No puedes sacar más turnos hasta que alguno de ellos finalice o sea cancelado.
+                            Ya tienes un turno activo con <strong>{doctorLimitReached}</strong>. Puedes elegir otro profesional o esperar a que finalice tu turno actual.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-2">
+                        <Button onClick={() => setDoctorLimitReached(null)} variant="outline" className="w-full">
+                            Elegir otro profesional
+                        </Button>
                         <Button onClick={() => router.push('/portal')} className="w-full">
                             <ArrowRight className="mr-2 h-4 w-4" />
                             Ver Mis Turnos
@@ -308,8 +298,16 @@ export function BookingWizard() {
                                 className="cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all flex flex-row items-center p-5 space-x-4 bg-white border-slate-200 group"
                                 onClick={() => handleDoctorSelect(doc)}
                             >
-                                <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 group-hover:bg-blue-100 transition-colors">
-                                    <UserIcon className="h-7 w-7 text-blue-600" />
+                                <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 group-hover:bg-blue-100 transition-colors overflow-hidden">
+                                    {doc.photoURL ? (
+                                        <img
+                                            src={doc.photoURL}
+                                            alt={`${doc.firstName} ${doc.lastName}`}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        <UserIcon className="h-7 w-7 text-blue-600" />
+                                    )}
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors">{doc.lastName}, {doc.firstName}</h3>

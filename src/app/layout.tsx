@@ -68,7 +68,7 @@ export const metadata: Metadata = {
 import { Navbar } from "@/components/shared/Navbar";
 import { Footer } from "@/components/shared/Footer";
 import { AuthProvider } from "@/context/AuthContext";
-import { WhatsAppButton } from "@/components/shared/WhatsAppButton";
+import { ContactButton } from "@/components/shared/ContactButton";
 
 export default function RootLayout({
   children,
@@ -88,7 +88,7 @@ export default function RootLayout({
             <main className="flex-1">{children}</main>
             <Footer />
           </div>
-          <WhatsAppButton />
+          <ContactButton />
         </AuthProvider>
         <Analytics />
         <SpeedInsights />
