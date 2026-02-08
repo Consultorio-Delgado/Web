@@ -506,16 +506,9 @@ export default function PrescriptionsPage() {
                                             <p className="font-medium text-slate-800 mb-2">
                                                 Si tiene coseguro o diferencial:
                                             </p>
-                                            <p className="mb-2">
+                                            <p className="mb-0">
                                                 CBU <strong>0150509201000115863100</strong> o ALIAS <strong>dr.capparelli</strong>
                                             </p>
-
-                                            <div className="flex items-start gap-2 mt-2">
-                                                <AlertTriangle className="h-3 w-3 text-red-500 mt-1 flex-shrink-0" />
-                                                <p className="text-xs text-slate-500">
-                                                    Recuerde revisar la bandeja de SPAM ya que la misma puede entrar a dicha casilla, la receta puede ir desde el remitente DrApp , RCTA TU RECETA DIGITAL o SWISSMEDICAL.
-                                                </p>
-                                            </div>
                                         </>
                                     ) : (
                                         <>

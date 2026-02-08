@@ -23,7 +23,6 @@ import { Separator } from "@/components/ui/separator";
 // Schema Validation
 const profileSchema = z.object({
     phone: z.string().min(6, "El teléfono debe tener al menos 6 caracteres"),
-    birthDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Ingrese una fecha válida"),
     insurance: z.string().min(1, "Seleccione una obra social"),
     insuranceNumber: z.string().optional(),
 }).refine((data) => {
@@ -92,7 +91,6 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
         resolver: zodResolver(profileSchema),
         defaultValues: {
             phone: "",
-            birthDate: "",
             insurance: "",
             insuranceNumber: "",
         },
@@ -109,7 +107,6 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
 
             // Use setValue to ensure the form updates even if reset behaves unexpectedly
             form.setValue("phone", profile.phone || "");
-            form.setValue("birthDate", profile.birthDate || "");
             form.setValue("insurance", validInsurance || "PARTICULAR");
             form.setValue("insuranceNumber", profile.insuranceNumber || "");
         }
@@ -121,7 +118,6 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
         try {
             await userService.updateUserProfile(user.uid, {
                 phone: data.phone,
-                birthDate: data.birthDate,
                 insurance: data.insurance,
                 insuranceNumber: data.insuranceNumber,
             });
@@ -168,6 +164,12 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
                                 <Label className="text-xs text-slate-500">Apellido</Label>
                                 <div className="font-medium text-sm text-slate-700">{profile?.lastName}</div>
                             </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-slate-500">Fecha de Nacimiento</Label>
+                                <div className="font-medium text-sm text-slate-700">
+                                    {profile?.birthDate ? profile.birthDate.split('-').reverse().join('/') : "No registrada"}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -186,18 +188,6 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
                                 />
                                 {form.formState.errors.phone && (
                                     <p className="text-xs text-red-500">{form.formState.errors.phone.message}</p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-                                <Input
-                                    id="birthDate"
-                                    type="date"
-                                    {...form.register("birthDate")}
-                                    className={form.formState.errors.birthDate ? "border-red-500" : ""}
-                                />
-                                {form.formState.errors.birthDate && (
-                                    <p className="text-xs text-red-500">{form.formState.errors.birthDate.message}</p>
                                 )}
                             </div>
                             <div className="space-y-2">

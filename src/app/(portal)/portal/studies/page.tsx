@@ -485,19 +485,12 @@ export default function StudiesPage() {
                                 <div className="bg-slate-50 border rounded-lg p-4 text-sm text-slate-600">
                                     {(formData.doctorId === 'capparelli' || doctors.find(d => d.id === formData.doctorId)?.lastName.toLowerCase().includes('capparelli')) ? (
                                         <>
-                                            <p className="font-bold text-slate-800 mb-2">
+                                            <p className="font-medium text-slate-800 mb-2">
                                                 Si tiene coseguro o diferencial:
                                             </p>
-                                            <p className="mb-4">
+                                            <p className="mb-0">
                                                 CBU <strong>0150509201000115863100</strong> o ALIAS <strong>dr.capparelli</strong>
                                             </p>
-
-                                            <div className="flex items-start gap-2 mt-4 pt-4 border-t border-slate-200">
-                                                <div className="h-5 w-5 flex items-center justify-center rounded-full bg-red-100 text-red-600 font-bold text-xs">!</div>
-                                                <p className="text-slate-500 text-xs">
-                                                    Recuerde revisar la bandeja de SPAM ya que la misma puede entrar a dicha casilla, la orden puede ir desde el remitente DrApp , RCTA TU RECETA DIGITAL o SWISSMEDICAL.
-                                                </p>
-                                            </div>
                                         </>
                                     ) : (
                                         <>
