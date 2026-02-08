@@ -6,6 +6,7 @@ import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CheckCircle, XCircle, KeyRound } from "lucide-react";
@@ -140,9 +141,8 @@ function AuthActionContent() {
                     <form onSubmit={handleResetPassword} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="newPassword">Nueva contraseña</Label>
-                            <Input
+                            <PasswordInput
                                 id="newPassword"
-                                type="password"
                                 required
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
@@ -153,9 +153,8 @@ function AuthActionContent() {
 
                         <div className="space-y-2">
                             <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
-                            <Input
+                            <PasswordInput
                                 id="confirmPassword"
-                                type="password"
                                 required
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}

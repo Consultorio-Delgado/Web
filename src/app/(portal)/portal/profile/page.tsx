@@ -6,6 +6,7 @@ import { userService } from "@/services/user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -309,9 +310,8 @@ function ChangePasswordForm({ user }: { user: User | null }) {
                 <form onSubmit={handlePasswordChange} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="new-password">Nueva Contraseña</Label>
-                        <Input
+                        <PasswordInput
                             id="new-password"
-                            type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
@@ -319,9 +319,8 @@ function ChangePasswordForm({ user }: { user: User | null }) {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
-                        <Input
+                        <PasswordInput
                             id="confirm-password"
-                            type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required

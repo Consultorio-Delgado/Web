@@ -153,6 +153,9 @@ function NavItems({ mobile = false }: { mobile?: boolean }) {
             <Link href="/portal/new-appointment" className={className}>
                 Reservar Turno
             </Link>
+            <Link href="/portal/prescriptions" className={className}>
+                Recetas
+            </Link>
             <ContactButton variant="link" className={className} />
         </>
     );

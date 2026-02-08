@@ -15,6 +15,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
     Select,
     SelectContent,
@@ -137,7 +138,7 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
                                     <FormItem>
                                         <FormLabel>Contraseña</FormLabel>
                                         <FormControl>
-                                            <Input type="password" placeholder="******" autoComplete="new-password" {...field} />
+                                            <PasswordInput placeholder="******" autoComplete="new-password" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

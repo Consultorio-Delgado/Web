@@ -7,6 +7,7 @@ import { userService } from "@/services/user";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
@@ -177,11 +178,11 @@ export default function RegisterPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="password">Contraseña</Label>
-                            <Input id="password" type="password" required value={formData.password} onChange={handleChange} disabled={loading} />
+                            <PasswordInput id="password" required value={formData.password} onChange={handleChange} disabled={loading} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
-                            <Input id="confirmPassword" type="password" required value={formData.confirmPassword} onChange={handleChange} disabled={loading} />
+                            <PasswordInput id="confirmPassword" required value={formData.confirmPassword} onChange={handleChange} disabled={loading} />
                         </div>
 
                         {error && (
