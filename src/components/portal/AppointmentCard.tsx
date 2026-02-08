@@ -66,7 +66,24 @@ export function AppointmentCard({ appointment, onStatusChange, doctorSpecialty }
             <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
                     <h3 className="text-lg font-medium text-slate-800">
-                        Dr. {appointment.doctorName || appointment.doctorId}
+                        {(() => {
+                            const id = appointment.doctorId;
+                            const name = appointment.doctorName || '';
+                            const lowerName = name.toLowerCase();
+
+                            if (id === 'secondi' || lowerName.includes('secondi')) {
+                                return 'Dra. María Verónica Secondi';
+                            }
+                            if (id === 'capparelli' || lowerName.includes('capparelli')) {
+                                return 'Dr. Germán Capparelli';
+                            }
+
+                            if (lowerName.startsWith('dr.') || lowerName.startsWith('dra.')) {
+                                return name;
+                            }
+
+                            return `Dr. ${name}`;
+                        })()}
                     </h3>
                     {getStatusBadge(appointment.status)}
                 </div>

@@ -34,9 +34,10 @@ export function BookingWizard() {
     const preselectedDoctorId = searchParams.get('doctorId');
 
     // Step 1: Select Doctor
-    // Step 2: Select Date & Time (Side by Side)
-    // Step 3: Confirm
-    // Step 4: Success
+    // Step 2: Intake Questions (Primera vez? + Consultation type for Secondi)
+    // Step 3: Select Date & Time (Side by Side)
+    // Step 4: Confirm
+    // Step 5: Success
     const [step, setStep] = useState(1);
 
     // Data
@@ -47,6 +48,10 @@ export function BookingWizard() {
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
     const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+    // Step 2: Intake Questions
+    const [isFirstVisit, setIsFirstVisit] = useState<boolean | null>(null);
+    const [consultationType, setConsultationType] = useState<string | null>(null);
 
     // Slots
     const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -127,9 +132,9 @@ export function BookingWizard() {
         }
     }, [selectedDoctor]);
 
-    // Fetch availability when Date changes (within Step 2)
+    // Fetch availability when Date changes (within Step 3)
     useEffect(() => {
-        if (step === 2 && selectedDoctor && selectedDate) {
+        if (step === 3 && selectedDoctor && selectedDate) {
             const fetchAvailability = async () => {
                 setLoadingSlots(true);
                 setAvailableSlots([]);
@@ -189,7 +194,7 @@ export function BookingWizard() {
                 toast.error("Lo sentimos, este turno acaba de ser reservado.");
                 setAvailableSlots(currentSlots);
                 setSelectedTime(null);
-                // Stay on step 2
+                // Stay on step 3
                 return;
             }
 
@@ -208,7 +213,11 @@ export function BookingWizard() {
                 doctorName: `${selectedDoctor.lastName}, ${selectedDoctor.firstName}`,
                 date: appointmentDate,
                 time: selectedTime,
-                type: 'Consulta' // Required by Firestore rules
+                type: consultationType
+                    ? SECONDI_CONSULTATION_TYPES.find(t => t.id === consultationType)?.label || 'Consulta'
+                    : 'Consulta',
+                isFirstVisit: isFirstVisit ?? false,
+                consultationType: consultationType || null,
             });
 
             // 3. If rescheduling, cancel the old one
@@ -220,7 +229,7 @@ export function BookingWizard() {
             }
 
             // 4. Show success screen
-            setStep(4);
+            setStep(5);
 
         } catch (error: any) {
             console.error(error);
@@ -346,21 +355,27 @@ export function BookingWizard() {
                                 onClick={() => handleDoctorSelect(doc)}
                             >
                                 <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100 group-hover:bg-blue-100 transition-colors overflow-hidden">
-                                    {doc.photoURL || DOCTOR_PHOTOS[doc.id] ? (
+                                    {(doc.id === 'capparelli' || doc.lastName.toLowerCase().includes('capparelli')) ? (
+                                        <img src="/assets/doctors/Ger_perfil.jpeg" alt="Dr. Capparelli" className="h-full w-full object-cover" />
+                                    ) : (doc.id === 'secondi' || doc.lastName.toLowerCase().includes('secondi')) ? (
+                                        <img src="/assets/doctors/Vero_perfil.jpeg" alt="Dra. Secondi" className="h-full w-full object-cover" />
+                                    ) : doc.photoURL ? (
                                         <img
-                                            src={doc.photoURL || DOCTOR_PHOTOS[doc.id]}
+                                            src={doc.photoURL}
                                             alt={`${doc.firstName} ${doc.lastName}`}
                                             className="h-full w-full object-cover"
                                         />
                                     ) : (
-                                        <UserIcon className="h-7 w-7 text-blue-600" />
+                                        <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-lg">
+                                            {doc.firstName.charAt(0)}{doc.lastName.charAt(0)}
+                                        </div>
                                     )}
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-lg text-slate-900 group-hover:text-blue-700 transition-colors">
-                                        {doc.id === 'secondi' ? 'Dra. María Verónica Secondi' :
-                                            doc.id === 'capparelli' ? 'Dr. Germán Capparelli' :
-                                                `${doc.lastName}, ${doc.firstName}`}
+                                        {(doc.id === 'secondi' || doc.lastName.toLowerCase().includes('secondi')) ? 'Dra. María Verónica Secondi' :
+                                            (doc.id === 'capparelli' || doc.lastName.toLowerCase().includes('capparelli')) ? 'Dr. Germán Capparelli' :
+                                                `${(doc.gender === 'female' || doc.specialty?.toLowerCase().includes('ginecología')) ? 'Dra.' : 'Dr.'} ${doc.lastName}, ${doc.firstName}`}
                                     </h3>
                                     <Badge variant="secondary" className="mt-1 bg-slate-100 text-slate-700 hover:bg-slate-200">{doc.specialty}</Badge>
                                     <div className="flex flex-wrap gap-1 mt-2">
@@ -382,10 +397,115 @@ export function BookingWizard() {
         );
     };
 
-    const renderStep2_Selection = () => (
+    // Consultation types for Dra. Secondi
+    const SECONDI_CONSULTATION_TYPES = [
+        { id: 'consulta-ginecologica', label: 'Consulta Ginecológica' },
+        { id: 'pap-colpo', label: 'Consulta Pap y Colpo' },
+        { id: 'prueba-hpv', label: 'Prueba de HPV' },
+    ];
+
+    const isSecondi = selectedDoctor?.id === 'secondi' || selectedDoctor?.lastName?.toLowerCase().includes('secondi');
+
+    // Validation for Step 2
+    const canProceedFromStep2 = isFirstVisit !== null && (!isSecondi || consultationType !== null);
+
+    const renderStep2_Intake = () => (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto">
+            <header className="mb-8 text-center">
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">2. Información de la Consulta</h1>
+                <p className="text-lg text-slate-500">
+                    Turno con <span className="font-semibold text-slate-800">
+                        {selectedDoctor?.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                            selectedDoctor?.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                `${selectedDoctor?.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor?.lastName}, ${selectedDoctor?.firstName}`}
+                    </span>
+                </p>
+            </header>
+
+            <div className="space-y-8">
+                {/* Primera Vez? Question */}
+                <Card className="border-slate-200 shadow-sm">
+                    <CardHeader className="pb-4">
+                        <CardTitle className="text-xl text-slate-900">¿Es tu primera vez con este profesional?</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                onClick={() => setIsFirstVisit(true)}
+                                className={cn(
+                                    "p-6 rounded-xl border-2 text-center transition-all duration-200 font-semibold text-lg",
+                                    isFirstVisit === true
+                                        ? "border-blue-600 bg-blue-50 text-blue-700 shadow-md"
+                                        : "border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+                                )}
+                            >
+                                Sí
+                            </button>
+                            <button
+                                onClick={() => setIsFirstVisit(false)}
+                                className={cn(
+                                    "p-6 rounded-xl border-2 text-center transition-all duration-200 font-semibold text-lg",
+                                    isFirstVisit === false
+                                        ? "border-blue-600 bg-blue-50 text-blue-700 shadow-md"
+                                        : "border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+                                )}
+                            >
+                                No
+                            </button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Consultation Type - Only for Dra. Secondi */}
+                {isSecondi && (
+                    <Card className="border-slate-200 shadow-sm animate-in fade-in duration-300">
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-xl text-slate-900">Tipo de Consulta</CardTitle>
+                            <CardDescription>Seleccione el motivo de su visita</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col gap-3">
+                                {SECONDI_CONSULTATION_TYPES.map(type => (
+                                    <button
+                                        key={type.id}
+                                        onClick={() => setConsultationType(type.id)}
+                                        className={cn(
+                                            "p-4 rounded-lg border-2 text-left transition-all duration-200 font-medium",
+                                            consultationType === type.id
+                                                ? "border-blue-600 bg-blue-50 text-blue-700 shadow-md"
+                                                : "border-slate-200 text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        {type.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Actions */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-between items-center pt-4">
+                    <Button variant="ghost" onClick={() => { setStep(1); setIsFirstVisit(null); setConsultationType(null); }} className="text-slate-500 hover:text-slate-900">
+                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        Cambiar Profesional
+                    </Button>
+                    <Button
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-6 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                        disabled={!canProceedFromStep2}
+                        onClick={() => setStep(3)}
+                    >
+                        OK <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderStep3_Selection = () => (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <header className="mb-8 text-center">
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">2. Seleccione Fecha y Hora</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">3. Seleccione Fecha y Hora</h1>
                 <p className="text-lg text-slate-500">
                     Turnos disponibles para <span className="font-semibold text-slate-800">
                         {selectedDoctor?.id === 'secondi' ? 'Dra. María Verónica Secondi' :
@@ -455,9 +575,9 @@ export function BookingWizard() {
                             }}
                         />
                     </div>
-                    <Button variant="ghost" onClick={() => setStep(1)} className="mt-6 text-slate-500 hover:text-slate-900 hover:bg-slate-100">
+                    <Button variant="ghost" onClick={() => setStep(2)} className="mt-6 text-slate-500 hover:text-slate-900 hover:bg-slate-100">
                         <ChevronLeft className="mr-2 h-4 w-4" />
-                        Cambiar Profesional
+                        Volver
                     </Button>
                 </div>
 
@@ -549,7 +669,7 @@ export function BookingWizard() {
                         <Button
                             className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-6 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
                             disabled={!selectedDate || !selectedTime}
-                            onClick={() => setStep(3)} // Go to Confirm
+                            onClick={() => setStep(4)} // Go to Confirm
                         >
                             Confirmar Turno <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
@@ -559,7 +679,7 @@ export function BookingWizard() {
         </div>
     );
 
-    const renderStep3_Confirm = () => (
+    const renderStep4_Confirm = () => (
         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-2xl mx-auto">
             <div className="text-center space-y-2 mb-8">
                 <div className="flex justify-center mb-4">
@@ -607,7 +727,7 @@ export function BookingWizard() {
                     </div>
                 </CardContent>
                 <CardFooter className="bg-slate-50 p-6 flex flex-col sm:flex-row gap-4 justify-end">
-                    <Button variant="ghost" className="w-full sm:w-auto" onClick={() => setStep(2)}>
+                    <Button variant="ghost" className="w-full sm:w-auto" onClick={() => setStep(3)}>
                         Volver atrás
                     </Button>
                     <Button
@@ -623,7 +743,7 @@ export function BookingWizard() {
         </div>
     );
 
-    const renderStep4_Success = () => (
+    const renderStep5_Success = () => (
         <div className="flex flex-col items-center justify-center py-12 text-center animate-in fade-in zoom-in-95 duration-700">
             <div className="h-24 w-24 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
                 <CheckCircle className="h-12 w-12 text-green-600" />
@@ -657,9 +777,10 @@ export function BookingWizard() {
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             {step === 1 && renderStep1_Doctors()}
-            {step === 2 && renderStep2_Selection()}
-            {step === 3 && renderStep3_Confirm()}
-            {step === 4 && renderStep4_Success()}
+            {step === 2 && renderStep2_Intake()}
+            {step === 3 && renderStep3_Selection()}
+            {step === 4 && renderStep4_Confirm()}
+            {step === 5 && renderStep5_Success()}
         </div>
     );
 }

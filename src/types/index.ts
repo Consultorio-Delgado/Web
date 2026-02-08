@@ -71,6 +71,8 @@ export interface Appointment {
     createdAt: Date;
     updatedAt?: Date;
     arrivedAt?: Date; // Time patient arrived in waiting room
+    isFirstVisit?: boolean; // Is this the patient's first visit with this doctor?
+    consultationType?: string | null; // For specialties like Ginecología: consulta-ginecologica, pap-colpo, prueba-hpv
 }
 
 export interface MedicalRecord {
