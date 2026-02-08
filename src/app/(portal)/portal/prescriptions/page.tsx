@@ -188,7 +188,7 @@ export default function PrescriptionsPage() {
                 otraCobertura: "",
                 token: ""
             }));
-            toast.success("¡Solicitud enviada! La receta llegará dentro de los 5 días hábiles.");
+            toast.success("¡Solicitud enviada! La receta llegará dentro de los 7 días hábiles.");
         } catch (error) {
             console.error(error);
             toast.error("Error al enviar la solicitud. Intente nuevamente.");
@@ -216,7 +216,7 @@ export default function PrescriptionsPage() {
                         <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Solicitud Enviada!</h2>
                         <p className="text-slate-600 mb-2">Tu pedido de receta fue enviado correctamente.</p>
                         <p className="text-sm text-slate-500 mb-6">
-                            La receta llegará dentro de los <strong>5 días hábiles</strong>.
+                            La receta llegará dentro de los <strong>7 días hábiles</strong>.
                         </p>
                         <Button onClick={() => setSuccess(false)}>
                             Solicitar Otra Receta
@@ -249,6 +249,9 @@ export default function PrescriptionsPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {doctors.map((doc) => {
                                     const isSelected = formData.doctorId === doc.id;
+                                    const isSecondi = doc.id.toLowerCase().includes('secondi') || doc.lastName.toLowerCase().includes('secondi');
+                                    const isCapparelli = doc.id.toLowerCase().includes('capparelli') || doc.lastName.toLowerCase().includes('capparelli');
+
                                     return (
                                         <div
                                             key={doc.id}
@@ -261,8 +264,8 @@ export default function PrescriptionsPage() {
                                                 }
                                             `}
                                         >
-                                            {doc.id === 'secondi' ? 'Dra. María Verónica Secondi' :
-                                                doc.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                            {isSecondi ? 'Dra. María Verónica Secondi' :
+                                                isCapparelli ? 'Dr. Germán Capparelli' :
                                                     `${doc.gender === 'female' ? 'Dra.' : 'Dr.'} ${doc.firstName} ${doc.lastName}`}
                                         </div>
                                     );
@@ -280,7 +283,7 @@ export default function PrescriptionsPage() {
                                             <div className="text-sm text-amber-800">
                                                 <p className="font-semibold">MUY IMPORTANTE:</p>
                                                 <ul className="list-disc pl-4 mt-1 space-y-1">
-                                                    <li>La receta llegará dentro de los <strong>5 días hábiles</strong>.</li>
+                                                    <li>La receta llegará dentro de los <strong>7 días hábiles</strong>.</li>
                                                     <li>Solo se realizan recetas de medicación indicada por el profesional.</li>
                                                     <li>La prescripción está reservada a pacientes con historia clínica y controles actualizados.</li>
                                                     <li><strong>Si solicita una receta para un familiar que es paciente, complete todos los datos del paciente en cuestión.</strong></li>
@@ -295,7 +298,7 @@ export default function PrescriptionsPage() {
                                             <div className="text-sm text-amber-800">
                                                 <p className="font-semibold">MUY IMPORTANTE:</p>
                                                 <ul className="list-disc pl-4 mt-1 space-y-1">
-                                                    <li>La receta llegará dentro de los <strong>5 días hábiles</strong>.</li>
+                                                    <li>La receta llegará dentro de los <strong>7 días hábiles</strong>.</li>
                                                     <li>Solo se realizan recetas de medicación indicada por el profesional.</li>
                                                     <li>La prescripción está reservada a pacientes con historia clínica y controles actualizados.</li>
                                                     <li><strong>Si solicita una receta para un familiar que es paciente, complete todos los datos del paciente en cuestión.</strong></li>

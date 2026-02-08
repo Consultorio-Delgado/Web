@@ -188,7 +188,7 @@ export default function StudiesPage() {
                 otraCobertura: "",
                 token: ""
             }));
-            toast.success("¡Solicitud enviada! La orden llegará dentro de los 5 días hábiles.");
+            toast.success("¡Solicitud enviada! La orden llegará dentro de los 7 días hábiles.");
         } catch (error) {
             console.error(error);
             toast.error("Error al enviar la solicitud. Intente nuevamente.");
@@ -216,7 +216,7 @@ export default function StudiesPage() {
                         <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Solicitud Enviada!</h2>
                         <p className="text-slate-600 mb-2">Tu pedido de estudios fue enviado correctamente.</p>
                         <p className="text-sm text-slate-500 mb-6">
-                            La orden llegará dentro de los <strong>5 días hábiles</strong>.
+                            La orden llegará dentro de los <strong>7 días hábiles</strong>.
                         </p>
                         <Button onClick={() => setSuccess(false)} className="bg-purple-600 hover:bg-purple-700">
                             Solicitar Otro Estudio
@@ -233,7 +233,7 @@ export default function StudiesPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-purple-700">
                         <Microscope className="h-6 w-6" />
-                        Solicitar Estudios / PAPs
+                        Solicitud y envíos de estudios/PAPs
                     </CardTitle>
                     <CardDescription>
                         Complete el formulario para solicitar órdenes de estudios o PAPs a su profesional.
@@ -249,6 +249,9 @@ export default function StudiesPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {doctors.map((doc) => {
                                     const isSelected = formData.doctorId === doc.id;
+                                    const isSecondi = doc.id.toLowerCase().includes('secondi') || doc.lastName.toLowerCase().includes('secondi');
+                                    const isCapparelli = doc.id.toLowerCase().includes('capparelli') || doc.lastName.toLowerCase().includes('capparelli');
+
                                     return (
                                         <div
                                             key={doc.id}
@@ -261,8 +264,8 @@ export default function StudiesPage() {
                                                 }
                                             `}
                                         >
-                                            {doc.id === 'secondi' ? 'Dra. María Verónica Secondi' :
-                                                doc.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                            {isSecondi ? 'Dra. María Verónica Secondi' :
+                                                isCapparelli ? 'Dr. Germán Capparelli' :
                                                     `${doc.gender === 'female' ? 'Dra.' : 'Dr.'} ${doc.firstName} ${doc.lastName}`}
                                         </div>
                                     );
@@ -279,7 +282,7 @@ export default function StudiesPage() {
                                         <div className="text-sm text-amber-800">
                                             <p className="font-semibold">MUY IMPORTANTE:</p>
                                             <ul className="list-disc pl-4 mt-1 space-y-1">
-                                                <li>La orden llegará dentro de los <strong>5 días hábiles</strong>.</li>
+                                                <li>La orden llegará dentro de los <strong>7 días hábiles</strong>.</li>
                                                 <li>Solo se realizan órdenes de estudios indicados por el profesional.</li>
                                                 <li>La prescripción está reservada a pacientes con historia clínica y controles actualizados.</li>
                                                 <li><strong>Si solicita una orden para un familiar que es paciente, complete todos los datos del paciente en cuestión.</strong></li>
