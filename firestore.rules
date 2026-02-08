@@ -39,6 +39,18 @@ service cloud.firestore {
 
     // ...
 
+    // 1. Users Collection (Patients)
+    match /users/{userId} {
+      allow read, update: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated(); // Allow user to create their own profile on signup
+    }
+
+    // 2. Doctors Collection (Public Profiles)
+    match /doctors/{doctorId} {
+      allow read: if true; // Publicly visible for booking
+      allow write: if isAdmin(); // Only admins manage doctors
+    }
+
     // 3. Appointments (appointments/{appointmentId})
     match /appointments/{appointmentId} {
       allow read: if isAuthenticated();

@@ -11,7 +11,11 @@ import { UserProfile } from "@/types";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 
-export function PatientSearch() {
+interface PatientSearchProps {
+    onSelect?: (patient: UserProfile) => void;
+}
+
+export function PatientSearch({ onSelect }: PatientSearchProps) {
     const router = useRouter();
     const [term, setTerm] = useState("");
     const [results, setResults] = useState<UserProfile[]>([]);
@@ -76,7 +80,13 @@ export function PatientSearch() {
                             <div
                                 key={patient.uid}
                                 className="p-2 hover:bg-slate-100 cursor-pointer rounded-md flex justify-between items-center"
-                                onClick={() => router.push(`/doctor/patient/${patient.uid}`)}
+                                onClick={() => {
+                                    if (onSelect) {
+                                        onSelect(patient);
+                                    } else {
+                                        router.push(`/doctor/patient/${patient.uid}`);
+                                    }
+                                }}
                             >
                                 <div>
                                     <p className="font-medium">{patient.lastName}, {patient.firstName}</p>
