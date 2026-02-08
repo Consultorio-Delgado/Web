@@ -265,5 +265,86 @@ export const emailService = {
             console.error('[EmailService] Prescription Error:', error);
             return { success: false, error };
         }
+    },
+
+    async sendVirtualConsultationRequest(data: {
+        nombre: string;
+        apellido: string;
+        dni: string;
+        fechaNacimiento: string;
+        telefono: string;
+        email: string;
+        tipoConsulta: string;
+        consulta: string;
+        attachments?: { filename: string; content: string }[];
+    }, doctorEmail: string) {
+        try {
+            const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">🎥 Solicitud de Consulta Virtual</h1>
+    </div>
+    
+    <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+        <h2 style="color: #1e293b; margin-top: 0;">Datos del Paciente</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold; width: 140px;">Nombre:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${data.nombre} ${data.apellido}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">DNI:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${data.dni}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">Fecha Nac.:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${data.fechaNacimiento}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">Teléfono:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${data.telefono}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">Email:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;"><a href="mailto:${data.email}" style="color: #2563eb;">${data.email}</a></td>
+            </tr>
+        </table>
+
+        <h2 style="color: #1e293b;">Detalles de la Consulta</h2>
+        <div style="margin-bottom: 20px;">
+            <p><strong>Tipo de Consulta:</strong> ${data.tipoConsulta}</p>
+        </div>
+        
+        <div style="padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h3 style="margin-top: 0;">Motivo:</h3>
+            <p style="margin: 0; white-space: pre-wrap;">${data.consulta}</p>
+        </div>
+        
+        <p style="margin-top: 20px; font-size: 12px; color: #64748b; text-align: center;">
+            Este mensaje proviene del formulario de consulta virtual del sitio web.
+        </p>
+    </div>
+</body>
+</html>`;
+
+            await resend.emails.send({
+                from: FROM_EMAIL,
+                to: doctorEmail,
+                replyTo: data.email,
+                subject: `Consulta Virtual - ${data.nombre} ${data.apellido}`,
+                html: html,
+                attachments: data.attachments
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[EmailService] Virtual Consultation Error:', error);
+            return { success: false, error };
+        }
     }
 };
