@@ -18,6 +18,10 @@ import { Appointment } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { PatientSearch } from "@/components/doctor/PatientSearch";
+import { ShieldAlert, CalendarPlus, X } from "lucide-react";
 
 // Timer Component
 function WaitingTimer({ arrivedAt }: { arrivedAt: Date }) {
@@ -140,6 +144,72 @@ export default function DailyAgendaPage() {
         }
     };
 
+    // New Booking & Blocking Logic
+    const [bookingSlot, setBookingSlot] = useState<string | null>(null);
+
+    const handleBooking = async (patient: any) => {
+        if (!doctor || !bookingSlot) return;
+        try {
+            setActionLoading('booking');
+            const apptDate = new Date(date);
+            const [hours, minutes] = bookingSlot.split(':').map(Number);
+            apptDate.setHours(hours, minutes, 0, 0);
+
+            await appointmentService.createAppointment({
+                patientId: patient.uid,
+                patientName: `${patient.firstName} ${patient.lastName}`,
+                patientEmail: patient.email,
+                doctorId: doctor.id,
+                doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                date: apptDate,
+                time: bookingSlot,
+                status: 'confirmed',
+                type: 'Consulta',
+                notes: 'Reservado manualmente desde Agenda Diaria'
+            } as any);
+
+            toast.success(`Turno reservado para ${patient.firstName} ${patient.lastName}`);
+            fetchSlots();
+            setBookingSlot(null);
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al reservar turno");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleBlockSlot = async (time: string) => {
+        if (!doctor) return;
+        try {
+            setActionLoading(time); // Use time as loading key
+            const apptDate = new Date(date);
+            const [hours, minutes] = time.split(':').map(Number);
+            apptDate.setHours(hours, minutes, 0, 0);
+
+            await appointmentService.createAppointment({
+                patientId: 'blocked',
+                patientName: 'Bloqueado',
+                patientEmail: '',
+                doctorId: doctor.id,
+                doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                date: apptDate,
+                time: time,
+                type: 'Bloqueado',
+                status: 'confirmed',
+                notes: 'Bloqueado manualmente desde Agenda Diaria'
+            } as any);
+
+            toast.success(`Horario ${time} bloqueado.`);
+            fetchSlots();
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al bloquear horario");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     if (!profile || profile.role !== 'doctor') return <div className="p-8">Acceso denegado</div>;
 
     return (
@@ -248,7 +318,26 @@ export default function DailyAgendaPage() {
                                         )}
 
                                         {slot.status === 'free' && (
-                                            <span className="text-slate-500 italic">Disponibilidad libre</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-slate-500 italic mr-2">Disponibilidad libre</span>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-8 gap-1"
+                                                    onClick={() => setBookingSlot(slot.time)}
+                                                >
+                                                    <CalendarPlus className="h-3 w-3" /> Reservar
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    onClick={() => handleBlockSlot(slot.time)}
+                                                    disabled={actionLoading === slot.time}
+                                                >
+                                                    {actionLoading === slot.time ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldAlert className="h-3 w-3" />}
+                                                </Button>
+                                            </div>
                                         )}
                                     </div>
 
@@ -327,6 +416,23 @@ export default function DailyAgendaPage() {
                     })}
                 </div>
             )}
+
+            {/* Manual Booking Dialog */}
+            <Dialog open={!!bookingSlot} onOpenChange={(open) => !open && setBookingSlot(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reservar Turno: {bookingSlot}</DialogTitle>
+                        <DialogDescription>Búsqueda y asignación de paciente para el turno.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <Label>Buscar Paciente</Label>
+                        <PatientSearch onSelect={handleBooking} />
+                        <div className="flex justify-end">
+                            <Button variant="outline" onClick={() => setBookingSlot(null)}>Cancelar</Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

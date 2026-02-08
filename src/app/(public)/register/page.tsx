@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { userService } from "@/services/user";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,17 @@ export default function RegisterPage() {
         }
 
         try {
+            // 0. Validate Unique DNI
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("dni", "==", formData.dni));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                setError("Ya existe un usuario registrado con este documento de identidad.");
+                setLoading(false);
+                return;
+            }
+
             // 1. Create Auth User
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
             const user = userCredential.user;

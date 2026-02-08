@@ -440,11 +440,27 @@ export default function VirtualConsultationPage() {
                                     )}
                                 </div>
 
-                                <div className="bg-amber-50 p-4 rounded-lg flex items-start gap-3">
-                                    <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                                    <p className="text-sm text-amber-800">
-                                        <strong>Importante:</strong> Si solicita la consulta virtual esté atento al teléfono que deja de contacto. Tenga en cuenta que la llamada puede ser de un número Privado.
-                                    </p>
+                                <div className="space-y-4">
+                                    <div className="bg-blue-50 p-4 rounded-lg flex items-start gap-3">
+                                        <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                        <p className="text-sm text-blue-800">
+                                            En 24hs hábiles se contactarán vía WhatsApp para confirmar y coordinar la consulta.
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-amber-50 p-4 rounded-lg flex items-start gap-3">
+                                        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                        <p className="text-sm text-amber-800">
+                                            <strong>Importante:</strong> Si solicita la consulta virtual esté atento al teléfono que deja de contacto. Tenga en cuenta que la llamada puede ser de un número Privado.
+                                        </p>
+                                    </div>
+
+                                    <div className="bg-red-50 p-4 rounded-lg flex items-start gap-3 border border-red-100">
+                                        <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                        <p className="text-sm text-red-800 font-medium">
+                                            Recordar que esta consulta virtual es un servicio de pago independientemente si usted es particular o tiene prepaga. Gracias.
+                                        </p>
+                                    </div>
                                 </div>
 
                                 <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" size="lg" disabled={loading}>
