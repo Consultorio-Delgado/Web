@@ -89,10 +89,10 @@ const nextConfig = {
                         key: 'Access-Control-Allow-Origin',
                         value: process.env.NODE_ENV === 'production' ? 'https://consultoriodelgado.com' : '*'
                     },
-                    // 8. Cross-Origin Isolation
+                    // 8. Cross-Origin Isolation (credentialless allows Google Maps embed)
                     {
                         key: 'Cross-Origin-Embedder-Policy',
-                        value: 'require-corp'
+                        value: 'credentialless'
                     },
                     {
                         key: 'Cross-Origin-Opener-Policy',
