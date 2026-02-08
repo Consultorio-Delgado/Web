@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { UserProfile } from "@/types";
 import {
     Table,
@@ -81,9 +82,11 @@ export function PatientsTable({ data, onUpdate }: Props) {
                                     <TableCell>{patient.email}</TableCell>
                                     <TableCell>{patient.insurance || "-"}</TableCell>
                                     <TableCell className="text-right space-x-2">
-                                        <Button variant="ghost" size="icon" title="Ver Historia Clínica">
-                                            <FileText className="h-4 w-4 text-slate-500" />
-                                        </Button>
+                                        <Link href={`/doctor/patients/${patient.uid}`}>
+                                            <Button variant="ghost" size="icon" title="Ver Historia Clínica">
+                                                <FileText className="h-4 w-4 text-slate-500" />
+                                            </Button>
+                                        </Link>
                                         <Button
                                             variant="ghost"
                                             size="icon"

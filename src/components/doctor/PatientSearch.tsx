@@ -79,7 +79,7 @@ export function PatientSearch({ onSelect }: PatientSearchProps) {
                         {results.map(patient => (
                             <div
                                 key={patient.uid}
-                                className="p-2 hover:bg-slate-100 cursor-pointer rounded-md flex justify-between items-center"
+                                className="p-2 hover:bg-slate-100 cursor-pointer rounded-md"
                                 onClick={() => {
                                     if (onSelect) {
                                         onSelect(patient);
@@ -88,11 +88,8 @@ export function PatientSearch({ onSelect }: PatientSearchProps) {
                                     }
                                 }}
                             >
-                                <div>
-                                    <p className="font-medium">{patient.lastName}, {patient.firstName}</p>
-                                    <p className="text-xs text-muted-foreground">DNI: {patient.dni}</p>
-                                </div>
-                                <Button variant="ghost" size="sm">Ver Historia</Button>
+                                <p className="font-medium">{patient.lastName}, {patient.firstName}</p>
+                                <p className="text-xs text-muted-foreground">DNI: {patient.dni}</p>
                             </div>
                         ))}
                     </CardContent>
