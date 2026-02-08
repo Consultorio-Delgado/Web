@@ -16,6 +16,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
+import { ContactButton } from "@/components/shared/ContactButton";
 
 export function Navbar() {
     const { user, profile, logout } = useAuth();
@@ -25,7 +26,7 @@ export function Navbar() {
 
     const handleLogout = async () => {
         await logout();
-        router.push("/login");
+        router.push("/");
     };
 
     return (
@@ -152,6 +153,7 @@ function NavItems({ mobile = false }: { mobile?: boolean }) {
             <Link href="/portal/new-appointment" className={className}>
                 Reservar Turno
             </Link>
+            <ContactButton variant="link" className={className} />
         </>
     );
 }

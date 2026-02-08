@@ -22,7 +22,13 @@ interface ContactFormData {
     message: string;
 }
 
-export function ContactButton() {
+interface ContactButtonProps {
+    variant?: 'floating' | 'link';
+    className?: string;
+    onClose?: () => void;
+}
+
+export function ContactButton({ variant = 'floating', className = '' }: ContactButtonProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState<ContactFormData>({
@@ -65,15 +71,27 @@ export function ContactButton() {
     return (
         <>
             {/* Floating contact button */}
-            <button
-                onClick={() => setIsOpen(true)}
-                aria-label="Contactar"
-                className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-all duration-300 hover:scale-110 hover:bg-primary/90 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-primary/30"
-            >
-                <Mail className="h-7 w-7" />
-                {/* Pulse animation ring */}
-                <span className="absolute -z-10 h-14 w-14 animate-ping rounded-full bg-primary opacity-30" />
-            </button>
+            {variant === 'floating' && (
+                <button
+                    onClick={() => setIsOpen(true)}
+                    aria-label="Contactar"
+                    className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-all duration-300 hover:scale-110 hover:bg-primary/90 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-primary/30"
+                >
+                    <Mail className="h-7 w-7" />
+                    {/* Pulse animation ring */}
+                    <span className="absolute -z-10 h-14 w-14 animate-ping rounded-full bg-primary opacity-30" />
+                </button>
+            )}
+
+            {/* Link variant for navbar */}
+            {variant === 'link' && (
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className={className}
+                >
+                    Contacto
+                </button>
+            )}
 
             {/* Contact Form Dialog */}
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
