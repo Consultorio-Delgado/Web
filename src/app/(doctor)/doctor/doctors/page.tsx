@@ -51,7 +51,7 @@ export default function DoctorsPage() {
             if (!user) {
                 throw new Error("No estás autenticado");
             }
-            const token = await user.getIdToken(true); // Force refresh to get latest claims
+            const token = await user.getIdToken(); // Use existing token
 
             // Use API to create Auth User + Firestore Profile
             const response = await fetch("/api/admin/doctors", {
