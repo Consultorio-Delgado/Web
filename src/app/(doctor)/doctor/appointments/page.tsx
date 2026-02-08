@@ -54,7 +54,7 @@ export default function AppointmentsPage() {
                 const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
                 const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 
-                // Fetch all appointments for the month
+                // Fetch all appointments for the month (simplified query, filter client-side)
                 const { collection, query, where, getDocs, Timestamp } = await import("firebase/firestore");
                 const { db } = await import("@/lib/firebase");
 
@@ -62,18 +62,21 @@ export default function AppointmentsPage() {
                     collection(db, "appointments"),
                     where("doctorId", "==", doctor.id),
                     where("date", ">=", Timestamp.fromDate(startOfMonth)),
-                    where("date", "<=", Timestamp.fromDate(endOfMonth)),
-                    where("status", "in", ["confirmed", "pending", "arrived", "completed"])
+                    where("date", "<=", Timestamp.fromDate(endOfMonth))
                 );
 
                 const snapshot = await getDocs(q);
                 const days = new Set<string>();
+                const validStatuses = ["confirmed", "pending", "arrived", "completed"];
                 snapshot.docs.forEach(doc => {
-                    const date = doc.data().date?.toDate();
-                    if (date && doc.data().patientId !== 'blocked') {
+                    const data = doc.data();
+                    const date = data.date?.toDate();
+                    // Filter: real patients (not blocked) and valid status
+                    if (date && data.patientId !== 'blocked' && validStatuses.includes(data.status)) {
                         days.add(format(date, 'yyyy-MM-dd'));
                     }
                 });
+                console.log("Busy days loaded:", days); // Debug
                 setBusyDays(days);
             } catch (error) {
                 console.error("Failed to fetch busy days:", error);
@@ -286,11 +289,11 @@ export default function AppointmentsPage() {
                                 modifiers={{
                                     hasBusy: (date) => busyDays.has(format(date, 'yyyy-MM-dd'))
                                 }}
-                                modifiersClassNames={{
-                                    hasBusy: "font-bold text-black"
+                                modifiersStyles={{
+                                    hasBusy: { fontWeight: 'bold', color: '#000' }
                                 }}
-                                classNames={{
-                                    day: "text-gray-400 hover:bg-accent hover:text-accent-foreground"
+                                styles={{
+                                    day: { color: '#9ca3af' }
                                 }}
                             />
                         </CardContent>

@@ -68,7 +68,8 @@ export const adminService = {
                     ...data,
                     patientName, // Override with fixed name
                     date: data.date.toDate(),
-                    createdAt: data.createdAt?.toDate() || new Date()
+                    createdAt: data.createdAt?.toDate() || new Date(),
+                    arrivedAt: data.arrivedAt?.toDate() || undefined
                 } as Appointment;
             }));
             return appointments;
