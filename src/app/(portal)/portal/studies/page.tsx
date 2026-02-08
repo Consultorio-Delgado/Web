@@ -39,6 +39,7 @@ interface StudyFormData {
     numeroAfiliado: string;
     plan: string;
     token: string;
+    otraCobertura: string;
     pedido: string;
 }
 
@@ -58,6 +59,7 @@ export default function StudiesPage() {
         numeroAfiliado: "",
         plan: "",
         token: "",
+        otraCobertura: "",
         pedido: "",
     });
 
@@ -141,6 +143,11 @@ export default function StudiesPage() {
             return;
         }
 
+        if (formData.cobertura === "Otra" && !formData.otraCobertura.trim()) {
+            toast.error("Por favor especifique su cobertura social");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -157,6 +164,8 @@ export default function StudiesPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...formData,
+                    ...formData,
+                    cobertura: formData.cobertura === "Otra" ? `Otra: ${formData.otraCobertura}` : formData.cobertura,
                     doctorName: selectedDoctor ? (
                         selectedDoctor.id === 'secondi' ? 'Dra. María Verónica Secondi' :
                             selectedDoctor.id === 'capparelli' ? 'Dr. Germán Capparelli' :
@@ -176,6 +185,7 @@ export default function StudiesPage() {
                 ...prev,
                 doctorId: "",
                 pedido: "",
+                otraCobertura: "",
                 token: ""
             }));
             toast.success("¡Solicitud enviada! La orden llegará dentro de los 5 días hábiles.");
@@ -355,9 +365,19 @@ export default function StudiesPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <p className="text-xs text-slate-500">
-                                        Si no se encuentra en el listado seleccione "Otra" y especifíquela abajo junto al pedido.
-                                    </p>
+                                    {formData.cobertura === "Otra" && (
+                                        <div className="mt-2">
+                                            <Label htmlFor="otraCobertura">Especifique Cobertura *</Label>
+                                            <Input
+                                                id="otraCobertura"
+                                                required
+                                                value={formData.otraCobertura}
+                                                onChange={handleChange}
+                                                placeholder="Nombre de la obra social / prepaga"
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

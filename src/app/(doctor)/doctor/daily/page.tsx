@@ -273,10 +273,13 @@ export default function DailyAgendaPage() {
         // Assuming I can only block MY slots for safety unless otherwise specified.
         // BUT user asked for "concurrent view".
         // Let's allow blocking ONLY if it's my slot for now to be safe.
+        // Allow blocking any slot (Shared Management)
+        /*
         if (targetDoctorId !== doctor.id) {
             toast.error("Solo puedes bloquear tus propios horarios.");
             return;
         }
+        */
 
         try {
             setActionLoading(time + targetDoctorId);
@@ -308,10 +311,13 @@ export default function DailyAgendaPage() {
     };
 
     const handleUnblockSlot = async (appointmentId: string, appointmentDoctorId: string) => {
+        // Allow unblocking any slot (Shared Management)
+        /*
         if (appointmentDoctorId !== doctor.id) {
             toast.error("Solo puedes desbloquear tus propios horarios.");
             return;
         }
+        */
 
         try {
             setActionLoading(appointmentId);
@@ -586,45 +592,29 @@ export default function DailyAgendaPage() {
                                             </div>
                                         )}
 
+
                                         {slot.status === 'free' && !isSelectionMode && (
                                             <div className="flex items-center gap-2">
                                                 <span className="text-slate-500 italic mr-2 text-sm">
                                                     Disponible {isMySlot ? "" : `(Dr. ${slot.doctor.lastName})`}
                                                 </span>
-                                                {isMySlot ? (
-                                                    <>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="h-8 gap-1"
-                                                            onClick={() => setBookingSlot({ time: slot.time, doctorId: slot.doctor.id })}
-                                                        >
-                                                            <CalendarPlus className="h-3 w-3" /> Reservar
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            className="h-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                            onClick={() => handleBlockSlot(slot.time, slot.doctor.id)}
-                                                            disabled={actionLoading === (slot.time + slot.doctor.id)}
-                                                        >
-                                                            {actionLoading === (slot.time + slot.doctor.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldAlert className="h-3 w-3" />}
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    // Allow booking on behalf of other doctor? 
-                                                    // "que ambos doctores puedan ver ambas agendas diarias" usually implies read-only or full access.
-                                                    // Let's allow booking for others as it's useful for reception/collaboration, 
-                                                    // but prevent Blocking others (destructive).
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 gap-1 border-orange-200 text-orange-700 hover:bg-orange-50"
-                                                        onClick={() => setBookingSlot({ time: slot.time, doctorId: slot.doctor.id })}
-                                                    >
-                                                        <CalendarPlus className="h-3 w-3" /> Reservar Dr. {slot.doctor.lastName}
-                                                    </Button>
-                                                )}
+                                                <Button
+                                                    size="sm"
+                                                    variant={isMySlot ? "outline" : "outline"} // Keep consistent or distinct?
+                                                    className={`h-8 gap-1 ${!isMySlot ? "border-orange-200 text-orange-700 hover:bg-orange-50" : ""}`}
+                                                    onClick={() => setBookingSlot({ time: slot.time, doctorId: slot.doctor.id })}
+                                                >
+                                                    <CalendarPlus className="h-3 w-3" /> Reservar {!isMySlot && `Dr. ${slot.doctor.lastName}`}
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    onClick={() => handleBlockSlot(slot.time, slot.doctor.id)}
+                                                    disabled={actionLoading === (slot.time + slot.doctor.id)}
+                                                >
+                                                    {actionLoading === (slot.time + slot.doctor.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldAlert className="h-3 w-3" />}
+                                                </Button>
                                             </div>
                                         )}
 
@@ -637,7 +627,7 @@ export default function DailyAgendaPage() {
                                     <div className="hidden sm:flex items-center gap-2 flex-wrap justify-end">
                                         <StatusBadge status={slot.status} appointmentStatus={appt?.status} />
 
-                                        {!isSelectionMode && slot.status === 'blocked' && appt && isMySlot && (
+                                        {!isSelectionMode && slot.status === 'blocked' && appt && (
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
@@ -652,12 +642,8 @@ export default function DailyAgendaPage() {
 
                                         {!isSelectionMode && slot.status === 'occupied' && appt && (
                                             <>
-                                                {/* Edit Actions - Only for MY appointments unless concurrent editing is desired.
-                                                    Usually doctors only manage their own flow (Arrived/Finished).
-                                                    Let's restrict 'Mark Arrived/Finished' to own patients for now to avoid confusion,
-                                                    unless user complains.
-                                                 */}
-                                                {isMySlot && (
+                                                {/* Edit Actions - Shared Management enabled */}
+                                                {true && (
                                                     <>
                                                         {isConfirmed && (
                                                             <>

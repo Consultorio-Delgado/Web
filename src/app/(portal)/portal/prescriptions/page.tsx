@@ -39,6 +39,7 @@ interface PrescriptionFormData {
     numeroAfiliado: string;
     plan: string;
     token: string;
+    otraCobertura: string;
     medicamentos: string;
 }
 
@@ -58,6 +59,7 @@ export default function PrescriptionsPage() {
         numeroAfiliado: "",
         plan: "",
         token: "",
+        otraCobertura: "",
         medicamentos: "",
     });
 
@@ -141,6 +143,11 @@ export default function PrescriptionsPage() {
             return;
         }
 
+        if (formData.cobertura === "Otra" && !formData.otraCobertura.trim()) {
+            toast.error("Por favor especifique su cobertura social");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -157,6 +164,8 @@ export default function PrescriptionsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...formData,
+                    ...formData,
+                    cobertura: formData.cobertura === "Otra" ? `Otra: ${formData.otraCobertura}` : formData.cobertura,
                     doctorName: selectedDoctor ? (
                         selectedDoctor.id === 'secondi' ? 'Dra. María Verónica Secondi' :
                             selectedDoctor.id === 'capparelli' ? 'Dr. Germán Capparelli' :
@@ -176,6 +185,7 @@ export default function PrescriptionsPage() {
                 ...prev,
                 doctorId: "",
                 medicamentos: "",
+                otraCobertura: "",
                 token: ""
             }));
             toast.success("¡Solicitud enviada! La receta llegará dentro de los 5 días hábiles.");
@@ -264,26 +274,18 @@ export default function PrescriptionsPage() {
                         {formData.doctorId && (
                             <>
                                 {(formData.doctorId === 'capparelli' || doctors.find(d => d.id === formData.doctorId)?.lastName.toLowerCase().includes('capparelli')) ? (
-                                    <div className="space-y-4">
-                                        <div className="bg-white border-l-4 border-red-500 p-4 shadow-sm">
-                                            <h3 className="text-lg font-bold text-red-600 mb-2">
-                                                CON LA NUEVA DISPOSICION DE RECETAS DIGITALES DEL MINISTERIO DE SALUD EN EL 2023 LAS RECETAS SERÁN TODAS CON CODIGO DE BARRA INCLUSIVE LAS DE PSICOFARMACO
-                                            </h3>
-                                        </div>
-
-                                        <div className="text-sm text-slate-700 space-y-3">
-                                            <p>
-                                                Tiene <strong>SWISSMEDICAL, LUIS PASTEUR, GALENO u OMINT</strong>, como la receta se genera automáticamente por una red ajena a nosotros, a veces tiene errores, verifique que su receta debajo del código de barras comience con el número <strong>9207</strong> y al pie de la receta salga la palabra <strong>FARMALINK</strong> y un número, sino es así avísenos para poder rehacerla.
-                                            </p>
-                                            <p>
-                                                Complete todo el formulario para solicitar una receta cumpliendo los requerimientos de cada cobertura, <strong className="text-green-600">RECUERDE SI TIENE OMINT O SWISSMEDICAL COLOCAR EL TOKEN. PARA GALENO Y OSDE SE SOLICITARÁ POR WHATSAPP.</strong>
-                                            </p>
-                                            <p>
-                                                Luego de completar el formulario recibirá por mail las mismas en el transcurso de la semana.
-                                            </p>
-                                            <p className="text-amber-700 font-medium">
-                                                Si solicita una receta para un familiar que es paciente, complete todos los datos del paciente en cuestión.
-                                            </p>
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                                        <div className="flex items-start gap-2">
+                                            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                            <div className="text-sm text-amber-800">
+                                                <p className="font-semibold">MUY IMPORTANTE:</p>
+                                                <ul className="list-disc pl-4 mt-1 space-y-1">
+                                                    <li>La receta llegará dentro de los <strong>5 días hábiles</strong>.</li>
+                                                    <li>Solo se realizan recetas de medicación indicada por el profesional.</li>
+                                                    <li>La prescripción está reservada a pacientes con historia clínica y controles actualizados.</li>
+                                                    <li><strong>Si solicita una receta para un familiar que es paciente, complete todos los datos del paciente en cuestión.</strong></li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
@@ -380,9 +382,19 @@ export default function PrescriptionsPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <p className="text-xs text-slate-500">
-                                        Si no se encuentra en el listado seleccione "Otra" y especifíquela abajo junto al pedido de la medicación.
-                                    </p>
+                                    {formData.cobertura === "Otra" && (
+                                        <div className="mt-2">
+                                            <Label htmlFor="otraCobertura">Especifique Cobertura *</Label>
+                                            <Input
+                                                id="otraCobertura"
+                                                required
+                                                value={formData.otraCobertura}
+                                                onChange={handleChange}
+                                                placeholder="Nombre de la obra social / prepaga"
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -491,16 +503,16 @@ export default function PrescriptionsPage() {
 
                                     {(formData.doctorId === 'capparelli' || doctors.find(d => d.id === formData.doctorId)?.lastName.toLowerCase().includes('capparelli')) ? (
                                         <>
-                                            <p className="font-bold text-slate-800 mb-2">
+                                            <p className="font-medium text-slate-800 mb-2">
                                                 Si tiene coseguro o diferencial:
                                             </p>
-                                            <p className="mb-4">
+                                            <p className="mb-2">
                                                 CBU <strong>0150509201000115863100</strong> o ALIAS <strong>dr.capparelli</strong>
                                             </p>
 
-                                            <div className="flex items-start gap-2 mt-4 pt-4 border-t border-slate-200">
-                                                <div className="h-5 w-5 flex items-center justify-center rounded-full bg-red-100 text-red-600 font-bold text-xs">!</div>
-                                                <p className="text-slate-500 text-xs">
+                                            <div className="flex items-start gap-2 mt-2">
+                                                <AlertTriangle className="h-3 w-3 text-red-500 mt-1 flex-shrink-0" />
+                                                <p className="text-xs text-slate-500">
                                                     Recuerde revisar la bandeja de SPAM ya que la misma puede entrar a dicha casilla, la receta puede ir desde el remitente DrApp , RCTA TU RECETA DIGITAL o SWISSMEDICAL.
                                                 </p>
                                             </div>
