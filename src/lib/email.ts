@@ -36,7 +36,7 @@ export const emailService = {
             await resend.emails.send({
                 from: FROM_EMAIL,
                 to: data.to,
-                subject: 'Confirmación de Turno - Consultorio Delgado',
+                subject: 'Confirmación de Turno - Consultorio Delgado (NO RESPONDER MAIL)',
                 html: html
             });
             return { success: true };
@@ -58,7 +58,7 @@ export const emailService = {
             await resend.emails.send({
                 from: FROM_EMAIL,
                 to: data.to,
-                subject: 'Turno Cancelado - Consultorio Delgado',
+                subject: 'Turno Cancelado - Consultorio Delgado (NO RESPONDER MAIL)',
                 html: html
             });
             return { success: true };
@@ -80,7 +80,7 @@ export const emailService = {
             await resend.emails.send({
                 from: FROM_EMAIL,
                 to: data.to,
-                subject: 'Recordatorio de Turno - Mañana',
+                subject: 'Recordatorio de Turno - Mañana (NO RESPONDER MAIL)',
                 html: html
             });
             return { success: true };
@@ -103,7 +103,7 @@ export const emailService = {
             await resend.emails.send({
                 from: FROM_EMAIL,
                 to: data.to,
-                subject: `⚠️ Acción Requerida: Confirma tu turno para el ${data.date}`,
+                subject: `⚠️ Acción Requerida: Confirma tu turno para el ${data.date} (NO RESPONDER MAIL)`,
                 html: html
             });
             return { success: true };
