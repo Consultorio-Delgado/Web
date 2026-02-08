@@ -115,7 +115,7 @@ export default async function LandingPage() {
               </div>
               <h3 className="text-2xl font-serif text-slate-900 mb-3">Clínica Médica</h3>
               <p className="text-slate-500 leading-relaxed">
-                Diagnóstico, tratamiento y prevención de enfermedades para adultos.
+                Diagnóstico, tratamiento y prevención de enfermedades para adultos y jóvenes.
               </p>
             </div>
 

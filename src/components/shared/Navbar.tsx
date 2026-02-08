@@ -34,14 +34,14 @@ export function Navbar() {
             <div className="container flex h-16 items-center justify-between">
 
                 {/* Logo */}
-                <div className="flex gap-6 md:gap-10 items-center">
+                <div className="flex gap-2 md:gap-10 items-center shrink-0">
                     <Link href="/" className="flex items-center">
                         <Image
                             src="/images/logo.png"
                             alt="Consultorio Delgado"
-                            width={200}
-                            height={60}
-                            className="h-14 w-auto object-contain"
+                            width={160}
+                            height={48}
+                            className="h-10 w-auto md:h-14 object-contain"
                             priority
                         />
                     </Link>
@@ -53,12 +53,12 @@ export function Navbar() {
                 </div>
 
                 {/* Acciones (Login / Perfil) */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1 md:gap-4 shrink-0">
                     {user ? (
-                        <div className="flex items-center gap-4">
-                            {/* Direct Links based on Role */}
+                        <div className="flex items-center gap-1 md:gap-4">
+                            {/* Direct Links */}
                             {role === 'admin' || role === 'doctor' ? (
-                                <Link href="/doctor/dashboard">
+                                <Link href="/doctor/dashboard" className="hidden md:block">
                                     <Button variant="ghost" className="text-slate-600 hover:text-primary hover:bg-slate-50">
                                         Portal Médico
                                     </Button>
@@ -66,12 +66,12 @@ export function Navbar() {
                             ) : (
                                 <>
                                     <Link href="/portal">
-                                        <Button variant="ghost" className="text-slate-600 hover:text-primary hover:bg-slate-50">
+                                        <Button variant="ghost" className="px-2 md:px-4 text-xs md:text-sm text-slate-600 hover:text-primary hover:bg-slate-50 h-8 md:h-10">
                                             Portal Paciente
                                         </Button>
                                     </Link>
                                     <Link href="/portal/profile">
-                                        <Button variant="ghost" className="text-slate-600 hover:text-primary hover:bg-slate-50">
+                                        <Button variant="ghost" className="px-2 md:px-4 text-xs md:text-sm text-slate-600 hover:text-primary hover:bg-slate-50 h-8 md:h-10">
                                             Mi Perfil
                                         </Button>
                                     </Link>
@@ -80,7 +80,7 @@ export function Navbar() {
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="relative h-8 w-8 rounded-full ml-2">
+                                    <Button variant="ghost" className="relative h-8 w-8 rounded-full ml-1 md:ml-2">
                                         <Avatar className="h-8 w-8 border border-slate-200">
                                             <AvatarImage src="" />
                                             <AvatarFallback className="bg-primary/5 text-primary">
@@ -108,7 +108,7 @@ export function Navbar() {
                             <Link href="/login">
                                 <Button variant="ghost" size="sm">Ingresar</Button>
                             </Link>
-                            <Link href="/register">
+                            <Link href="/register" className="hidden sm:inline-flex">
                                 <Button size="sm">Registrarse</Button>
                             </Link>
                         </div>
@@ -116,7 +116,7 @@ export function Navbar() {
 
                     {/* Botón Menú Móvil */}
                     <button
-                        className="md:hidden p-2"
+                        className="md:hidden p-1 text-slate-600"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
                     >
                         {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -126,9 +126,19 @@ export function Navbar() {
 
             {/* Menú Móvil Desplegable */}
             {isMenuOpen && (
-                <div className="md:hidden border-t p-4 bg-background">
+                <div className="md:hidden border-t p-4 bg-background animate-in slide-in-from-top-2">
                     <nav className="flex flex-col gap-4">
-                        <NavItems mobile />
+                        {user && (
+                            <>
+                                <Link href="/portal" className="text-lg py-2 border-b border-border/50 font-medium text-slate-900" onClick={() => setIsMenuOpen(false)}>
+                                    Portal Paciente
+                                </Link>
+                                <Link href="/portal/profile" className="text-lg py-2 border-b border-border/50 font-medium text-slate-900" onClick={() => setIsMenuOpen(false)}>
+                                    Mi Perfil
+                                </Link>
+                            </>
+                        )}
+                        <NavItems mobile onClick={() => setIsMenuOpen(false)} />
                     </nav>
                 </div>
             )}
@@ -136,24 +146,24 @@ export function Navbar() {
     );
 }
 
-function NavItems({ mobile = false }: { mobile?: boolean }) {
+function NavItems({ mobile = false, onClick }: { mobile?: boolean; onClick?: () => void }) {
     const baseStyles = "text-sm font-medium transition-colors hover:text-primary";
-    const mobileStyles = "text-lg py-2 border-b border-border/50";
+    const mobileStyles = "text-lg py-2 border-b border-border/50 text-slate-600";
 
     const className = mobile ? mobileStyles : baseStyles;
 
     return (
         <>
-            <Link href="/" className={className}>
+            <Link href="/" className={className} onClick={onClick}>
                 Inicio
             </Link>
-            <Link href="/#staff" className={className}>
+            <Link href="/#staff" className={className} onClick={onClick}>
                 Especialistas
             </Link>
-            <Link href="/portal/new-appointment" className={className}>
+            <Link href="/portal/new-appointment" className={className} onClick={onClick}>
                 Reservar Turno
             </Link>
-            <Link href="/portal/prescriptions" className={className}>
+            <Link href="/portal/prescriptions" className={className} onClick={onClick}>
                 Recetas
             </Link>
             <ContactButton variant="link" className={className} />

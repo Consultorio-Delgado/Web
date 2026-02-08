@@ -15,8 +15,8 @@ import type { Doctor } from "@/types";
 import Link from "next/link";
 
 const DOCTOR_PHOTOS: Record<string, string> = {
-    'capparelli': '/images/doc_male.png',
-    'secondi': '/images/doc_female.png',
+    'capparelli': '/assets/doctors/Ger_perfil.jpeg',
+    'secondi': '/assets/doctors/Vero_perfil.jpeg',
 };
 
 interface VirtualConsultationFormData {
@@ -147,9 +147,9 @@ export default function VirtualConsultationPage() {
                 body: JSON.stringify({
                     ...formData,
                     doctorName: selectedDoctor ? (
-                        selectedDoctor.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                        (selectedDoctor.id === 'secondi' || selectedDoctor.lastName.toLowerCase().includes('secondi')) ? 'Dra. María Verónica Secondi' :
                             isCapparelli ? 'Dr. Germán Capparelli' :
-                                `${selectedDoctor.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor.lastName}`
+                                `${(selectedDoctor.gender === 'female' || selectedDoctor.specialty?.toLowerCase().includes('ginecología') || selectedDoctor.specialty?.includes('Mujer')) ? 'Dra.' : 'Dr.'} ${selectedDoctor.lastName}`
                     ) : "",
                     attachments
                 }),
@@ -262,9 +262,9 @@ export default function VirtualConsultationPage() {
                                             </div>
                                             <div className="flex flex-col text-left">
                                                 <span className={`font-semibold ${isSelected ? 'text-white' : 'text-slate-900'}`}>
-                                                    {doc.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                                                    {(doc.id === 'secondi' || doc.lastName.toLowerCase().includes('secondi')) ? 'Dra. María Verónica Secondi' :
                                                         isDocCapparelli ? 'Dr. Germán Capparelli' :
-                                                            `${doc.gender === 'female' ? 'Dra.' : 'Dr.'} ${doc.lastName}`}
+                                                            `${(doc.gender === 'female' || doc.specialty?.toLowerCase().includes('ginecología') || doc.specialty?.includes('Mujer')) ? 'Dra.' : 'Dr.'} ${doc.lastName}`}
                                                 </span>
                                                 <span className={`text-xs ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
                                                     {doc.specialty}
