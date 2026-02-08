@@ -34,8 +34,8 @@ service cloud.firestore {
         data.status is string &&
         data.type is string &&
         data.updatedAt is timestamp &&
-        // Data Integrity: Patient creating own OR Doctor creating for themselves (start/end) OR Admin
-        (data.patientId == request.auth.uid || data.doctorId == request.auth.uid || isAdmin()) &&
+        // Data Integrity: Patient creating own OR Doctor creating for themselves (start/end) OR Admin OR Any Doctor
+        (data.patientId == request.auth.uid || data.doctorId == request.auth.uid || isDoctor() || isAdmin()) &&
         // Optional Fields Check
         !data.keys().hasAny(['isAdmin', 'role', 'permissions']);
     }

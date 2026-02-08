@@ -217,25 +217,22 @@ export const adminService = {
     },
     async getAllPatients(): Promise<UserProfile[]> {
         try {
+            // Fetch all patients first to avoid "not equal" issues with missing fields
+            // Firestore '!=' query excludes documents where the field does not exist.
             const q = query(
                 collection(db, "users"),
-                where("role", "==", "patient"),
-                where("isDeleted", "!=", true)
+                where("role", "==", "patient")
             );
+
             const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+
+            // Filter out soft-deleted users client-side
+            return querySnapshot.docs
+                .map(doc => doc.data() as UserProfile)
+                .filter(user => !user.isDeleted);
         } catch (error) {
             console.error("Error fetching patients:", error);
-            // Fallback: filter client-side for backwards compatibility
-            try {
-                const fallbackQ = query(collection(db, "users"), where("role", "==", "patient"));
-                const fallbackSnapshot = await getDocs(fallbackQ);
-                return fallbackSnapshot.docs
-                    .filter(doc => !doc.data().isDeleted)
-                    .map(doc => doc.data() as UserProfile);
-            } catch (fallbackError) {
-                return [];
-            }
+            return [];
         }
     },
 

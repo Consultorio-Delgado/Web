@@ -46,7 +46,7 @@ export function Footer() {
                         <h3 className="text-lg font-serif text-white mb-4">Redes</h3>
                         <div className="flex items-center justify-center md:justify-end gap-4">
                             <a
-                                href="https://www.instagram.com/consultorio.delgado"
+                                href="https://www.instagram.com/consultorio.delgado/"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="h-10 w-10 bg-slate-800 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700 hover:text-white transition-all"

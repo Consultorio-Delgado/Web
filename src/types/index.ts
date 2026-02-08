@@ -13,6 +13,8 @@ export interface UserProfile {
     insuranceNumber?: string; // Numero de afiliado
     permissions?: string[]; // E.g., ['admin'] to grant admin access regardless of role
     createdAt: Date;
+    isDeleted?: boolean;
+    deletedAt?: Date;
 }
 
 export interface Doctor {
