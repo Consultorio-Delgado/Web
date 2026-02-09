@@ -1,209 +1,190 @@
 # README_OPERATIONS.md
 
-Guía de Operaciones para el equipo técnico de Consultorio Delgado.
+Guía de Operaciones para Consultorio Delgado.
+
+**Última actualización:** 8 Feb 2026
 
 ---
 
-## 1. Rotación de Claves de Firebase
+## � Costo Actual: $0/mes
 
-### Cuándo rotar
-- Cada 90 días (recomendado)
-- Inmediatamente si hay sospecha de compromiso
-- Cuando un miembro del equipo con acceso deja la organización
+Todo el stack corre en planes gratuitos:
 
-### Proceso de Rotación
-
-#### 1.1 Claves del Admin SDK (Server-side)
-
-```bash
-# 1. Ve a Firebase Console > Project Settings > Service Accounts
-# 2. Click en "Generate new private key"
-# 3. Descarga el nuevo JSON
-
-# 4. Actualiza las variables en Vercel:
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxxxx@consultorio-delgado.iam.gserviceaccount.com"
-
-# 5. Elimina la clave antigua desde Firebase Console > Service Accounts
-```
-
-#### 1.2 API Keys (Client-side)
-
-Las API keys del cliente (`NEXT_PUBLIC_FIREBASE_API_KEY`) no requieren rotación ya que están protegidas por:
-- Firestore Security Rules
-- Domain restrictions configuradas en Google Cloud Console
-
-> **IMPORTANTE**: Después de rotar claves, hacer redeploy inmediato en Vercel.
+| Servicio | Plan | Costo | Estado |
+|----------|------|-------|--------|
+| **Vercel** | Hobby (Free) | $0 | ✅ Usando <10% |
+| **Firebase** | Spark (Free) | $0 | ✅ Usando <4% |
+| **Cloudflare** | Free | $0 | ✅ Ilimitado |
+| **GoDaddy** | Dominio | ~$15/año | Solo renovación |
+| **Resend** | Free | $0 | ✅ 3K emails/mes |
 
 ---
 
-## 2. Logs de Auditoría
+## � Uso Real Medido (Feb 1-8, 2026)
 
-### Ubicación
-- **Colección Firestore**: `audit_logs`
+### Vercel (25% del mes)
 
-### Estructura de un Log
+| Recurso | Usado | Límite | % |
+|---------|-------|--------|---|
+| Edge Requests | 22K | 1M | 2.2% |
+| Data Transfer | 379 MB | 100 GB | 0.4% |
+| Function Invocations | 2.4K | 1M | 0.2% |
 
-```json
-{
-  "action": "APPOINTMENT_CREATED",
-  "performedBy": "uid_del_usuario",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "metadata": {
-    "appointmentId": "abc123",
-    "patientName": "Juan Pérez",
-    "doctorName": "Dr. García"
-  }
-}
-```
+### Firebase Firestore (8 días)
 
-### Tipos de Acciones Auditadas
-
-| Acción | Descripción |
-|--------|-------------|
-| `APPOINTMENT_CREATED` | Turno creado |
-| `APPOINTMENT_CANCELLED` | Turno cancelado |
-| `APPOINTMENT_CONFIRMED` | Turno confirmado |
-| `APPOINTMENT_COMPLETED` | Consulta finalizada |
-| `APPOINTMENT_ARRIVED` | Paciente llegó |
-| `MEDICAL_NOTE_ADDED` | Nota médica agregada |
-| `PATIENT_FILE_UPLOADED` | Archivo subido |
-| `PATIENT_PROFILE_UPDATED` | Perfil actualizado |
-| `PATIENT_DELETED` | Paciente eliminado (soft) |
-| `PATIENT_RESTORED` | Paciente restaurado |
-| `DOCTOR_DELETED` | Doctor eliminado (soft) |
-| `DOCTOR_RESTORED` | Doctor restaurado |
-
-### Consultar Logs desde Firebase Console
-
-```
-Firebase Console > Firestore > audit_logs
-```
-
-Filtrar por:
-- `action == "APPOINTMENT_CANCELLED"` (ver cancelaciones)
-- `performedBy == "uid_específico"` (acciones de un usuario)
-- `timestamp >= [fecha]` (rango de fechas)
+| Operación | Total | Proyección mes | Límite Spark | % |
+|-----------|-------|----------------|--------------|---|
+| Lecturas | 13K | ~52K | 1.5M | 3.5% |
+| Escrituras | 384 | ~1.5K | 600K | 0.25% |
+| Eliminaciones | 144 | ~576 | 600K | 0.01% |
 
 ---
 
-## 3. Restaurar Elementos Eliminados (Soft Delete)
+## 🧪 Plan de Testing: Semana de Producción Real
 
-El sistema usa "Soft Delete" - los registros no se borran, se marcan como `isDeleted: true`.
+### Objetivo
+Validar que el sistema funciona correctamente con carga real durante 1 semana completa y proyectar si podemos escalar a 4x (400 turnos/mes) sin pagar.
 
-### 3.1 Restaurar un Doctor
+### Período de Prueba
+**Fecha inicio:** ___/___/2026  
+**Fecha fin:** ___/___/2026
 
-```typescript
-import { doctorService } from "@/services/doctorService";
+### Checklist Diario
 
-// Restaurar doctor por ID
-await doctorService.restoreDoctor("doctor_id_aqui");
+```
+[ ] Verificar que emails de confirmación llegaron
+[ ] Verificar que recordatorios se enviaron (9am)
+[ ] Revisar logs de Vercel por errores
+[ ] Anotar cantidad de turnos del día
 ```
 
-**Desde Firebase Console:**
-1. Ve a `Firestore > doctors > [doctor_id]`
-2. Cambia `isDeleted` a `false`
-3. Elimina o pon `null` en `deletedAt`
-4. Agrega `restoredAt: [fecha actual]`
+### Métricas a Registrar
 
-### 3.2 Restaurar un Paciente
+| Día | Turnos | Emails OK | Errores | Notas |
+|-----|--------|-----------|---------|-------|
+| Lun | | | | |
+| Mar | | | | |
+| Mié | | | | |
+| Jue | | | | |
+| Vie | | | | |
+| Sáb | | | | |
 
-```typescript
-import { adminService } from "@/services/adminService";
+### Al Finalizar la Semana
 
-// Restaurar paciente por UID
-await adminService.restorePatient("patient_uid_aqui");
-```
+1. **Captura de pantalla** de uso en:
+   - Vercel → Usage
+   - Firebase → Usage and billing
+   - Resend → Logs (count de emails)
 
-**Desde Firebase Console:**
-1. Ve a `Firestore > users > [patient_uid]`
-2. Cambia `isDeleted` a `false`
-3. Elimina o pon `null` en `deletedAt`
-4. Agrega `restoredAt: [fecha actual]`
-
-### 3.3 Ver Todos los Elementos Eliminados
-
-```typescript
-// Ver todos los doctores (incluyendo eliminados)
-const allDoctors = await doctorService.getAllDoctorsIncludingDeleted();
-const deletedDoctors = allDoctors.filter(d => d.isDeleted);
-```
-
-**Desde Firebase Console:**
-- Filtrar: `isDeleted == true`
+2. **Calcular proyección 4x:**
+   - Si la semana usó X% → mes completo = X × 4
+   - Si mes completo × 4 < 80% del límite → ✅ Escalable gratis
 
 ---
 
-## 4. Transacciones Atómicas (Anti-Overbooking)
+## 📈 Análisis de Escalabilidad a 4x (400 turnos/mes)
 
-El sistema previene doble reservación usando transacciones de Firestore.
+### Proyección basada en datos reales
 
-### Cómo Funciona
+| Servicio | Uso actual/mes | Proyección 4x | Límite Free | ¿Alcanza? |
+|----------|---------------|---------------|-------------|-----------|
+| **Vercel Requests** | ~88K | ~352K | 1M | ✅ 35% |
+| **Vercel Bandwidth** | ~1.5 GB | ~6 GB | 100 GB | ✅ 6% |
+| **Firestore Reads** | ~52K | ~208K | 1.5M | ✅ 14% |
+| **Firestore Writes** | ~1.5K | ~6K | 600K | ✅ 1% |
+| **Emails** | ~300 | ~1,200 | 3K | ✅ 40% |
 
-1. Cuando un paciente intenta reservar:
-   - Se inicia una transacción atómica
-   - Se verifica si el slot ya está ocupado
-   - Si está libre → se crea la reserva
-   - Si está ocupado → error `SLOT_TAKEN`
+### Veredicto Preliminar
 
-2. Esto previene race conditions donde dos pacientes intentan reservar el mismo slot simultáneamente.
+**✅ Podemos escalar a 4x sin pagar nada.**
 
-### Errores Posibles
+El recurso más ajustado sería:
+- **Emails Resend:** 40% del límite free (1,200 de 3,000)
+- **Firestore Reads:** 14% del límite (si hay picos, monitorear)
 
-| Código | Significado |
-|--------|-------------|
-| `SLOT_TAKEN` | El turno ya fue reservado por otro paciente |
-| `LIMIT_EXCEEDED` | El paciente ya tiene 2 turnos activos |
+### Cuándo empezar a pagar
 
----
-
-## 5. Backups y Recuperación
-
-### Backup Automático
-Firebase realiza backups automáticos (plan Blaze). Para configurar exports manuales:
-
-```bash
-# Exportar toda la base de datos
-gcloud firestore export gs://consultorio-delgado-backups/backup-$(date +%Y%m%d)
-```
-
-### Recuperación
-```bash
-# Importar desde backup
-gcloud firestore import gs://consultorio-delgado-backups/backup-YYYYMMDD
-```
-
----
-
-## 6. Monitoreo
-
-### Métricas Importantes
-
-1. **Firebase Console > Usage and Billing**
-   - Lecturas/Escrituras por día
-   - Storage utilizado
-
-2. **Vercel Analytics**
-   - Requests por hora
-   - Errores de API
-
-3. **Logs de Errores**
-   - Vercel > Functions > Logs
-   - Filtrar por `level:error`
-
-### Alertas Recomendadas
-
-Configurar en Google Cloud Monitoring:
-- Firestore writes > 10,000/min (posible abuso)
-- Error rate > 5% (problemas de servicio)
-- Storage > 4GB (revisar archivos grandes)
-
----
-
-## 7. Contactos de Emergencia
-
-| Situación | Acción |
+| Escenario | Acción |
 |-----------|--------|
-| Acceso comprometido | Rotar claves inmediatamente, revisar audit_logs |
-| Base de datos corrupta | Restaurar desde último backup |
-| Servicio caído | Verificar status de Firebase y Vercel |
+| < 500 turnos/mes | Seguir gratis |
+| 500-1000 turnos/mes | Considerar Blaze ($2-5/mes) |
+| > 1000 turnos/mes | Vercel Pro + Blaze (~$25/mes) |
+
+---
+
+## 🔧 Configuración de Servicios
+
+### Variables de Entorno (Vercel)
+
+```env
+# Firebase
+FIREBASE_PROJECT_ID=consultorio-delgado
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@xxx.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# Firebase Client (públicas)
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSy...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=xxx.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=consultorio-delgado
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=xxx.appspot.com
+
+# Resend
+RESEND_API_KEY=re_xxxxxxxxxxxx
+EMAIL_FROM=Consultorio Delgado <noreply@consultoriodelgado.com>
+
+# App
+NEXT_PUBLIC_APP_URL=https://consultoriodelgado.com
+```
+
+### Cloudflare DNS
+
+| Tipo | Nombre | Contenido | Proxy |
+|------|--------|-----------|-------|
+| CNAME | @ | cname.vercel-dns.com | ✅ |
+| CNAME | www | cname.vercel-dns.com | ✅ |
+
+---
+
+## 🔐 Seguridad
+
+### Rotación de Claves (cada 90 días o si hay compromiso)
+
+**Firebase:**
+1. Firebase Console → Project Settings → Service Accounts
+2. Generate new private key
+3. Actualizar en Vercel
+4. Redeploy
+5. Eliminar clave antigua
+
+**Resend:**
+1. Resend → API Keys → Create
+2. Actualizar en Vercel
+3. Redeploy
+4. Eliminar key antigua
+
+---
+
+## 🚨 Emergencias
+
+### Servicio caído
+1. Verificar status pages:
+   - vercel-status.com
+   - status.firebase.google.com
+2. Revisar últimos deploys en Vercel
+3. Revertir si es necesario
+
+### Emails no llegan
+1. Verificar Resend → Logs
+2. Buscar `bounced` o `complained`
+3. Verificar dominio sigue verificado
+
+---
+
+## 📞 Links Útiles
+
+| Servicio | Dashboard |
+|----------|-----------|
+| Vercel | vercel.com/dashboard |
+| Firebase | console.firebase.google.com |
+| Cloudflare | dash.cloudflare.com |
+| Resend | resend.com/overview |
