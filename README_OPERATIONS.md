@@ -187,4 +187,4 @@ NEXT_PUBLIC_APP_URL=https://consultoriodelgado.com
 | Vercel | vercel.com/dashboard |
 | Firebase | console.firebase.google.com |
 | Cloudflare | dash.cloudflare.com |
-| Resend | resend.com/overview |
+| Resend | resend.com/overview | 
