@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server';
 import { addDays, startOfDay, endOfDay, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-// Daily reminder cron - runs at 21:30 ART (00:30 UTC next day)
-// Sends reminders to all confirmed/pending appointments for TOMORROW
+// Daily reminder cron - runs at 17:00 ART (20:00 UTC)
+// Sends reminders for appointments the DAY AFTER TOMORROW (pasado mañana)
 export async function GET(request: Request) {
     // 0. Security Check
     const authHeader = request.headers.get('authorization');
@@ -17,31 +17,30 @@ export async function GET(request: Request) {
     }
 
     try {
-        // 1. Calculate "tomorrow" in Argentina timezone (UTC-3)
-        // This cron runs at 00:30 UTC = 21:30 ART
-        // So "tomorrow" in ART is the current UTC date (since 00:30 UTC is already the next day)
+        // 1. Calculate "pasado mañana" in Argentina timezone (UTC-3)
+        // This cron runs at 20:00 UTC = 17:00 ART
         const nowUTC = new Date();
         // Convert to Argentina time: UTC - 3 hours
         const argentinaOffset = -3 * 60 * 60 * 1000;
         const nowArgentina = new Date(nowUTC.getTime() + argentinaOffset);
-        const tomorrow = addDays(nowArgentina, 1);
-        const tomorrowStart = startOfDay(tomorrow);
-        const tomorrowEnd = endOfDay(tomorrow);
+        const dayAfterTomorrow = addDays(nowArgentina, 2); // pasado mañana
+        const targetStart = startOfDay(dayAfterTomorrow);
+        const targetEnd = endOfDay(dayAfterTomorrow);
 
-        console.log(`[Cron/DailyReminders] Running. Tomorrow: ${format(tomorrowStart, 'yyyy-MM-dd')} to ${format(tomorrowEnd, 'yyyy-MM-dd')}`);
+        console.log(`[Cron/DailyReminders] Running at 17:00 ART. Checking appointments for: ${format(targetStart, 'yyyy-MM-dd')}`);
 
-        // 2. Query appointments for tomorrow (confirmed or pending, not blocked)
+        // 2. Query appointments for pasado mañana (confirmed or pending, not blocked)
         const snapshot = await db.collection('appointments')
-            .where('date', '>=', tomorrowStart)
-            .where('date', '<=', tomorrowEnd)
+            .where('date', '>=', targetStart)
+            .where('date', '<=', targetEnd)
             .get();
 
         if (snapshot.empty) {
-            console.log('[Cron/DailyReminders] No appointments found for tomorrow.');
+            console.log('[Cron/DailyReminders] No appointments found for pasado mañana.');
             return NextResponse.json({ success: true, count: 0 });
         }
 
-        // Filter: only confirmed/pending, not blocked
+        // Filter: only confirmed/pending, not blocked, has email
         const validAppointments = snapshot.docs.filter(doc => {
             const data = doc.data();
             return data.patientId !== 'blocked' &&

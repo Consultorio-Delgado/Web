@@ -41,6 +41,9 @@ export interface Doctor {
         startHour: string; // "09:00"
         endHour: string;   // "17:00"
     }[];
+    vacationEnabled?: boolean; // Is vacation mode ON
+    vacationStart?: string;   // YYYY-MM-DD start date (inclusive)
+    vacationEnd?: string;     // YYYY-MM-DD end date (inclusive)
 }
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived' | 'absent';

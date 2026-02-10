@@ -18,6 +18,7 @@ import { Loader2, FileText, Send, CheckCircle, AlertTriangle, Paperclip, XCircle
 import { toast } from "sonner";
 import { doctorService } from "@/services/doctorService";
 import type { Doctor } from "@/types";
+import { isDoctorOnVacation, getVacationEndFormatted, getDoctorTitle } from "@/lib/vacationUtils";
 
 const COBERTURAS = [
     "OSDE",
@@ -274,251 +275,266 @@ export default function StudiesPage() {
                         </div>
 
                         {/* Conditional Form Content */}
-                        {formData.doctorId && (
-                            <>
-                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
-                                    <div className="flex items-start gap-2">
-                                        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                                        <div className="text-sm text-amber-800">
-                                            <p className="font-semibold">MUY IMPORTANTE:</p>
-                                            <ul className="list-disc pl-4 mt-1 space-y-1">
-                                                <li>La orden llegará dentro de los <strong>7 días hábiles</strong>.</li>
-                                                <li>Solo se realizan órdenes de estudios indicados por el profesional.</li>
-                                                <li>La prescripción está reservada a pacientes con historia clínica y controles actualizados.</li>
-                                                <li><strong>Si solicita una orden para un familiar que es paciente, complete todos los datos del paciente en cuestión.</strong></li>
-                                            </ul>
+                        {formData.doctorId && (() => {
+                            const selectedDoc = doctors.find(d => d.id === formData.doctorId);
+                            if (selectedDoc && isDoctorOnVacation(selectedDoc)) {
+                                return (
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center space-y-2">
+                                        <p className="text-red-700 font-semibold text-lg">
+                                            🌴 {getDoctorTitle(selectedDoc)} {selectedDoc.lastName} está de vacaciones hasta el {getVacationEndFormatted(selectedDoc)}
+                                        </p>
+                                        <p className="text-red-600 text-sm">
+                                            No es posible enviar solicitudes de estudios en este momento. Por favor intente nuevamente después de esa fecha.
+                                        </p>
+                                    </div>
+                                );
+                            }
+                            return (
+                                <>
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                                        <div className="flex items-start gap-2">
+                                            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                            <div className="text-sm text-amber-800">
+                                                <p className="font-semibold">MUY IMPORTANTE:</p>
+                                                <ul className="list-disc pl-4 mt-1 space-y-1">
+                                                    <li>La orden llegará dentro de los <strong>7 días hábiles</strong>.</li>
+                                                    <li>Solo se realizan órdenes de estudios indicados por el profesional.</li>
+                                                    <li>La prescripción está reservada a pacientes con historia clínica y controles actualizados.</li>
+                                                    <li><strong>Si solicita una orden para un familiar que es paciente, complete todos los datos del paciente en cuestión.</strong></li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="border-t pt-4" />
+                                    <div className="border-t pt-4" />
 
-                                {/* Personal Info */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nombre">Nombre *</Label>
-                                        <Input
-                                            id="nombre"
-                                            required
-                                            value={formData.nombre}
-                                            onChange={handleChange}
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="apellido">Apellido *</Label>
-                                        <Input
-                                            id="apellido"
-                                            required
-                                            value={formData.apellido}
-                                            onChange={handleChange}
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="dni">DNI *</Label>
-                                        <Input
-                                            id="dni"
-                                            required
-                                            value={formData.dni}
-                                            onChange={handleChange}
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="telefono">Teléfono *</Label>
-                                        <Input
-                                            id="telefono"
-                                            type="tel"
-                                            required
-                                            value={formData.telefono}
-                                            onChange={handleChange}
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Correo Electrónico *</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        required
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        disabled={loading}
-                                    />
-                                </div>
-
-                                <div className="border-t pt-4" />
-
-                                {/* Insurance Info */}
-                                <div className="space-y-2">
-                                    <Label>Cobertura Social *</Label>
-                                    <Select onValueChange={(v) => handleSelectChange("cobertura", v)} value={formData.cobertura}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccione su cobertura" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {COBERTURAS.map((cob) => (
-                                                <SelectItem key={cob} value={cob}>{cob}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {formData.cobertura === "Otra" && (
-                                        <div className="mt-2">
-                                            <Label htmlFor="otraCobertura">Especifique Cobertura *</Label>
+                                    {/* Personal Info */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nombre">Nombre *</Label>
                                             <Input
-                                                id="otraCobertura"
+                                                id="nombre"
                                                 required
-                                                value={formData.otraCobertura}
+                                                value={formData.nombre}
                                                 onChange={handleChange}
-                                                placeholder="Nombre de la obra social / prepaga"
-                                                className="mt-1"
+                                                disabled={loading}
                                             />
                                         </div>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="numeroAfiliado">Número de Afiliado *</Label>
-                                        <Input
-                                            id="numeroAfiliado"
-                                            required
-                                            placeholder="Sin espacios entre los números"
-                                            value={formData.numeroAfiliado}
-                                            onChange={handleChange}
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="plan">Plan *</Label>
-                                        <Input
-                                            id="plan"
-                                            required
-                                            value={formData.plan}
-                                            onChange={handleChange}
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="token">Token (OMINT y SWISS)</Label>
-                                    <Input
-                                        id="token"
-                                        placeholder="Si tiene credencial digital"
-                                        value={formData.token}
-                                        onChange={handleChange}
-                                        disabled={loading}
-                                    />
-                                    <p className="text-xs text-slate-500">
-                                        Para OSDE y Galeno se solicitará por WhatsApp.
-                                    </p>
-                                </div>
-
-                                <div className="border-t pt-4" />
-
-                                {/* Order Request */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="pedido">Estudios que necesita *</Label>
-                                    <Textarea
-                                        id="pedido"
-                                        required
-                                        rows={4}
-                                        placeholder="Coloque qué estudios o prácticas necesita."
-                                        value={formData.pedido}
-                                        onChange={handleChange}
-                                        disabled={loading}
-                                    />
-                                </div>
-
-                                {/* File Attachments */}
-                                <div className="space-y-2">
-                                    <Label>Adjuntar Archivos (Máx 3, imágenes o PDF)</Label>
-                                    <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors">
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept="image/*,application/pdf"
-                                            className="hidden"
-                                            id="file-upload"
-                                            onChange={handleFileChange}
-                                            disabled={loading || files.length >= 3}
-                                        />
-                                        <Label htmlFor="file-upload" className="cursor-pointer block h-full w-full">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <Paperclip className="h-8 w-8 text-slate-400" />
-                                                <span className="text-sm text-slate-600 font-medium">
-                                                    {files.length >= 3 ? "Límite de archivos alcanzado" : "Hacé click para subir archivos"}
-                                                </span>
-                                                <span className="text-xs text-slate-400">JPG, PNG, PDF (Máx 4MB)</span>
-                                            </div>
-                                        </Label>
-                                    </div>
-
-                                    {files.length > 0 && (
-                                        <div className="space-y-2 mt-2">
-                                            {files.map((file, idx) => (
-                                                <div key={idx} className="flex items-center justify-between bg-slate-50 p-2 rounded border text-sm">
-                                                    <div className="flex items-center gap-2 truncate">
-                                                        <FileText className="h-4 w-4 text-slate-500" />
-                                                        <span className="truncate max-w-[200px]">{file.name}</span>
-                                                    </div>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => removeFile(idx)}
-                                                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    >
-                                                        <XCircle className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            ))}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="apellido">Apellido *</Label>
+                                            <Input
+                                                id="apellido"
+                                                required
+                                                value={formData.apellido}
+                                                onChange={handleChange}
+                                                disabled={loading}
+                                            />
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
 
-                                {/* Payment Info */}
-                                <div className="bg-slate-50 border rounded-lg p-4 text-sm text-slate-600">
-                                    {(formData.doctorId === 'capparelli' || doctors.find(d => d.id === formData.doctorId)?.lastName.toLowerCase().includes('capparelli')) ? (
-                                        <>
-                                            <p className="font-medium text-slate-800 mb-2">
-                                                Si tiene coseguro o diferencial:
-                                            </p>
-                                            <p className="mb-0">
-                                                CBU <strong>0150509201000115863100</strong> o ALIAS <strong>dr.capparelli</strong>
-                                            </p>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <p className="font-medium text-slate-800 mb-2">Si tiene coseguro o diferencial:</p>
-                                            <p className="mb-1">Realizar la transferencia al Alias: <strong>SECONDI.CONSULTORIO</strong></p>
-                                            <p>CBU: <strong>0150509201000119792673</strong></p>
-                                        </>
-                                    )}
-                                </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="dni">DNI *</Label>
+                                            <Input
+                                                id="dni"
+                                                required
+                                                value={formData.dni}
+                                                onChange={handleChange}
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="telefono">Teléfono *</Label>
+                                            <Input
+                                                id="telefono"
+                                                type="tel"
+                                                required
+                                                value={formData.telefono}
+                                                onChange={handleChange}
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                    </div>
 
-                                <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white" size="lg" disabled={loading}>
-                                    {loading ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Enviando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="mr-2 h-4 w-4" />
-                                            Enviar Solicitud
-                                        </>
-                                    )}
-                                </Button>
-                            </>
-                        )}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email">Correo Electrónico *</Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            required
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            disabled={loading}
+                                        />
+                                    </div>
+
+                                    <div className="border-t pt-4" />
+
+                                    {/* Insurance Info */}
+                                    <div className="space-y-2">
+                                        <Label>Cobertura Social *</Label>
+                                        <Select onValueChange={(v) => handleSelectChange("cobertura", v)} value={formData.cobertura}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Seleccione su cobertura" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {COBERTURAS.map((cob) => (
+                                                    <SelectItem key={cob} value={cob}>{cob}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {formData.cobertura === "Otra" && (
+                                            <div className="mt-2">
+                                                <Label htmlFor="otraCobertura">Especifique Cobertura *</Label>
+                                                <Input
+                                                    id="otraCobertura"
+                                                    required
+                                                    value={formData.otraCobertura}
+                                                    onChange={handleChange}
+                                                    placeholder="Nombre de la obra social / prepaga"
+                                                    className="mt-1"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="numeroAfiliado">Número de Afiliado *</Label>
+                                            <Input
+                                                id="numeroAfiliado"
+                                                required
+                                                placeholder="Sin espacios entre los números"
+                                                value={formData.numeroAfiliado}
+                                                onChange={handleChange}
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="plan">Plan *</Label>
+                                            <Input
+                                                id="plan"
+                                                required
+                                                value={formData.plan}
+                                                onChange={handleChange}
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="token">Token (OMINT y SWISS)</Label>
+                                        <Input
+                                            id="token"
+                                            placeholder="Si tiene credencial digital"
+                                            value={formData.token}
+                                            onChange={handleChange}
+                                            disabled={loading}
+                                        />
+                                        <p className="text-xs text-slate-500">
+                                            Para OSDE y Galeno se solicitará por WhatsApp.
+                                        </p>
+                                    </div>
+
+                                    <div className="border-t pt-4" />
+
+                                    {/* Order Request */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="pedido">Estudios que necesita *</Label>
+                                        <Textarea
+                                            id="pedido"
+                                            required
+                                            rows={4}
+                                            placeholder="Coloque qué estudios o prácticas necesita."
+                                            value={formData.pedido}
+                                            onChange={handleChange}
+                                            disabled={loading}
+                                        />
+                                    </div>
+
+                                    {/* File Attachments */}
+                                    <div className="space-y-2">
+                                        <Label>Adjuntar Archivos (Máx 3, imágenes o PDF)</Label>
+                                        <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept="image/*,application/pdf"
+                                                className="hidden"
+                                                id="file-upload"
+                                                onChange={handleFileChange}
+                                                disabled={loading || files.length >= 3}
+                                            />
+                                            <Label htmlFor="file-upload" className="cursor-pointer block h-full w-full">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <Paperclip className="h-8 w-8 text-slate-400" />
+                                                    <span className="text-sm text-slate-600 font-medium">
+                                                        {files.length >= 3 ? "Límite de archivos alcanzado" : "Hacé click para subir archivos"}
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">JPG, PNG, PDF (Máx 4MB)</span>
+                                                </div>
+                                            </Label>
+                                        </div>
+
+                                        {files.length > 0 && (
+                                            <div className="space-y-2 mt-2">
+                                                {files.map((file, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between bg-slate-50 p-2 rounded border text-sm">
+                                                        <div className="flex items-center gap-2 truncate">
+                                                            <FileText className="h-4 w-4 text-slate-500" />
+                                                            <span className="truncate max-w-[200px]">{file.name}</span>
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => removeFile(idx)}
+                                                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        >
+                                                            <XCircle className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Payment Info */}
+                                    <div className="bg-slate-50 border rounded-lg p-4 text-sm text-slate-600">
+                                        {(formData.doctorId === 'capparelli' || doctors.find(d => d.id === formData.doctorId)?.lastName.toLowerCase().includes('capparelli')) ? (
+                                            <>
+                                                <p className="font-medium text-slate-800 mb-2">
+                                                    Si tiene coseguro o diferencial:
+                                                </p>
+                                                <p className="mb-0">
+                                                    CBU <strong>0150509201000115863100</strong> o ALIAS <strong>dr.capparelli</strong>
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="font-medium text-slate-800 mb-2">Si tiene coseguro o diferencial:</p>
+                                                <p className="mb-1">Realizar la transferencia al Alias: <strong>SECONDI.CONSULTORIO</strong></p>
+                                                <p>CBU: <strong>0150509201000119792673</strong></p>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white" size="lg" disabled={loading}>
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Enviando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send className="mr-2 h-4 w-4" />
+                                                Enviar Solicitud
+                                            </>
+                                        )}
+                                    </Button>
+                                </>
+                            );
+                        })()}
 
                     </form>
                 </CardContent>

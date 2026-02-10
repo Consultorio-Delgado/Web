@@ -8,9 +8,10 @@ import { CalendarDays, PlusCircle, ArrowRight, Video, Microscope } from "lucide-
 
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
-import { Appointment } from "@/types";
+import { Appointment, Doctor } from "@/types";
 import { appointmentService } from "@/services/appointments";
 import { doctorService } from "@/services/doctorService";
+import { isDoctorOnVacation, getVacationEndFormatted, getDoctorTitle } from "@/lib/vacationUtils";
 import { format } from "date-fns";
 
 
@@ -33,6 +34,7 @@ export default function PortalDashboard() {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loadingAppts, setLoadingAppts] = useState(true);
     const [doctorsMap, setDoctorsMap] = useState<Record<string, string>>({});
+    const [doctorsList, setDoctorsList] = useState<Doctor[]>([]);
 
     useEffect(() => {
         const fetchDoctors = async () => {
@@ -43,6 +45,7 @@ export default function PortalDashboard() {
                     map[d.id] = d.specialty;
                 });
                 setDoctorsMap(map);
+                setDoctorsList(doctors);
             } catch (error) {
                 console.error("Error fetching doctors for specialties:", error);
             }
@@ -113,6 +116,20 @@ export default function PortalDashboard() {
             </div>
 
             <div className="space-y-12">
+                {/* Vacation Banners */}
+                {doctorsList.filter(isDoctorOnVacation).length > 0 && (
+                    <div className="space-y-3">
+                        {doctorsList.filter(isDoctorOnVacation).map(doc => (
+                            <div key={doc.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+                                <span className="text-2xl">🌴</span>
+                                <p className="text-amber-800 font-medium">
+                                    {getDoctorTitle(doc)} {doc.lastName} está de vacaciones hasta el {getVacationEndFormatted(doc)}. No se pueden enviar recetas, consultas virtuales ni estudios.
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <section>
                     <h2 className="text-xl font-medium text-slate-900 mb-6">Próximos Turnos</h2>
 

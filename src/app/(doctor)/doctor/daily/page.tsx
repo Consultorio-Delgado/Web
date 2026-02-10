@@ -575,7 +575,7 @@ export default function DailyAgendaPage() {
                                             />
                                         )}
 
-                                        <div className={cn("border rounded-md p-2 flex flex-col items-center gap-1 shadow-sm w-[70px]",
+                                        <div className={cn("border rounded-md p-2 flex flex-col items-center gap-1 shadow-sm w-[100px]",
                                             !isMySlot ? "bg-orange-100/50 border-orange-200" : "bg-white"
                                         )}>
                                             <div className="flex items-center gap-1">

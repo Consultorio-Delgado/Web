@@ -17,7 +17,7 @@ import { db, auth } from "@/lib/firebase"; // auth needed for password update
 import { doc, updateDoc } from "firebase/firestore";
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { toast } from "sonner";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Palmtree } from "lucide-react";
 import { INSURANCE_PROVIDERS } from "@/constants";
 
 export default function DoctorProfilePage() {
@@ -43,6 +43,12 @@ export default function DoctorProfilePage() {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
 
+    // Vacation state
+    const [vacationEnabled, setVacationEnabled] = useState(false);
+    const [vacationStart, setVacationStart] = useState("");
+    const [vacationEnd, setVacationEnd] = useState("");
+    const [savingVacation, setSavingVacation] = useState(false);
+
     // New state for adding exceptional day
     const [newExceptionalDate, setNewExceptionalDate] = useState("");
     const [newExceptionalStart, setNewExceptionalStart] = useState("09:00");
@@ -66,6 +72,9 @@ export default function DoctorProfilePage() {
                     setAcceptedInsurances(docData.acceptedInsurances || []);
                     setMaxDaysAhead(docData.maxDaysAhead || 30);
                     setExceptionalSchedule(docData.exceptionalSchedule || []);
+                    setVacationEnabled(docData.vacationEnabled || false);
+                    setVacationStart(docData.vacationStart || "");
+                    setVacationEnd(docData.vacationEnd || "");
                 }
             } catch (err) {
                 console.error(err);
@@ -144,6 +153,9 @@ export default function DoctorProfilePage() {
                 acceptedInsurances: acceptedInsurances,
                 maxDaysAhead: maxDaysAhead,
                 exceptionalSchedule: exceptionalSchedule,
+                vacationEnabled: vacationEnabled,
+                vacationStart: vacationStart || undefined,
+                vacationEnd: vacationEnd || undefined,
                 ...(doctor?.imageUrl ? { imageUrl: doctor.imageUrl } : {}),
                 ...(doctor?.email ? { email: doctor.email } : {})
             };
@@ -331,6 +343,56 @@ export default function DoctorProfilePage() {
                         <p className="text-sm text-slate-500 mt-4 bg-slate-50 p-3 rounded-md">
                             Nota: Los pacientes que filtren por una obra social que usted no acepte no verán su perfil en los resultados de búsqueda.
                         </p>
+                    </CardContent>
+                </Card>
+
+                {/* Vacation Configuration */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Palmtree className="h-5 w-5 text-amber-500" />
+                            Vacaciones
+                        </CardTitle>
+                        <CardDescription>Configurá tus períodos de vacaciones. Mientras estén activas, los pacientes no podrán enviar recetas, consultas virtuales ni estudios.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="vacation-toggle" className="font-medium text-slate-700 cursor-pointer">
+                                {vacationEnabled ? "🌴 Vacaciones ACTIVADAS" : "Vacaciones desactivadas"}
+                            </Label>
+                            <Switch
+                                id="vacation-toggle"
+                                checked={vacationEnabled}
+                                onCheckedChange={setVacationEnabled}
+                            />
+                        </div>
+
+                        {vacationEnabled && (
+                            <div className="grid grid-cols-2 gap-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                                <div className="space-y-2">
+                                    <Label>Fecha de Inicio</Label>
+                                    <Input
+                                        type="date"
+                                        value={vacationStart}
+                                        onChange={(e) => setVacationStart(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Fecha de Finalización</Label>
+                                    <Input
+                                        type="date"
+                                        value={vacationEnd}
+                                        onChange={(e) => setVacationEnd(e.target.value)}
+                                        min={vacationStart}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <p className="text-sm text-amber-700">
+                                        ⚠️ Los pacientes verán que estás de vacaciones hasta el {vacationEnd ? new Date(vacationEnd + 'T12:00:00').toLocaleDateString('es-AR') : '...'} y no podrán enviar recetas, consultas virtuales ni estudios.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

@@ -12,6 +12,7 @@ import { Loader2, Video, Send, CheckCircle, AlertTriangle, Paperclip, XCircle, F
 import { toast } from "sonner";
 import { doctorService } from "@/services/doctorService";
 import type { Doctor } from "@/types";
+import { isDoctorOnVacation, getVacationEndFormatted, getDoctorTitle } from "@/lib/vacationUtils";
 import Link from "next/link";
 
 const DOCTOR_PHOTOS: Record<string, string> = {
@@ -299,173 +300,188 @@ export default function VirtualConsultationPage() {
                             </div>
                         )}
 
-                        {formData.doctorId && !isCapparelliSelected && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-                                {/* Payment Link Banner */}
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-2 opacity-10">
-                                        <Video className="h-24 w-24 text-blue-600" />
-                                    </div>
-                                    <div className="relative z-10">
-                                        <h3 className="text-blue-900 font-semibold flex items-center gap-2 mb-2">
-                                            <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">Paso 1</span>
-                                            Abonar Consulta
-                                        </h3>
-                                        <p className="text-sm text-blue-800 mb-4">
-                                            Para realizar la consulta virtual, primero debe abonar el servicio a través de MercadoPago.
+                        {formData.doctorId && !isCapparelliSelected && (() => {
+                            const selDoc = doctors.find(d => d.id === formData.doctorId);
+                            if (selDoc && isDoctorOnVacation(selDoc)) {
+                                return (
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center space-y-2">
+                                        <p className="text-red-700 font-semibold text-lg">
+                                            🌴 {getDoctorTitle(selDoc)} {selDoc.lastName} está de vacaciones hasta el {getVacationEndFormatted(selDoc)}
                                         </p>
-                                        <a
-                                            href="https://mpago.la/2aLzw8s"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center justify-center w-full sm:w-auto px-6 py-3 bg-[#009EE3] hover:bg-[#008ED0] text-white font-bold rounded-lg transition-colors shadow-sm hover:shadow"
-                                        >
-                                            Pagar Consulta con MercadoPago
-                                            <ExternalLink className="ml-2 h-4 w-4" />
-                                        </a>
+                                        <p className="text-red-600 text-sm">
+                                            No es posible enviar consultas virtuales en este momento. Por favor intente nuevamente después de esa fecha.
+                                        </p>
                                     </div>
-                                </div>
+                                );
+                            }
+                            return (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">Paso 2</span>
-                                        <h3 className="text-blue-900 font-semibold">Completar Datos</h3>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nombre">Nombre *</Label>
-                                        <Input id="nombre" value={formData.nombre} onChange={handleChange} required disabled={loading} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="apellido">Apellido *</Label>
-                                        <Input id="apellido" value={formData.apellido} onChange={handleChange} required disabled={loading} />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="dni">DNI *</Label>
-                                        <Input id="dni" value={formData.dni} onChange={handleChange} required disabled={loading} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="fechaNacimiento">Fecha Nacimiento (dd/mm/aaaa) *</Label>
-                                        <Input id="fechaNacimiento" type="date" value={formData.fechaNacimiento} onChange={handleChange} required disabled={loading} />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="telefono">Teléfono *</Label>
-                                    <Input id="telefono" type="tel" value={formData.telefono} onChange={handleChange} required disabled={loading} />
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="email">Correo electrónico *</Label>
-                                    <Input id="email" type="email" value={formData.email} onChange={handleChange} required disabled={loading} />
-                                </div>
-
-
-
-                                <div>
-                                    <Label htmlFor="consulta">Consulta *</Label>
-                                    <Textarea
-                                        id="consulta"
-                                        value={formData.consulta}
-                                        onChange={handleChange}
-                                        required
-                                        rows={6}
-                                        placeholder="Describa brevemente el motivo de su consulta..."
-                                        disabled={loading}
-                                    />
-                                </div>
-
-                                {/* File Attachments */}
-                                <div className="space-y-2">
-                                    <Label>Si desea adjuntar estudios (Máx 3, 8MB máx)</Label>
-                                    <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors">
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept="image/*,application/pdf"
-                                            className="hidden"
-                                            id="file-upload"
-                                            onChange={handleFileChange}
-                                            disabled={loading || files.length >= 3}
-                                        />
-                                        <Label htmlFor="file-upload" className="cursor-pointer block h-full w-full">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <Paperclip className="h-8 w-8 text-slate-400" />
-                                                <span className="text-sm text-slate-600 font-medium">
-                                                    {files.length >= 3 ? "Límite de archivos alcanzado" : "Seleccionar archivos"}
-                                                </span>
-                                                <span className="text-xs text-slate-400">JPG, PNG, PDF</span>
-                                            </div>
-                                        </Label>
-                                    </div>
-
-                                    {files.length > 0 && (
-                                        <div className="space-y-2 mt-2">
-                                            {files.map((file, idx) => (
-                                                <div key={idx} className="flex items-center justify-between bg-slate-50 p-2 rounded border text-sm">
-                                                    <div className="flex items-center gap-2 truncate">
-                                                        <FileText className="h-4 w-4 text-slate-500" />
-                                                        <span className="truncate max-w-[200px]">{file.name}</span>
-                                                    </div>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => removeFile(idx)}
-                                                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    >
-                                                        <XCircle className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            ))}
+                                    {/* Payment Link Banner */}
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-2 opacity-10">
+                                            <Video className="h-24 w-24 text-blue-600" />
                                         </div>
-                                    )}
+                                        <div className="relative z-10">
+                                            <h3 className="text-blue-900 font-semibold flex items-center gap-2 mb-2">
+                                                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">Paso 1</span>
+                                                Abonar Consulta
+                                            </h3>
+                                            <p className="text-sm text-blue-800 mb-4">
+                                                Para realizar la consulta virtual, primero debe abonar el servicio a través de MercadoPago.
+                                            </p>
+                                            <a
+                                                href="https://mpago.la/2aLzw8s"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center justify-center w-full sm:w-auto px-6 py-3 bg-[#009EE3] hover:bg-[#008ED0] text-white font-bold rounded-lg transition-colors shadow-sm hover:shadow"
+                                            >
+                                                Pagar Consulta con MercadoPago
+                                                <ExternalLink className="ml-2 h-4 w-4" />
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">Paso 2</span>
+                                            <h3 className="text-blue-900 font-semibold">Completar Datos</h3>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nombre">Nombre *</Label>
+                                            <Input id="nombre" value={formData.nombre} onChange={handleChange} required disabled={loading} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="apellido">Apellido *</Label>
+                                            <Input id="apellido" value={formData.apellido} onChange={handleChange} required disabled={loading} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="dni">DNI *</Label>
+                                            <Input id="dni" value={formData.dni} onChange={handleChange} required disabled={loading} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="fechaNacimiento">Fecha Nacimiento (dd/mm/aaaa) *</Label>
+                                            <Input id="fechaNacimiento" type="date" value={formData.fechaNacimiento} onChange={handleChange} required disabled={loading} />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="telefono">Teléfono *</Label>
+                                        <Input id="telefono" type="tel" value={formData.telefono} onChange={handleChange} required disabled={loading} />
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="email">Correo electrónico *</Label>
+                                        <Input id="email" type="email" value={formData.email} onChange={handleChange} required disabled={loading} />
+                                    </div>
+
+
+
+                                    <div>
+                                        <Label htmlFor="consulta">Consulta *</Label>
+                                        <Textarea
+                                            id="consulta"
+                                            value={formData.consulta}
+                                            onChange={handleChange}
+                                            required
+                                            rows={6}
+                                            placeholder="Describa brevemente el motivo de su consulta..."
+                                            disabled={loading}
+                                        />
+                                    </div>
+
+                                    {/* File Attachments */}
+                                    <div className="space-y-2">
+                                        <Label>Si desea adjuntar estudios (Máx 3, 8MB máx)</Label>
+                                        <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept="image/*,application/pdf"
+                                                className="hidden"
+                                                id="file-upload"
+                                                onChange={handleFileChange}
+                                                disabled={loading || files.length >= 3}
+                                            />
+                                            <Label htmlFor="file-upload" className="cursor-pointer block h-full w-full">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <Paperclip className="h-8 w-8 text-slate-400" />
+                                                    <span className="text-sm text-slate-600 font-medium">
+                                                        {files.length >= 3 ? "Límite de archivos alcanzado" : "Seleccionar archivos"}
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">JPG, PNG, PDF</span>
+                                                </div>
+                                            </Label>
+                                        </div>
+
+                                        {files.length > 0 && (
+                                            <div className="space-y-2 mt-2">
+                                                {files.map((file, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between bg-slate-50 p-2 rounded border text-sm">
+                                                        <div className="flex items-center gap-2 truncate">
+                                                            <FileText className="h-4 w-4 text-slate-500" />
+                                                            <span className="truncate max-w-[200px]">{file.name}</span>
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => removeFile(idx)}
+                                                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        >
+                                                            <XCircle className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="bg-blue-50 p-4 rounded-lg flex items-start gap-3">
+                                            <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                            <p className="text-sm text-blue-800">
+                                                En 24hs hábiles se contactarán vía WhatsApp para confirmar y coordinar la consulta.
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-amber-50 p-4 rounded-lg flex items-start gap-3">
+                                            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                            <p className="text-sm text-amber-800">
+                                                <strong>Importante:</strong> Si solicita la consulta virtual esté atento al teléfono que deja de contacto. Tenga en cuenta que la llamada puede ser de un número Privado.
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-red-50 p-4 rounded-lg flex items-start gap-3 border border-red-100">
+                                            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                            <p className="text-sm text-red-800 font-medium">
+                                                Recordar que esta consulta virtual es un servicio de pago independientemente si usted es particular o tiene prepaga. Gracias.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" size="lg" disabled={loading}>
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Enviando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send className="mr-2 h-4 w-4" />
+                                                Enviar Consulta
+                                            </>
+                                        )}
+                                    </Button>
                                 </div>
-
-                                <div className="space-y-4">
-                                    <div className="bg-blue-50 p-4 rounded-lg flex items-start gap-3">
-                                        <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                        <p className="text-sm text-blue-800">
-                                            En 24hs hábiles se contactarán vía WhatsApp para confirmar y coordinar la consulta.
-                                        </p>
-                                    </div>
-
-                                    <div className="bg-amber-50 p-4 rounded-lg flex items-start gap-3">
-                                        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                                        <p className="text-sm text-amber-800">
-                                            <strong>Importante:</strong> Si solicita la consulta virtual esté atento al teléfono que deja de contacto. Tenga en cuenta que la llamada puede ser de un número Privado.
-                                        </p>
-                                    </div>
-
-                                    <div className="bg-red-50 p-4 rounded-lg flex items-start gap-3 border border-red-100">
-                                        <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                                        <p className="text-sm text-red-800 font-medium">
-                                            Recordar que esta consulta virtual es un servicio de pago independientemente si usted es particular o tiene prepaga. Gracias.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" size="lg" disabled={loading}>
-                                    {loading ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Enviando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="mr-2 h-4 w-4" />
-                                            Enviar Consulta
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </form>
                 </CardContent>
             </Card>
