@@ -286,12 +286,22 @@ export default function DailyAgendaPage() {
             const [hours, minutes] = time.split(':').map(Number);
             apptDate.setHours(hours, minutes, 0, 0);
 
+            // Find the correct doctor info (could be another doctor in "View All" mode)
+            const targetDoctor = targetDoctorId === doctor.id
+                ? doctor
+                : slots.find(s => s.doctor.id === targetDoctorId)?.doctor;
+
+            if (!targetDoctor) {
+                toast.error("No se encontró el doctor para bloquear.");
+                return;
+            }
+
             await appointmentService.createAppointment({
                 patientId: 'blocked',
                 patientName: 'Bloqueado',
                 patientEmail: '',
-                doctorId: doctor.id,
-                doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                doctorId: targetDoctor.id,
+                doctorName: `${targetDoctor.firstName} ${targetDoctor.lastName}`,
                 date: apptDate,
                 time: time,
                 type: 'Bloqueado',
@@ -572,8 +582,10 @@ export default function DailyAgendaPage() {
                                                 <Clock className="h-3 w-3 text-slate-500" />
                                                 <span className="font-bold text-lg leading-none">{slot.time}</span>
                                             </div>
-                                            {!isMySlot && (
-                                                <span className="text-[10px] uppercase font-bold text-orange-600 truncate w-full text-center">
+                                            {viewAllDoctors && (
+                                                <span className={cn("text-[10px] uppercase font-bold truncate w-full text-center",
+                                                    isMySlot ? "text-blue-600" : "text-orange-600"
+                                                )}>
                                                     {slot.doctor.lastName}
                                                 </span>
                                             )}

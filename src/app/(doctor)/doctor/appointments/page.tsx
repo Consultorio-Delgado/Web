@@ -38,6 +38,7 @@ export default function AppointmentsPage() {
     const { profile } = useAuth(); // Need doctor profile for schedule
     const [doctor, setDoctor] = useState<Doctor | null>(null);
     const [busyDays, setBusyDays] = useState<Set<string>>(new Set()); // Days with appointments
+    const [blockedDays, setBlockedDays] = useState<Set<string>>(new Set()); // Days fully blocked by exception
     const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 
     // Multi-Select State
@@ -54,12 +55,12 @@ export default function AppointmentsPage() {
     // Fetch busy days for the current month
     useEffect(() => {
         if (!doctor) return;
-        const fetchBusyDays = async () => {
+        const fetchBusyAndBlockedDays = async () => {
             try {
                 const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
                 const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 
-                // Fetch all appointments for the month (simplified query, filter client-side)
+                // Fetch all appointments for the month
                 const { collection, query, where, getDocs, Timestamp } = await import("firebase/firestore");
                 const { db } = await import("@/lib/firebase");
 
@@ -76,18 +77,27 @@ export default function AppointmentsPage() {
                 snapshot.docs.forEach(doc => {
                     const data = doc.data();
                     const date = data.date?.toDate();
-                    // Filter: real patients (not blocked) and valid status
                     if (date && data.patientId !== 'blocked' && validStatuses.includes(data.status)) {
                         days.add(format(date, 'yyyy-MM-dd'));
                     }
                 });
-                console.log("Busy days loaded:", days); // Debug
                 setBusyDays(days);
+
+                // Fetch exceptions (blocked days) for the month
+                const exceptions = await exceptionService.getDoctorExceptions(doctor.id);
+                const blocked = new Set<string>();
+                const monthStr = format(currentMonth, 'yyyy-MM');
+                exceptions.forEach(exc => {
+                    if (exc.date.startsWith(monthStr)) {
+                        blocked.add(exc.date);
+                    }
+                });
+                setBlockedDays(blocked);
             } catch (error) {
-                console.error("Failed to fetch busy days:", error);
+                console.error("Failed to fetch busy/blocked days:", error);
             }
         };
-        fetchBusyDays();
+        fetchBusyAndBlockedDays();
     }, [doctor, currentMonth]);
 
     // Fetch slots whenever selectedDate or doctor changes
@@ -219,6 +229,12 @@ export default function AppointmentsPage() {
             const appointments = await adminService.getDailyAppointments(selectedDate);
             const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
             setDaySlots(slots);
+            // Update blocked days in calendar
+            setBlockedDays(prev => {
+                const next = new Set(prev);
+                next.delete(dateString);
+                return next;
+            });
             toast.success("Día desbloqueado correctamente");
         } catch (error) {
             toast.error("Error al desbloquear el día");
@@ -242,6 +258,12 @@ export default function AppointmentsPage() {
             const appointments = await adminService.getDailyAppointments(selectedDate);
             const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
             setDaySlots(slots);
+            // Update blocked days in calendar
+            setBlockedDays(prev => {
+                const next = new Set(prev);
+                next.add(dateString);
+                return next;
+            });
             toast.success("Día bloqueado correctamente");
         } catch (error) {
             toast.error("Error al bloquear el día");
@@ -344,10 +366,15 @@ export default function AppointmentsPage() {
                                 className="rounded-md border shadow-sm"
                                 locale={es}
                                 modifiers={{
-                                    hasBusy: (date) => busyDays.has(format(date, 'yyyy-MM-dd'))
+                                    hasBusy: (date) => {
+                                        const key = format(date, 'yyyy-MM-dd');
+                                        return busyDays.has(key) && !blockedDays.has(key);
+                                    },
+                                    hasBlocked: (date) => blockedDays.has(format(date, 'yyyy-MM-dd'))
                                 }}
                                 modifiersStyles={{
-                                    hasBusy: { fontWeight: 'bold', color: '#000' }
+                                    hasBusy: { fontWeight: 'bold', color: '#000' },
+                                    hasBlocked: { fontWeight: 'bold', color: '#ef4444', textDecoration: 'line-through' }
                                 }}
                                 styles={{
                                     day: { color: '#9ca3af' }
