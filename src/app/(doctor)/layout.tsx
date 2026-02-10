@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Calendar, Users, LogOut, Settings, UserCircle, ShieldAlert, Clock } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, LogOut, Settings, UserCircle, ShieldAlert, Clock, FileText } from "lucide-react";
 
 export default function DoctorLayout({
     children,
@@ -38,6 +38,7 @@ export default function DoctorLayout({
         { name: "Agenda Diaria", href: "/doctor/daily", icon: Clock },
         { name: "Agenda Mensual", href: "/doctor/appointments", icon: Calendar },
         { name: "Pacientes", href: "/doctor/patients", icon: Users },
+        { name: "Pacientes DRAPP", href: "/doctor/drapp-patients", icon: FileText },
         { name: "Doctores", href: "/doctor/doctors", icon: UserCircle },
         { name: "Mi Perfil", href: "/doctor/profile", icon: Settings },
     ];

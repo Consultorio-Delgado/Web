@@ -17,7 +17,7 @@ import { db, auth } from "@/lib/firebase"; // auth needed for password update
 import { doc, updateDoc } from "firebase/firestore";
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { toast } from "sonner";
-import { Loader2, Save, Palmtree } from "lucide-react";
+import { Loader2, Save, Palmtree, Check } from "lucide-react";
 import { INSURANCE_PROVIDERS } from "@/constants";
 
 export default function DoctorProfilePage() {
@@ -393,6 +393,38 @@ export default function DoctorProfilePage() {
                                 </div>
                             </div>
                         )}
+
+                        <Button
+                            onClick={async () => {
+                                if (vacationEnabled && (!vacationStart || !vacationEnd)) {
+                                    toast.error("Completá las fechas de inicio y fin de vacaciones.");
+                                    return;
+                                }
+                                setSavingVacation(true);
+                                try {
+                                    const doctorRef = doc(db, 'doctors', user!.uid);
+                                    await updateDoc(doctorRef, {
+                                        vacationEnabled,
+                                        vacationStart: vacationStart || null,
+                                        vacationEnd: vacationEnd || null,
+                                    });
+                                    toast.success(vacationEnabled ? "Vacaciones activadas ✅" : "Vacaciones desactivadas");
+                                } catch (err) {
+                                    console.error(err);
+                                    toast.error("Error al guardar vacaciones");
+                                } finally {
+                                    setSavingVacation(false);
+                                }
+                            }}
+                            disabled={savingVacation}
+                            className={vacationEnabled ? "w-full bg-amber-600 hover:bg-amber-700 text-white" : "w-full"}
+                        >
+                            {savingVacation ? (
+                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando...</>
+                            ) : (
+                                <><Check className="mr-2 h-4 w-4" /> Guardar Vacaciones</>
+                            )}
+                        </Button>
                     </CardContent>
                 </Card>
 
