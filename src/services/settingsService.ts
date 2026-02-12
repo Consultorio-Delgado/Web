@@ -6,6 +6,8 @@ export interface ClinicSettings {
     phone: string;
     logoUrl?: string;
     address?: string;
+    announcementEnabled?: boolean;
+    announcementText?: string;
 }
 
 const SETTINGS_DOC_PATH = "settings/general";
@@ -22,7 +24,9 @@ export const settingsService = {
                 return {
                     name: "Consultorio Delgado",
                     phone: "+54 11 1234-5678",
-                    address: "Delgado 588, 1°C (1426) CABA"
+                    address: "Delgado 588, 1°C (1426) CABA",
+                    announcementEnabled: false,
+                    announcementText: ""
                 };
             }
         } catch (error) {

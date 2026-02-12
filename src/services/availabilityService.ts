@@ -24,7 +24,14 @@ export const availabilityService = {
         const { exceptionService } = await import('./exceptionService');
         const exceptions = await exceptionService.getByDate(dateString);
         const isBlockedGlobal = exceptions.some(e => !e.doctorId);
-        const isBlockedDoctor = exceptions.some(e => e.doctorId === doctor.id);
+        let isBlockedDoctor = exceptions.some(e => e.doctorId === doctor.id);
+
+        // 1.1 Check Vacation (Blocking)
+        if (doctor.vacationEnabled && doctor.vacationStart && doctor.vacationEnd) {
+            if (dateString >= doctor.vacationStart && dateString <= doctor.vacationEnd) {
+                isBlockedDoctor = true;
+            }
+        }
 
         // 2. Validate Work Day
         const dayOfWeek = date.getDay(); // 0 = Sunday

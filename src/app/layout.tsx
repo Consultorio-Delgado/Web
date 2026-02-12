@@ -69,6 +69,8 @@ import { Navbar } from "@/components/shared/Navbar";
 import { Footer } from "@/components/shared/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { ContactButton } from "@/components/shared/ContactButton";
+import { AnnouncementPopup } from "@/components/shared/AnnouncementPopup";
+import { BugReporter } from "@/components/shared/BugReporter";
 
 export default function RootLayout({
   children,
@@ -85,10 +87,12 @@ export default function RootLayout({
         <AuthProvider>
           <div className="relative flex min-h-screen flex-col">
             <Navbar />
+            <AnnouncementPopup />
             <main className="flex-1">{children}</main>
             <Footer />
           </div>
           <ContactButton />
+          <BugReporter />
         </AuthProvider>
         <Analytics />
         <SpeedInsights />

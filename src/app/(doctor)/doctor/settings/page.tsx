@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { settingsService, ClinicSettings } from "@/services/settingsService";
 import { FileUpload } from "@/components/shared/FileUpload";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Save } from "lucide-react";
+import { Megaphone, Loader2, Save } from "lucide-react";
 import Image from "next/image";
 
 export default function SettingsPage() {
@@ -93,6 +95,39 @@ export default function SettingsPage() {
                         <p className="text-xs text-muted-foreground mt-1">
                             Recomendado: PNG o JPG con fondo transparente.
                         </p>
+                    </div>
+
+                    <div className="pt-6 border-t space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <Label className="text-base flex items-center gap-2">
+                                    <Megaphone className="h-4 w-4 text-primary" />
+                                    Anuncio Global (Popup)
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Muestra un mensaje importante a todos los pacientes al entrar.
+                                </p>
+                            </div>
+                            <Switch
+                                checked={settings.announcementEnabled}
+                                onCheckedChange={(checked) => setSettings({ ...settings, announcementEnabled: checked })}
+                            />
+                        </div>
+
+                        {settings.announcementEnabled && (
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <Label>Texto del Anuncio</Label>
+                                <Textarea
+                                    placeholder="Ej: El consultorio permanecerá cerrado por vacaciones hasta el 20 de Febrero."
+                                    value={settings.announcementText || ''}
+                                    onChange={(e) => setSettings({ ...settings, announcementText: e.target.value })}
+                                    rows={3}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Se mostrará en un popup con fondo oscuro al ingresar a la página.
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="pt-4 flex justify-end">

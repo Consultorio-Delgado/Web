@@ -173,7 +173,26 @@ export default async function LandingPage() {
                             `${(doctor.specialty === 'Ginecología' || doctor.specialty.includes('Mujer')) ? 'Dra.' : 'Dr.'} ${doctor.firstName} ${doctor.lastName}`}
                       </h3>
                       <p className={`font-medium mb-1 ${getTextColor(doctor.color)}`}>{doctor.specialty}</p>
-                      <p className="text-slate-500 max-w-md">{doctor.bio || 'Especialista en Consultorio Delgado.'}</p>
+                      <div className="text-slate-500 max-w-md text-sm space-y-1">
+                        {(doctor.id === 'secondi' || doctor.lastName.toLowerCase().includes('secondi')) ? (
+                          <div className="flex flex-col gap-1">
+                            <p>• Especialista en Ginecología. Ministerio de Salud. UA. AMA. SOGIBA.</p>
+                            <p>• Certificación médica Ginecología y Obstetricia. Academia Nacional de Medicina.</p>
+                            <p>• Docente Adscripta UBA.</p>
+                            <p>• Miembro Plenario de la Sociedad Argentina de Ginecología y Obstetricia de Buenos Aires (SOGIBA).</p>
+                            <p>• Miembro Titular de la Sociedad Argentina de Patología del TGI y Colposcopia (SAPYGIyC).</p>
+                          </div>
+                        ) : (doctor.id === 'capparelli' || doctor.lastName.toLowerCase().includes('capparelli')) ? (
+                          <div className="flex flex-col gap-1">
+                            <p>• Especialista Universitario en Medicina Interna UBA.</p>
+                            <p>• Especialista en Clínica Médica. Ministerio de Salud. AMA.</p>
+                            <p>• Docente UBA.</p>
+                            <p>• Especialista Recertificado CRMA (Asociación Médica Argentina).</p>
+                          </div>
+                        ) : (
+                          <p>{doctor.bio || 'Especialista en Consultorio Delgado.'}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="hidden sm:flex">

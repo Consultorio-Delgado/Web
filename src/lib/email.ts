@@ -467,5 +467,67 @@ export const emailService = {
             console.error('[EmailService] Study Request Error:', error);
             return { success: false, error };
         }
+    },
+    async sendBugReport(data: { description: string; pathname: string; userId?: string; email?: string; userAgent: string; ticketId: string }) {
+        try {
+            const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: #ef4444; padding: 20px; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">🐞 Nuevo Error Reportado</h1>
+    </div>
+    
+    <div style="background: #fef2f2; padding: 24px; border: 1px solid #fee2e2; border-top: none; border-radius: 0 0 8px 8px;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2; font-weight: bold; width: 140px;">URL:</td>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2;">${data.pathname}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2; font-weight: bold;">Usuario ID:</td>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2;">${data.userId || 'N/A'}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2; font-weight: bold;">Email:</td>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2;">${data.email || 'N/A'}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2; font-weight: bold;">Navegador:</td>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2; font-size: 12px;">${data.userAgent}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2; font-weight: bold;">Ticket ID:</td>
+                <td style="padding: 12px; background: white; border: 1px solid #fee2e2;">${data.ticketId}</td>
+            </tr>
+        </table>
+        
+        <div style="margin-top: 20px; padding: 16px; background: white; border: 1px solid #fee2e2; border-radius: 8px;">
+            <h3 style="margin: 0 0 12px 0; color: #991b1b;">Descripción:</h3>
+            <p style="margin: 0; white-space: pre-wrap;">${data.description}</p>
+        </div>
+        
+        <p style="margin-top: 20px; font-size: 11px; color: #991b1b; text-align: center; opacity: 0.7;">
+            Este mensaje fue generado automáticamente por el Bug Reporter de Consultorio Delgado.
+        </p>
+    </div>
+</body>
+</html>`;
+
+            await resend.emails.send({
+                from: FROM_EMAIL,
+                to: 'turnosconsultoriodelgado+bug@gmail.com',
+                subject: `🚨 BUG REPORT: ${data.pathname}`,
+                html: html
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[EmailService] BugReport Error:', error);
+            return { success: false, error };
+        }
     }
 };
