@@ -125,7 +125,17 @@ export default function DrappPatientsPage() {
                                         <tr key={`${p.dni}-${p.id}-${idx}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                                             <td className="py-2.5 px-4 font-mono text-slate-800">{p.dni}</td>
                                             <td className="py-2.5 px-4 text-slate-700">{p.nombre}</td>
-                                            <td className="py-2.5 px-4 font-mono text-xs text-slate-400">{p.id}</td>
+                                            <td className="py-2.5 px-4 font-mono text-xs">
+                                                <a
+                                                    href={`https://app.drapp.la/teams/40fc3e9c/consumers/${p.id}/ehr`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline hover:text-primary/80 flex items-center gap-1"
+                                                >
+                                                    {p.id}
+                                                    <FileText className="h-3 w-3" />
+                                                </a>
+                                            </td>
                                         </tr>
                                     ))
                                 )}
