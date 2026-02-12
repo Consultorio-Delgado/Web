@@ -55,49 +55,7 @@ export default function SettingsPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                        <Label>Nombre de la Clínica</Label>
-                        <Input
-                            value={settings.name}
-                            onChange={(e) => setSettings({ ...settings, name: e.target.value })}
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Teléfono de Contacto</Label>
-                        <Input
-                            value={settings.phone}
-                            onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Dirección</Label>
-                        <Input
-                            value={settings.address || ''}
-                            onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Logo de la Clínica</Label>
-                        <div className="flex items-center gap-4 mb-4">
-                            {settings.logoUrl && (
-                                <div className="relative h-20 w-20 border rounded-md overflow-hidden">
-                                    <Image src={settings.logoUrl} alt="Logo" fill className="object-contain" />
-                                </div>
-                            )}
-                        </div>
-                        <FileUpload
-                            pathPrefix="branding"
-                            onUploadComplete={(url) => setSettings({ ...settings, logoUrl: url })}
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Recomendado: PNG o JPG con fondo transparente.
-                        </p>
-                    </div>
-
-                    <div className="pt-6 border-t space-y-4">
+                    <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
                                 <Label className="text-base flex items-center gap-2">

@@ -9,10 +9,12 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { settingsService, ClinicSettings } from "@/services/settingsService";
+import { usePathname } from "next/navigation";
 import { Megaphone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function AnnouncementPopup() {
+    const pathname = usePathname();
     const [settings, setSettings] = useState<ClinicSettings | null>(null);
     const [isOpen, setIsOpen] = useState(false);
 
@@ -22,8 +24,11 @@ export function AnnouncementPopup() {
             setSettings(data);
 
             if (data.announcementEnabled && data.announcementText) {
-                // Check if user has already dismissed this specific announcement
-                const announcementKey = `dismissed_announcement_${btoa(data.announcementText).substring(0, 16)}`;
+                // Determine if we are in public or portal area to show announcement again on transition
+                const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/doctor');
+                const areaKey = isPortal ? 'portal' : 'public';
+
+                const announcementKey = `dismissed_announcement_${areaKey}_${btoa(data.announcementText).substring(0, 16)}`;
                 const isDismissed = localStorage.getItem(announcementKey);
 
                 if (!isDismissed) {
@@ -33,12 +38,14 @@ export function AnnouncementPopup() {
         };
 
         fetchSettings();
-    }, []);
+    }, [pathname]); // Re-run when navigating (e.g. from landing to portal)
 
     const handleClose = () => {
         setIsOpen(false);
         if (settings?.announcementText) {
-            const announcementKey = `dismissed_announcement_${btoa(settings.announcementText).substring(0, 16)}`;
+            const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/doctor');
+            const areaKey = isPortal ? 'portal' : 'public';
+            const announcementKey = `dismissed_announcement_${areaKey}_${btoa(settings.announcementText).substring(0, 16)}`;
             localStorage.setItem(announcementKey, "true");
         }
     };

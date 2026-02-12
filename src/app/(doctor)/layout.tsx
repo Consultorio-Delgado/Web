@@ -41,6 +41,7 @@ export default function DoctorLayout({
         { name: "Pacientes DRAPP", href: "/doctor/drapp-patients", icon: FileText },
         { name: "Doctores", href: "/doctor/doctors", icon: UserCircle },
         { name: "Mi Perfil", href: "/doctor/profile", icon: Settings },
+        { name: "Configuración", href: "/doctor/settings", icon: Settings },
     ];
 
     return (

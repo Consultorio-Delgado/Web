@@ -101,5 +101,11 @@ service cloud.firestore {
       // No updates allowed
       allow update: if false; 
     }
+    
+    // 6. Settings (Clinic info & Announcements)
+    match /settings/{settingId} {
+      allow read: if true; // Public for landing page
+      allow write: if isAdmin() || isDoctor(); // Both admins and doctors can change settings
+    }
   }
 }
