@@ -15,6 +15,7 @@ export interface UserProfile {
     createdAt: Date;
     isDeleted?: boolean;
     deletedAt?: Date;
+    visitedDoctors?: string[]; // IDs of doctors the patient has visited (isFirstVisit = false)
 }
 
 export interface Doctor {

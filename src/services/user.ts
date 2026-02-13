@@ -66,5 +66,29 @@ export const userService = {
             console.error("Error updating user profile:", error);
             throw error;
         }
+    },
+
+    /**
+     * Marks a doctor as visited by the patient.
+     * Prevents duplicates.
+     */
+    async markDoctorAsVisited(uid: string, doctorId: string): Promise<void> {
+        try {
+            const userRef = doc(db, "users", uid);
+            const userSnap = await getDoc(userRef);
+
+            if (userSnap.exists()) {
+                const userData = userSnap.data() as UserProfile;
+                const visitedDoctors = userData.visitedDoctors || [];
+
+                if (!visitedDoctors.includes(doctorId)) {
+                    await updateDoc(userRef, {
+                        visitedDoctors: [...visitedDoctors, doctorId]
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error marking doctor as visited:", error);
+        }
     }
 };

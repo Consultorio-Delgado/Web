@@ -20,33 +20,52 @@ export function AnnouncementPopup() {
 
     useEffect(() => {
         const fetchSettings = async () => {
-            const data = await settingsService.getSettings();
-            setSettings(data);
+            try {
+                const data = await settingsService.getSettings();
+                setSettings(data);
 
-            if (data.announcementEnabled && data.announcementText) {
-                // Determine if we are in public or portal area to show announcement again on transition
-                const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/doctor');
-                const areaKey = isPortal ? 'portal' : 'public';
+                if (data.announcementEnabled && data.announcementText) {
+                    const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/doctor');
+                    const areaKey = isPortal ? 'portal' : 'public';
 
-                const announcementKey = `dismissed_announcement_${areaKey}_${btoa(data.announcementText).substring(0, 16)}`;
-                const isDismissed = localStorage.getItem(announcementKey);
+                    // Safe key generation (remove non-alphanumeric) to avoid btoa issues with special chars
+                    const safeText = data.announcementText.replace(/[^a-zA-Z0-9]/g, '').substring(0, 32);
+                    const announcementKey = `dismissed_announcement_${areaKey}_${safeText}`;
 
-                if (!isDismissed) {
-                    setIsOpen(true);
+                    try {
+                        const isDismissed = localStorage.getItem(announcementKey);
+                        if (!isDismissed) {
+                            setIsOpen(true);
+                        }
+                    } catch (e) {
+                        console.error("Local storage error:", e);
+                        // If storage fails, show it anyway (safer) or don't show (less annoying)? 
+                        // Let's show it but maybe track deeper issue.
+                        setIsOpen(true);
+                    }
                 }
+            } catch (error) {
+                console.error("Failed to fetch settings:", error);
             }
         };
 
         fetchSettings();
-    }, [pathname]); // Re-run when navigating (e.g. from landing to portal)
+    }, [pathname]);
 
     const handleClose = () => {
         setIsOpen(false);
         if (settings?.announcementText) {
             const isPortal = pathname.startsWith('/portal') || pathname.startsWith('/doctor');
             const areaKey = isPortal ? 'portal' : 'public';
-            const announcementKey = `dismissed_announcement_${areaKey}_${btoa(settings.announcementText).substring(0, 16)}`;
-            localStorage.setItem(announcementKey, "true");
+
+            const safeText = settings.announcementText.replace(/[^a-zA-Z0-9]/g, '').substring(0, 32);
+            const announcementKey = `dismissed_announcement_${areaKey}_${safeText}`;
+
+            try {
+                localStorage.setItem(announcementKey, "true");
+            } catch (e) {
+                console.error("Failed to save dismissal:", e);
+            }
         }
     };
 

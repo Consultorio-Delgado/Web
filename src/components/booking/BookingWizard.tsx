@@ -7,6 +7,7 @@ import { Doctor } from "@/types";
 import { doctorService } from "@/services/doctorService";
 import { appointmentService } from "@/services/appointments";
 import { availabilityService } from "@/services/availabilityService";
+import { userService } from "@/services/user";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -25,7 +26,7 @@ const DOCTOR_PHOTOS: Record<string, string> = {
 };
 
 export function BookingWizard() {
-    const { user, profile, loading } = useAuth();
+    const { user, profile, loading, refreshProfile } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -75,6 +76,27 @@ export function BookingWizard() {
             router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
         }
     }, [user, loading, router, pathname, searchParams]);
+
+    // Auto-select "No" (Not first visit) if previously visited
+    useEffect(() => {
+        if (selectedDoctor && profile?.visitedDoctors?.includes(selectedDoctor.id)) {
+            setIsFirstVisit(false);
+        } else {
+            setIsFirstVisit(null);
+        }
+    }, [selectedDoctor, profile]);
+
+    const handleStep2Next = async () => {
+        if (isFirstVisit === false && selectedDoctor && user) {
+            // Check if not already persisted to avoid redundant writes/refreshes
+            if (!profile?.visitedDoctors?.includes(selectedDoctor.id)) {
+                await userService.markDoctorAsVisited(user.uid, selectedDoctor.id);
+                // Refresh local profile to reflect change immediately (e.g. if user goes back)
+                await refreshProfile();
+            }
+        }
+        setStep(3);
+    };
 
     // Load initial data and handle params
     useEffect(() => {
@@ -493,7 +515,7 @@ export function BookingWizard() {
                     <Button
                         className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-6 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
                         disabled={!canProceedFromStep2}
-                        onClick={() => setStep(3)}
+                        onClick={handleStep2Next}
                     >
                         OK <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -528,31 +550,21 @@ export function BookingWizard() {
                                 const today = new Date();
                                 today.setHours(0, 0, 0, 0);
 
+                                const dateString = format(date, 'yyyy-MM-dd');
+
                                 // 1. Past dates
                                 if (date < today) return true;
 
-                                // 2. Non-working days (based on doctor schedule)
-                                if (selectedDoctor && selectedDoctor.schedule.workDays) {
-                                    const day = date.getDay(); // 0-6
-                                    if (!selectedDoctor.schedule.workDays.includes(day)) return true;
-                                }
-
-                                // 3. Exceptions/Holidays
-                                const dateString = format(date, 'yyyy-MM-dd');
-                                if (doctorExceptions.some(e => e.date === dateString)) return true;
-
-                                // 4. Max days ahead (Appointment Limits)
+                                // 2. Max days ahead (Appointment Limits)
                                 if (selectedDoctor?.schedulingMode === 'custom_bimonthly') {
                                     const todayDay = today.getDate();
                                     let limitDate: Date;
 
                                     if (todayDay < 15) {
                                         // 1st to 14th: Open until end of CURRENT month
-                                        // (e.g. Oct 5 -> Open until Oct 31)
-                                        limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of current month
+                                        limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
                                     } else {
                                         // 15th to End: Open until 15th of NEXT month
-                                        // (e.g. Oct 15 -> Open until Nov 15)
                                         limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
                                     }
 
@@ -568,7 +580,25 @@ export function BookingWizard() {
                                     if (date > maxDate) return true;
                                 }
 
+                                // 3. Exceptions/Holidays (Block days - Strongest Constraint)
+                                if (doctorExceptions.some(e => e.date === dateString)) return true;
+
+                                // 4. Added Availability (Exceptional Schedule) - Explicitly ENABLE these days
+                                if (selectedDoctor?.exceptionalSchedule?.some(s => s.date === dateString)) return false;
+
+                                // 5. Standard Work Days (Fallback)
+                                if (selectedDoctor && selectedDoctor.schedule.workDays) {
+                                    const day = date.getDay(); // 0-6
+                                    if (!selectedDoctor.schedule.workDays.includes(day)) return true;
+                                }
+
                                 return false;
+                            }}
+                            modifiers={{
+                                exceptional: (date) => selectedDoctor?.exceptionalSchedule?.some(s => s.date === format(date, 'yyyy-MM-dd')) || false
+                            }}
+                            modifiersClassNames={{
+                                exceptional: "font-semibold text-slate-900 bg-slate-50 border border-slate-200"
                             }}
                             initialFocus
                             locale={es}
