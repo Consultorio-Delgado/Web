@@ -1,11 +1,7 @@
-"use client";
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Doctor } from "@/types";
 import { Button } from "@/components/ui/button";
-import { appointmentService } from "@/services/appointments";
 import {
     Form,
     FormControl,
@@ -16,96 +12,58 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { toast } from "sonner";
 
-// Schema generator to handle dynamic requirements
-const createSchema = (isEditing: boolean) => {
+// Schema for creation only - essentials
+const createSchema = () => {
     return z.object({
         firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres."),
         lastName: z.string().min(2, "El apellido debe tener al menos 2 caracteres."),
-        email: z.string().email("Email inválido").optional().or(z.literal("")),
-        password: z.string().min(6, "Mínimo 6 caracteres").optional().or(z.literal("")),
-        specialty: z.string().min(1, "Seleccione una especialidad."),
-        slotDuration: z.string(),
-        startHour: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM inválido"),
-        endHour: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM inválido"),
-        workDays: z.array(z.number()).min(1, "Seleccione al menos un día laboral."),
-    }).refine((data) => {
-        if (!isEditing) {
-            // Creation mode: Email and Password are required
-            return !!data.email && !!data.password;
-        }
-        return true;
-    }, {
-        message: "Email y contraseña son obligatorios para nuevos médicos",
-        path: ["password"] // Attach error to password field
+        email: z.string().email("Email inválido"),
+        password: z.string().min(6, "Mínimo 6 caracteres"),
+        // Hidden fields with defaults - included in schema to satisfy TS but not validated in UI
+        specialty: z.string().optional(),
+        slotDuration: z.string().optional(),
+        startHour: z.string().optional(),
+        endHour: z.string().optional(),
+        workDays: z.array(z.number()).optional(),
+        acceptedInsurances: z.array(z.string()).optional(),
     });
 };
 
-import { INSURANCE_PROVIDERS } from "@/constants";
-import { Checkbox } from "@/components/ui/checkbox";
-
-// ... existing imports
-
-// ... existing createSchema
-
 interface Props {
-    defaultValues?: Doctor;
     onSubmit: (values: any) => Promise<void>;
     loading?: boolean;
 }
 
-export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
-    const isEditing = !!defaultValues;
-    const schema = createSchema(isEditing);
+export function DoctorForm({ onSubmit, loading }: Props) {
+    const schema = createSchema();
 
-    const form = useForm<z.infer<typeof schema> & { acceptedInsurances: string[] }>({
+    const form = useForm<z.infer<typeof schema>>({
         resolver: zodResolver(schema),
         defaultValues: {
-            firstName: defaultValues?.firstName || "",
-            lastName: defaultValues?.lastName || "",
-            email: defaultValues?.email || "",
+            firstName: "",
+            lastName: "",
+            email: "",
             password: "",
-            specialty: defaultValues?.specialty || "",
-            slotDuration: defaultValues?.slotDuration?.toString() || "30",
-            startHour: defaultValues?.schedule?.startHour || "09:00",
-            endHour: defaultValues?.schedule?.endHour || "17:00",
-            workDays: defaultValues?.schedule?.workDays || [1, 2, 3, 4, 5],
-            acceptedInsurances: defaultValues?.acceptedInsurances || [],
+            // Default values for hidden fields
+            specialty: "Médico Clínico",
+            slotDuration: "30",
+            startHour: "09:00",
+            endHour: "17:00",
+            workDays: [1, 2, 3, 4, 5], // Mon-Fri
+            acceptedInsurances: [],
         },
     });
 
     async function handleSubmit(values: any) {
-        // 1. Conflict Check: If editing, check if removed days have future appointments
-        if (isEditing && defaultValues?.schedule?.workDays) {
-            const oldDays = defaultValues.schedule.workDays;
-            const newDays = values.workDays;
-            const removedDays = oldDays.filter((d: number) => !newDays.includes(d));
-
-            if (removedDays.length > 0) {
-                const hasConflict = await appointmentService.hasFutureAppointmentsOnDays(defaultValues.id, removedDays);
-                if (hasConflict) {
-                    toast.error("No se pueden eliminar días que tienen turnos futuros asignados. Por favor, cancele o re-programe esos turnos primero.");
-                    return; // Block submission
-                }
-            }
-        }
-
-        // Prepare data for submission
+        // Prepare data for submission with enforced defaults (double check)
         const doctorData = {
             ...values,
-            slotDuration: parseInt(values.slotDuration),
+            slotDuration: parseInt(values.slotDuration || "30"),
             schedule: {
-                startHour: values.startHour,
-                endHour: values.endHour,
-                workDays: values.workDays,
+                startHour: values.startHour || "09:00",
+                endHour: values.endHour || "17:00",
+                workDays: values.workDays || [1, 2, 3, 4, 5],
             },
             color: "blue",
         };
@@ -116,36 +74,32 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    {!isEditing && (
-                        <>
-                            <FormField
-                                control={form.control}
-                                name="email"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Email (Acceso)</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="doctor@clinica.com" autoComplete="email" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="password"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Contraseña</FormLabel>
-                                        <FormControl>
-                                            <PasswordInput placeholder="******" autoComplete="new-password" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </>
-                    )}
+                    <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email (Acceso)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="doctor@clinica.com" autoComplete="email" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Contraseña</FormLabel>
+                                <FormControl>
+                                    <PasswordInput placeholder="******" autoComplete="new-password" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
                     <FormField
                         control={form.control}
@@ -175,191 +129,15 @@ export function DoctorForm({ defaultValues, onSubmit, loading }: Props) {
                     />
                 </div>
 
-                <FormField
-                    control={form.control}
-                    name="specialty"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Especialidad</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccione..." />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="Cardiología">Cardiología</SelectItem>
-                                    <SelectItem value="Clínica Médica">Clínica Médica</SelectItem>
-                                    <SelectItem value="Pediatría">Pediatría</SelectItem>
-                                    <SelectItem value="Traumatología">Traumatología</SelectItem>
-                                    <SelectItem value="Dermatología">Dermatología</SelectItem>
-                                    <SelectItem value="Ginecología">Ginecología</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <div className="grid grid-cols-3 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="slotDuration"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Duración Turno</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Minutos" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="15">15 min</SelectItem>
-                                        <SelectItem value="20">20 min</SelectItem>
-                                        <SelectItem value="30">30 min</SelectItem>
-                                        <SelectItem value="40">40 min</SelectItem>
-                                        <SelectItem value="60">60 min</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="startHour"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Inicio Jornada</FormLabel>
-                                <FormControl>
-                                    <Input type="time" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="endHour"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Fin Jornada</FormLabel>
-                                <FormControl>
-                                    <Input type="time" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                <div className="bg-slate-50 p-3 rounded-md border border-slate-100 text-sm text-slate-500">
+                    <p>
+                        <strong>Nota:</strong> La especialidad, horarios y obras sociales se crearán con valores predeterminados.
+                        El doctor podrá configurarlos luego desde su perfil.
+                    </p>
                 </div>
 
-                <FormField
-                    control={form.control}
-                    name="workDays"
-                    render={() => (
-                        <FormItem>
-                            <div className="mb-4">
-                                <FormLabel className="text-base">Días Laborales</FormLabel>
-                            </div>
-                            <div className="flex flex-wrap gap-4">
-                                {[
-                                    { id: 1, label: "Lunes" },
-                                    { id: 2, label: "Martes" },
-                                    { id: 3, label: "Miércoles" },
-                                    { id: 4, label: "Jueves" },
-                                    { id: 5, label: "Viernes" },
-                                    { id: 6, label: "Sábado" },
-                                    { id: 0, label: "Domingo" },
-                                ].map((item) => (
-                                    <FormField
-                                        key={item.id}
-                                        control={form.control}
-                                        name="workDays"
-                                        render={({ field }) => {
-                                            return (
-                                                <FormItem
-                                                    key={item.id}
-                                                    className="flex flex-row items-start space-x-2 space-y-0"
-                                                >
-                                                    <FormControl>
-                                                        <Checkbox
-                                                            checked={field.value?.includes(item.id)}
-                                                            onCheckedChange={(checked) => {
-                                                                return checked
-                                                                    ? field.onChange([...(field.value || []), item.id])
-                                                                    : field.onChange(
-                                                                        field.value?.filter(
-                                                                            (value) => value !== item.id
-                                                                        )
-                                                                    )
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal cursor-pointer">
-                                                        {item.label}
-                                                    </FormLabel>
-                                                </FormItem>
-                                            )
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <FormField
-                    control={form.control}
-                    name="acceptedInsurances"
-                    render={() => (
-                        <FormItem>
-                            <div className="mb-4">
-                                <FormLabel className="text-base">Obras Sociales Aceptadas</FormLabel>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                {INSURANCE_PROVIDERS.map((item) => (
-                                    <FormField
-                                        key={item}
-                                        control={form.control}
-                                        name="acceptedInsurances"
-                                        render={({ field }) => {
-                                            return (
-                                                <FormItem
-                                                    key={item}
-                                                    className="flex flex-row items-start space-x-3 space-y-0"
-                                                >
-                                                    <FormControl>
-                                                        <Checkbox
-                                                            checked={field.value?.includes(item)}
-                                                            onCheckedChange={(checked) => {
-                                                                return checked
-                                                                    ? field.onChange([...(field.value || []), item])
-                                                                    : field.onChange(
-                                                                        field.value?.filter(
-                                                                            (value) => value !== item
-                                                                        )
-                                                                    )
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal">
-                                                        {item}
-                                                    </FormLabel>
-                                                </FormItem>
-                                            )
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
                 <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Guardando..." : "Guardar Doctor"}
+                    {loading ? "Creando..." : "Crear Doctor"}
                 </Button>
             </form>
         </Form>

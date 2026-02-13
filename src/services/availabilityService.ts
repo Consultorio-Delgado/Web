@@ -14,13 +14,10 @@ export const availabilityService = {
         const slotDuration = doctor.slotDuration;
         const dateString = format(date, 'yyyy-MM-dd');
 
-        // 0. Check Exceptional Schedule (Overrides Work Day & Regular Hours)
+        // 0. Get Exceptional Schedule
         const exceptionalDay = doctor.exceptionalSchedule?.find(s => s.date === dateString);
 
-        // 1. Check Exceptions (Blocked Days) - only if no exceptional schedule or if logic requires
-        // If there is an exceptional schedule, we assume it's a "Working Day" with custom hours, unless blocked explicitly.
-        // But usually "Exceptional Day" implies "Working".
-        // Let's keep exceptionService check for global blocks or specific blocks.
+        // 1. Check Exceptions (Blocked Days - Global or Doctor specific)
         const { exceptionService } = await import('./exceptionService');
         const exceptions = await exceptionService.getByDate(dateString);
         const isBlockedGlobal = exceptions.some(e => !e.doctorId);
@@ -33,45 +30,75 @@ export const availabilityService = {
             }
         }
 
-        // 2. Validate Work Day
+        // 2. Validate Work Day (Regular)
         const dayOfWeek = date.getDay(); // 0 = Sunday
         const isRegularWorkDay = workDays.includes(dayOfWeek);
 
-        const isWorkDay = exceptionalDay ? true : isRegularWorkDay;
+        // Usage: If blocked globally or by doctor specific block (not vacation/exception), return empty or blocked.
+        // If simply not a work day and no exception, return empty.
 
-        if (!isWorkDay || isBlockedGlobal || isBlockedDoctor) {
-            if (!isWorkDay) return [];
-            // If blocked by exception service, return empty or blocked slots?
-            // Existing logic returns empty if not workday, but if blocked it proceeds to mark slots as blocked.
-            // Let's stick to existing logic for blocks.
+        if (!isRegularWorkDay && !exceptionalDay) {
+            return [];
         }
 
-        // 3. Parsers
-        // Use Exceptional Hours if available, else Regular Hours
-        const startHourToUse = exceptionalDay ? exceptionalDay.startHour : startHour;
-        const endHourToUse = exceptionalDay ? exceptionalDay.endHour : endHour;
+        // 3. Generate Slots
+        let slotTimes: string[] = [];
 
-        const [startH, startM] = startHourToUse.split(':').map(Number);
-        const [endH, endM] = endHourToUse.split(':').map(Number);
+        // 3.1 Regular Slots
+        if (isRegularWorkDay) {
+            const [startH, startM] = startHour.split(':').map(Number);
+            const [endH, endM] = endHour.split(':').map(Number);
 
-        let currentTime = new Date(date);
-        currentTime.setHours(startH, startM, 0, 0);
+            let currentTime = new Date(date);
+            currentTime.setHours(startH, startM, 0, 0);
 
-        const endTime = new Date(date);
-        endTime.setHours(endH, endM, 0, 0);
+            const endTime = new Date(date);
+            endTime.setHours(endH, endM, 0, 0);
 
+            while (isBefore(currentTime, endTime)) {
+                slotTimes.push(format(currentTime, 'HH:mm'));
+                currentTime = addMinutes(currentTime, slotDuration);
+            }
+        }
+
+        // 3.2 Exceptional Slots
+        if (exceptionalDay) {
+            const [exStartH, exStartM] = exceptionalDay.startHour.split(':').map(Number);
+            const [exEndH, exEndM] = exceptionalDay.endHour.split(':').map(Number);
+
+            let exCurrentTime = new Date(date);
+            exCurrentTime.setHours(exStartH, exStartM, 0, 0);
+
+            const exEndTime = new Date(date);
+            exEndTime.setHours(exEndH, exEndM, 0, 0);
+
+            while (isBefore(exCurrentTime, exEndTime)) {
+                const timeStr = format(exCurrentTime, 'HH:mm');
+                if (!slotTimes.includes(timeStr)) {
+                    slotTimes.push(timeStr);
+                }
+                exCurrentTime = addMinutes(exCurrentTime, slotDuration);
+            }
+        }
+
+        // Sort slots
+        slotTimes.sort();
+
+        // 4. Build Result
         const now = new Date();
         const isToday = isSameDay(date, now);
         const slots: { time: string, status: 'free' | 'occupied' | 'blocked' | 'past', appointment?: Appointment }[] = [];
 
-        // 3. Generate slots
-        while (isBefore(currentTime, endTime)) {
-            const timeString = format(currentTime, 'HH:mm');
+        for (const timeString of slotTimes) {
             let status: 'free' | 'occupied' | 'blocked' | 'past' = 'free';
             let appointment: Appointment | undefined = undefined;
 
+            const [h, m] = timeString.split(':').map(Number);
+            const slotDate = new Date(date);
+            slotDate.setHours(h, m, 0, 0);
+
             // Check Past
-            if (isToday && isBefore(currentTime, now)) {
+            if (isToday && isBefore(slotDate, now)) {
                 status = 'past';
             }
 
@@ -89,19 +116,18 @@ export const availabilityService = {
                 appointment = foundAppt;
             }
 
-            // Check Blocked (Exception) overrides 'free' but not 'occupied' (usually)
-            // But if the whole day is blocked, everything is blocked.
+            // Check Blocked (Exception/Vacation)
+            // If the day is blocked, everything is blocked.
             if ((isBlockedGlobal || isBlockedDoctor) && status === 'free') {
                 status = 'blocked';
             }
 
             // Mark past as past regardless of block, but occupied stays occupied
-            if (isToday && isBefore(currentTime, now) && status === 'free') {
+            if (isToday && isBefore(slotDate, now) && status === 'free') {
                 status = 'past';
             }
 
             slots.push({ time: timeString, status, appointment });
-            currentTime = addMinutes(currentTime, slotDuration);
         }
 
         return slots;

@@ -1,7 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { MapPin, Phone, Instagram, Facebook } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export function Footer() {
+    const pathname = usePathname();
+    const isDoctorPortal = pathname?.startsWith('/doctor');
+
+    if (isDoctorPortal) return null;
+
     return (
         <footer className="w-full border-t bg-slate-900">
             {/* Main Footer Section */}

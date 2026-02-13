@@ -4,9 +4,11 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Calendar, Users, LogOut, Settings, UserCircle, ShieldAlert, Clock, FileText } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function DoctorLayout({
     children,
@@ -16,6 +18,7 @@ export default function DoctorLayout({
     const { profile, loading, user, logout } = useAuth();
     const pathname = usePathname();
     const router = useRouter();
+    const [devMode, setDevMode] = useState(false);
 
     useEffect(() => {
         if (!loading) {
@@ -39,13 +42,14 @@ export default function DoctorLayout({
         { name: "Agenda Mensual", href: "/doctor/appointments", icon: Calendar },
         { name: "Pacientes", href: "/doctor/patients", icon: Users },
         { name: "Pacientes DRAPP", href: "/doctor/drapp-patients", icon: FileText },
-        { name: "Doctores", href: "/doctor/doctors", icon: UserCircle },
+        { name: "Doctores", href: "/doctor/doctors", icon: UserCircle, devOnly: true },
         { name: "Mi Perfil", href: "/doctor/profile", icon: Settings },
-        { name: "Configuración", href: "/doctor/settings", icon: Settings },
     ];
 
+    const filteredNavItems = navItems.filter(item => !item.devOnly || devMode);
+
     return (
-        <div className="flex h-screen bg-slate-100">
+        <div className="fixed inset-x-0 bottom-0 top-16 z-0 flex bg-slate-100">
             {/* Sidebar */}
             <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
                 <div className="p-6 border-b border-slate-100">
@@ -53,8 +57,8 @@ export default function DoctorLayout({
                     <p className="text-xs text-slate-500 uppercase tracking-wider mt-1">Portal Médico</p>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-1">
-                    {navItems.map((item) => {
+                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                    {filteredNavItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = pathname === item.href || pathname.startsWith(item.href);
                         return (
@@ -71,8 +75,13 @@ export default function DoctorLayout({
                     })}
                 </nav>
 
-                <div className="p-4 border-t border-slate-100">
-                    <div className="flex items-center gap-3 mb-4 px-2">
+                <div className="p-4 border-t border-slate-100 space-y-4">
+                    <div className="flex items-center justify-between px-2 py-2 bg-slate-50 rounded-md border border-slate-100">
+                        <Label htmlFor="dev-mode" className="text-xs font-medium text-slate-500 cursor-pointer">Modo Desarrollador</Label>
+                        <Switch id="dev-mode" checked={devMode} onCheckedChange={setDevMode} className="scale-75 origin-right" />
+                    </div>
+
+                    <div className="flex items-center gap-3 px-2">
                         <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
                             {profile?.firstName?.[0]}{profile?.lastName?.[0]}
                         </div>
@@ -89,7 +98,7 @@ export default function DoctorLayout({
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto">
+            <main className="flex-1 overflow-y-auto">
                 <div className="p-8">
                     {children}
                 </div>

@@ -44,6 +44,7 @@ export interface Doctor {
     vacationEnabled?: boolean; // Is vacation mode ON
     vacationStart?: string;   // YYYY-MM-DD start date (inclusive)
     vacationEnd?: string;     // YYYY-MM-DD end date (inclusive)
+    schedulingMode?: 'standard' | 'custom_bimonthly'; // Booking logic
 }
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived' | 'absent';

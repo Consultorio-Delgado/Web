@@ -172,7 +172,11 @@ export default async function LandingPage() {
                           doctor.id === 'capparelli' ? 'Dr. Germán Capparelli' :
                             `${(doctor.specialty === 'Ginecología' || doctor.specialty.includes('Mujer')) ? 'Dra.' : 'Dr.'} ${doctor.firstName} ${doctor.lastName}`}
                       </h3>
-                      <p className={`font-medium mb-1 ${getTextColor(doctor.color)}`}>{doctor.specialty}</p>
+                      <p className={`font-medium mb-1 ${getTextColor(doctor.color)}`}>
+                        {(doctor.id === 'secondi' || doctor.lastName.toLowerCase().includes('secondi')) ? 'Ginecología' :
+                          (doctor.id === 'capparelli' || doctor.lastName.toLowerCase().includes('capparelli')) ? 'Clínica Médica' :
+                            doctor.specialty}
+                      </p>
                       <div className="text-slate-500 max-w-md text-sm space-y-1">
                         {(doctor.id === 'secondi' || doctor.lastName.toLowerCase().includes('secondi')) ? (
                           <div className="flex flex-col gap-1">

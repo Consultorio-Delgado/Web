@@ -542,11 +542,31 @@ export function BookingWizard() {
                                 if (doctorExceptions.some(e => e.date === dateString)) return true;
 
                                 // 4. Max days ahead (Appointment Limits)
-                                const maxDays = selectedDoctor?.maxDaysAhead || 30;
-                                const maxDate = new Date();
-                                maxDate.setDate(today.getDate() + maxDays);
-                                maxDate.setHours(23, 59, 59, 999);
-                                if (date > maxDate) return true;
+                                if (selectedDoctor?.schedulingMode === 'custom_bimonthly') {
+                                    const todayDay = today.getDate();
+                                    let limitDate: Date;
+
+                                    if (todayDay < 15) {
+                                        // 1st to 14th: Open until end of CURRENT month
+                                        // (e.g. Oct 5 -> Open until Oct 31)
+                                        limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of current month
+                                    } else {
+                                        // 15th to End: Open until 15th of NEXT month
+                                        // (e.g. Oct 15 -> Open until Nov 15)
+                                        limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+                                    }
+
+                                    limitDate.setHours(23, 59, 59, 999);
+                                    if (date > limitDate) return true;
+
+                                } else {
+                                    // Standard maxDaysAhead
+                                    const maxDays = selectedDoctor?.maxDaysAhead || 30;
+                                    const maxDate = new Date();
+                                    maxDate.setDate(today.getDate() + maxDays);
+                                    maxDate.setHours(23, 59, 59, 999);
+                                    if (date > maxDate) return true;
+                                }
 
                                 return false;
                             }}

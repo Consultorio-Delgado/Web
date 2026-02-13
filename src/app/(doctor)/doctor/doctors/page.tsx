@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Doctor } from "@/types";
 import { doctorService } from "@/services/doctorService";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Stethoscope } from "lucide-react";
+import { Plus, Trash2, Stethoscope } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -22,14 +22,13 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { DoctorForm } from "@/components/admin/DoctorForm";
-import { toast } from "sonner"; // If you have it, else use alert
+import { toast } from "sonner";
 
 export default function DoctorsPage() {
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [loading, setLoading] = useState(true);
     const [isInternalLoading, setIsInternalLoading] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingDoctor, setEditingDoctor] = useState<Doctor | undefined>(undefined);
 
     const fetchDoctors = async () => {
         setLoading(true);
@@ -79,22 +78,6 @@ export default function DoctorsPage() {
         }
     };
 
-    const handleUpdate = async (data: any) => {
-        if (!editingDoctor) return;
-        setIsInternalLoading(true);
-        try {
-            await doctorService.updateDoctor(editingDoctor.id, data);
-            setDialogOpen(false);
-            setEditingDoctor(undefined);
-            fetchDoctors();
-        } catch (error) {
-            console.error(error);
-            alert("Error al actualizar doctor");
-        } finally {
-            setIsInternalLoading(false);
-        }
-    };
-
     const handleDelete = async (id: string) => {
         if (!confirm("¿Está seguro de eliminar este doctor?")) return;
         try {
@@ -106,16 +89,6 @@ export default function DoctorsPage() {
         }
     };
 
-    const openCreateDialog = () => {
-        setEditingDoctor(undefined);
-        setDialogOpen(true);
-    };
-
-    const openEditDialog = (doc: Doctor) => {
-        setEditingDoctor(doc);
-        setDialogOpen(true);
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -123,7 +96,7 @@ export default function DoctorsPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Gestión de Doctores</h1>
                     <p className="text-muted-foreground">Administración del staff médico.</p>
                 </div>
-                <Button onClick={openCreateDialog}>
+                <Button onClick={() => setDialogOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" /> Nuevo Doctor
                 </Button>
             </div>
@@ -165,10 +138,7 @@ export default function DoctorsPage() {
                                         {doc.schedule?.startHour} - {doc.schedule?.endHour}
                                     </TableCell>
                                     <TableCell className="text-right space-x-2">
-                                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(doc)}>
-                                            <Pencil className="h-4 w-4 text-slate-500" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(doc.id)}>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(doc.id)} title="Eliminar Doctor">
                                             <Trash2 className="h-4 w-4 text-red-500" />
                                         </Button>
                                     </TableCell>
@@ -182,14 +152,13 @@ export default function DoctorsPage() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{editingDoctor ? "Editar Doctor" : "Nuevo Doctor"}</DialogTitle>
+                        <DialogTitle>Nuevo Doctor</DialogTitle>
                         <DialogDescription>
-                            Complete los datos del profesional.
+                            Complete los datos básicos. El doctor podrá configurar su perfil luego.
                         </DialogDescription>
                     </DialogHeader>
                     <DoctorForm
-                        defaultValues={editingDoctor}
-                        onSubmit={editingDoctor ? handleUpdate : handleCreate}
+                        onSubmit={handleCreate}
                         loading={isInternalLoading}
                     />
                 </DialogContent>
