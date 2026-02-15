@@ -46,8 +46,24 @@ export const availabilityService = {
 
         // 3.1 Regular Slots
         if (isRegularWorkDay) {
-            const [startH, startM] = startHour.split(':').map(Number);
-            const [endH, endM] = endHour.split(':').map(Number);
+            let startH, startM, endH, endM;
+
+            // Prioritize dayRanges (New System)
+            if (doctor.schedule.dayRanges && doctor.schedule.dayRanges[dayOfWeek]) {
+                const dayRange = doctor.schedule.dayRanges[dayOfWeek];
+                [startH, startM] = dayRange.startHour.split(':').map(Number);
+                [endH, endM] = dayRange.endHour.split(':').map(Number);
+            }
+            // Fallback to legacy startHour/endHour
+            else if (doctor.schedule.startHour && doctor.schedule.endHour) {
+                [startH, startM] = doctor.schedule.startHour.split(':').map(Number);
+                [endH, endM] = doctor.schedule.endHour.split(':').map(Number);
+            }
+            // Safety fallback (should not happen if data is correct)
+            else {
+                startH = 9; startM = 0;
+                endH = 17; endM = 0;
+            }
 
             let currentTime = new Date(date);
             currentTime.setHours(startH, startM, 0, 0);
@@ -104,7 +120,9 @@ export const availabilityService = {
 
             // Check Occupied
             const foundAppt = existingAppointments.find(appt =>
-                appt.status !== 'cancelled' && appt.time === timeString
+                appt.status !== 'cancelled' &&
+                appt.time === timeString &&
+                appt.doctorId === doctor.id // Ensure it belongs to this doctor
             );
 
             if (foundAppt) {

@@ -558,22 +558,63 @@ export function BookingWizard() {
                                 // 2. Max days ahead (Appointment Limits)
                                 if (selectedDoctor?.schedulingMode === 'custom_bimonthly') {
                                     const todayDay = today.getDate();
+                                    const currentHour = new Date().getHours();
+
+                                    // Logic:
+                                    // 1st to 14th -> Open until end of CURRENT month
+                                    // 15th before 11am -> Open until end of CURRENT month
+                                    // 15th after 11am -> Open until 15th of NEXT month
+                                    // 16th onwards -> Open until 15th of NEXT month
+
+                                    // Batch 1: End of Current Month Limit.
+                                    // Batch 2: 15th of Next Month Limit.
+
+                                    let isBatch1 = false;
+                                    if (todayDay === 1) {
+                                        if (currentHour >= 11) isBatch1 = true;
+                                    } else if (todayDay > 1 && todayDay < 15) {
+                                        isBatch1 = true;
+                                    } else if (todayDay === 15) {
+                                        if (currentHour < 11) isBatch1 = true;
+                                    }
+
                                     let limitDate: Date;
 
-                                    if (todayDay < 15) {
-                                        // 1st to 14th: Open until end of CURRENT month
+                                    if (isBatch1) {
+                                        // Batch 1: Limit is End of Current Month
                                         limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
                                     } else {
-                                        // 15th to End: Open until 15th of NEXT month
-                                        limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+                                        // Batch 2
+                                        if (todayDay === 1 && currentHour < 11) {
+                                            // Handling the trailing end of previous month's Batch 2 (e.g. Feb 1st < 11am)
+                                            // Limit is 15th of THIS month
+                                            limitDate = new Date(today.getFullYear(), today.getMonth(), 15);
+                                        } else {
+                                            // Standard Batch 2 (15th 11am -> End)
+                                            // Limit is 15th of NEXT month
+                                            limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+                                        }
                                     }
 
                                     limitDate.setHours(23, 59, 59, 999);
                                     if (date > limitDate) return true;
 
                                 } else {
-                                    // Standard maxDaysAhead
-                                    const maxDays = selectedDoctor?.maxDaysAhead || 30;
+                                    // Standard maxDaysAhead (Rolling Window)
+                                    let maxDays = selectedDoctor?.maxDaysAhead || 30;
+
+                                    // New Rule for Dra. Secondi: 
+                                    // The "newest" day in the rolling window only opens at 11:00 AM.
+                                    // Before 11 AM, we show one day less.
+                                    const isSecondi = selectedDoctor?.id === 'secondi' || selectedDoctor?.lastName.toLowerCase().includes('secondi');
+
+                                    if (isSecondi) {
+                                        const currentHour = new Date().getHours();
+                                        if (currentHour < 11) {
+                                            maxDays = Math.max(0, maxDays - 1);
+                                        }
+                                    }
+
                                     const maxDate = new Date();
                                     maxDate.setDate(today.getDate() + maxDays);
                                     maxDate.setHours(23, 59, 59, 999);

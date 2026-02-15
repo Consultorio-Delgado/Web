@@ -38,7 +38,11 @@ export default function DoctorProfilePage() {
     const [acceptedInsurances, setAcceptedInsurances] = useState<string[]>([]);
     const [maxDaysAhead, setMaxDaysAhead] = useState(30);
     const [schedulingMode, setSchedulingMode] = useState<'standard' | 'custom_bimonthly'>('standard');
+
     const [exceptionalSchedule, setExceptionalSchedule] = useState<{ date: string; startHour: string; endHour: string }[]>([]);
+
+    // Per-day schedule state
+    const [dayRanges, setDayRanges] = useState<Record<number, { startHour: string; endHour: string }>>({});
 
     // Password State
     const [currentPassword, setCurrentPassword] = useState("");
@@ -78,9 +82,24 @@ export default function DoctorProfilePage() {
                     setSpecialty(docData.specialty);
                     setGender(docData.gender || "male");
                     setSlotDuration(docData.slotDuration);
-                    setStartHour(docData.schedule.startHour);
-                    setEndHour(docData.schedule.endHour);
+                    setStartHour(docData.schedule.startHour || "09:00");
+                    setEndHour(docData.schedule.endHour || "17:00");
                     setWorkDays(docData.schedule.workDays);
+
+                    // Initialize dayRanges
+                    if (docData.schedule.dayRanges) {
+                        setDayRanges(docData.schedule.dayRanges);
+                    } else {
+                        // Migration fallback: apply global times to all work days
+                        const initialRanges: Record<number, { startHour: string; endHour: string }> = {};
+                        docData.schedule.workDays.forEach(d => {
+                            initialRanges[d] = {
+                                startHour: docData.schedule.startHour || "09:00",
+                                endHour: docData.schedule.endHour || "17:00"
+                            };
+                        });
+                        setDayRanges(initialRanges);
+                    }
                     setAcceptedInsurances(docData.acceptedInsurances || []);
                     setMaxDaysAhead(docData.maxDaysAhead || 30);
                     // Force custom mode for Capparelli if not set, else use existing
@@ -164,9 +183,10 @@ export default function DoctorProfilePage() {
             const doctorRef = doc(db, 'doctors', user.uid);
             await updateDoc(doctorRef, {
                 schedule: {
-                    startHour,
-                    endHour,
-                    workDays
+                    startHour, // Keep for legacy/fallback
+                    endHour,   // Keep for legacy/fallback
+                    workDays,
+                    dayRanges
                 },
                 slotDuration,
                 maxDaysAhead,
@@ -202,9 +222,28 @@ export default function DoctorProfilePage() {
     const toggleDay = (day: number) => {
         if (workDays.includes(day)) {
             setWorkDays(workDays.filter(d => d !== day));
+            // Remove from ranges
+            const newRanges = { ...dayRanges };
+            delete newRanges[day];
+            setDayRanges(newRanges);
         } else {
             setWorkDays([...workDays, day].sort());
+            // Add default range
+            setDayRanges({
+                ...dayRanges,
+                [day]: { startHour: "09:00", endHour: "17:00" }
+            });
         }
+    };
+
+    const updateDayRange = (day: number, type: 'start' | 'end', value: string) => {
+        setDayRanges(prev => ({
+            ...prev,
+            [day]: {
+                ...prev[day],
+                [type === 'start' ? 'startHour' : 'endHour']: value
+            }
+        }));
     };
 
     const toggleInsurance = (insurance: string) => {
@@ -361,39 +400,7 @@ export default function DoctorProfilePage() {
 
                     {isScheduleOpen && (
                         <CardContent className="space-y-6 animate-in slide-in-from-top-2 duration-300">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Hora Inicio</Label>
-                                    <Select value={startHour} onValueChange={setStartHour}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Inicio" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {Array.from({ length: 13 }, (_, i) => i + 7).map(h => (
-                                                <SelectItem key={h} value={`${h.toString().padStart(2, '0')}:00`}>
-                                                    {h.toString().padStart(2, '0')}:00
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Hora Fin</Label>
-                                    <Select value={endHour} onValueChange={setEndHour}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Fin" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {Array.from({ length: 13 }, (_, i) => i + 10).map(h => (
-                                                <SelectItem key={h} value={`${h.toString().padStart(2, '0')}:00`}>
-                                                    {h.toString().padStart(2, '0')}:00
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
+                            {/* Global times removed, per-day logic below */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Duración del Turno (minutos)</Label>
@@ -453,6 +460,56 @@ export default function DoctorProfilePage() {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Per Day Ranges Config */}
+                            {workDays.length > 0 && (
+                                <div className="mt-4 space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                    <Label className="text-slate-900">Horarios por Día</Label>
+                                    <div className="grid gap-3">
+                                        {['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map((dayName, idx) => {
+                                            if (!workDays.includes(idx)) return null;
+                                            const range = dayRanges[idx] || { startHour: "09:00", endHour: "17:00" };
+
+                                            return (
+                                                <div key={idx} className="flex items-center gap-3">
+                                                    <div className="w-24 font-medium text-sm text-slate-700">{dayName}</div>
+                                                    <Select
+                                                        value={range.startHour}
+                                                        onValueChange={(v) => updateDayRange(idx, 'start', v)}
+                                                    >
+                                                        <SelectTrigger className="w-[100px] h-8">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {Array.from({ length: 13 }, (_, i) => i + 7).map(h => (
+                                                                <SelectItem key={h} value={`${h.toString().padStart(2, '0')}:00`}>
+                                                                    {h.toString().padStart(2, '0')}:00
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <span className="text-slate-400 text-sm">a</span>
+                                                    <Select
+                                                        value={range.endHour}
+                                                        onValueChange={(v) => updateDayRange(idx, 'end', v)}
+                                                    >
+                                                        <SelectTrigger className="w-[100px] h-8">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {Array.from({ length: 13 }, (_, i) => i + 10).map(h => (
+                                                                <SelectItem key={h} value={`${h.toString().padStart(2, '0')}:00`}>
+                                                                    {h.toString().padStart(2, '0')}:00
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="border-t border-slate-100 pt-4 mt-4">
                                 <h4 className="font-medium text-slate-900 mb-3 flex items-center gap-2">

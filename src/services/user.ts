@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { UserProfile, Role } from "@/types";
 
 export const userService = {
@@ -49,10 +49,51 @@ export const userService = {
                 ...data,
                 createdAt: new Date(), // Firestore will store this, ensure we handle dates correctly on read
                 role: 'patient', // Default role
-            });
+            }, { merge: true });
         } catch (error) {
             console.error("Error creating user profile:", error);
             throw error;
+        }
+    },
+
+    /**
+     * Searches for patients by DNI or Last Name.
+     * @param queryText The search string (DNI or Name).
+     * @returns Array of matching UserProfiles.
+     */
+    async searchPatients(queryText: string): Promise<UserProfile[]> {
+        try {
+            if (!queryText || queryText.length < 3) return [];
+
+            const isNumeric = /^\d+$/.test(queryText);
+            const usersRef = collection(db, "users");
+            let q;
+
+            if (isNumeric) {
+                // Search by DNI
+                q = query(
+                    usersRef,
+                    where("dni", ">=", queryText),
+                    where("dni", "<=", queryText + '\uf8ff'),
+                    limit(10)
+                );
+            } else {
+                // Search by Last Name (Prefix)
+                const formattedQuery = queryText.charAt(0).toUpperCase() + queryText.slice(1);
+                q = query(
+                    usersRef,
+                    where("lastName", ">=", formattedQuery),
+                    where("lastName", "<=", formattedQuery + '\uf8ff'),
+                    limit(10)
+                );
+            }
+
+            const querySnapshot = await getDocs(q);
+            return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+
+        } catch (error) {
+            console.error("Error searching patients:", error);
+            return [];
         }
     },
 

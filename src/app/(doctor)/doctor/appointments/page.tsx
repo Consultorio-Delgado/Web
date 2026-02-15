@@ -2,8 +2,19 @@
 
 import Link from "next/link";
 import { PatientSearch } from "@/components/doctor/PatientSearch";
+import { SobreturnoDialog } from "@/components/appointments/SobreturnoDialog";
 
 import { useState, useEffect } from "react";
+// ... (existing imports)
+
+// Inside component
+// Multi-Select State
+const [isSelectionMode, setIsSelectionMode] = useState(false);
+const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
+
+// Sobreturno State
+const [isSobreturnoOpen, setIsSobreturnoOpen] = useState(false);
+const [refreshTrigger, setRefreshTrigger] = useState(0); // To force re-fetch
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -121,7 +132,8 @@ export default function AppointmentsPage() {
         };
 
         fetchData();
-    }, [selectedDate, doctor]);
+        fetchData();
+    }, [selectedDate, doctor, refreshTrigger]);
 
 
 
@@ -345,9 +357,16 @@ export default function AppointmentsPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Agenda Mensual</h1>
-                <p className="text-muted-foreground">Gestión turnos por fecha.</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Agenda Mensual</h1>
+                    <p className="text-muted-foreground">Gestión turnos por fecha.</p>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setIsSobreturnoOpen(true)}>
+                        Agregar Sobreturno
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
@@ -367,14 +386,69 @@ export default function AppointmentsPage() {
                                 locale={es}
                                 modifiers={{
                                     hasBusy: (date) => {
+                                        if (!doctor) return false;
                                         const key = format(date, 'yyyy-MM-dd');
-                                        return busyDays.has(key) && !blockedDays.has(key);
+
+                                        // Check if it is a working day
+                                        const dayOfWeek = date.getDay();
+                                        const isWorkDay = doctor.schedule.workDays.includes(dayOfWeek);
+
+                                        // Check if fully blocked (Exception or Vacation)
+                                        const isBlocked = blockedDays.has(key);
+                                        let isVacation = false;
+                                        if (doctor.vacationEnabled && doctor.vacationStart && doctor.vacationEnd) {
+                                            if (key >= doctor.vacationStart && key <= doctor.vacationEnd) {
+                                                isVacation = true;
+                                            }
+                                        }
+
+                                        // Check if it's a past day WITH appointments
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        const isPast = date < today;
+                                        const hasAppointments = busyDays.has(key);
+                                        const isPastWithAppointments = isPast && hasAppointments;
+
+                                        // Highlight as "Busy" (Black) if it IS a working day AND NOT fully blocked/vacation AND NOT past busy
+                                        return isWorkDay && !isBlocked && !isVacation && !isPastWithAppointments;
                                     },
-                                    hasBlocked: (date) => blockedDays.has(format(date, 'yyyy-MM-dd'))
+                                    hasBlocked: (date) => {
+                                        if (!doctor) return false;
+                                        const key = format(date, 'yyyy-MM-dd');
+                                        const isExceptionBlock = blockedDays.has(key);
+
+                                        let isVacation = false;
+                                        if (doctor.vacationEnabled && doctor.vacationStart && doctor.vacationEnd) {
+                                            if (key >= doctor.vacationStart && key <= doctor.vacationEnd) {
+                                                isVacation = true;
+                                            }
+                                        }
+                                        return isExceptionBlock || isVacation;
+                                    },
+                                    hasPastWithAppointments: (date) => {
+                                        if (!doctor) return false;
+                                        const key = format(date, 'yyyy-MM-dd');
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+
+                                        const isPast = date < today;
+                                        const hasAppointments = busyDays.has(key);
+                                        const isBlocked = blockedDays.has(key);
+
+                                        let isVacation = false;
+                                        if (doctor.vacationEnabled && doctor.vacationStart && doctor.vacationEnd) {
+                                            if (key >= doctor.vacationStart && key <= doctor.vacationEnd) {
+                                                isVacation = true;
+                                            }
+                                        }
+
+                                        return isPast && hasAppointments && !isBlocked && !isVacation;
+                                    }
                                 }}
                                 modifiersStyles={{
                                     hasBusy: { fontWeight: 'bold', color: '#000' },
-                                    hasBlocked: { fontWeight: 'bold', color: '#ef4444', textDecoration: 'line-through' }
+                                    hasBlocked: { fontWeight: 'bold', color: '#ef4444', textDecoration: 'line-through' },
+                                    hasPastWithAppointments: { fontWeight: 'bold', color: '#eab308' }
                                 }}
                                 styles={{
                                     day: { color: '#9ca3af' }
@@ -647,8 +721,18 @@ export default function AppointmentsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+            {/* Sobreturno Dialog */}
+            {
+                doctor && selectedDate && (
+                    <SobreturnoDialog
+                        isOpen={isSobreturnoOpen}
+                        onClose={() => setIsSobreturnoOpen(false)}
+                        selectedDate={selectedDate}
+                        defaultDoctorId={doctor.id}
+                        onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+                    />
+                )
+            }
+        </div >
     );
 }
-
-

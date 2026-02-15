@@ -29,9 +29,10 @@ export interface Doctor {
     imageUrl?: string; // Legacy field
     photoURL?: string; // Firebase Storage profile image URL
     schedule: {
-        startHour: string; // "09:00"
-        endHour: string;   // "17:00"
+        startHour?: string; // "09:00" - DEPRECATED (Keep for legacy compatibility)
+        endHour?: string;   // "17:00" - DEPRECATED (Keep for legacy compatibility)
         workDays: number[]; // [1, 2, 3, 4, 5] (Monday to Friday)
+        dayRanges?: Record<number, { startHour: string; endHour: string }>; // New per-day schedule
     };
     slotDuration: number; // Minutes per appointment (e.g. 20, 30, 60)
     color: string; // For calendar UI
