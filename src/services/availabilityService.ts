@@ -148,6 +148,41 @@ export const availabilityService = {
             slots.push({ time: timeString, status, appointment });
         }
 
+        // 4.1 Inject Sobreturnos (or any appointment not in grid)
+        const slottedTimes = new Set(slots.map(s => s.time));
+        const extraAppointments = existingAppointments.filter(appt =>
+            appt.doctorId === doctor.id &&
+            appt.status !== 'cancelled' &&
+            !slottedTimes.has(appt.time)
+        );
+
+        extraAppointments.forEach(appt => {
+            let status: 'occupied' | 'blocked' | 'past' = 'occupied';
+            if (appt.type === 'Bloqueado' || appt.patientId === 'blocked') {
+                status = 'blocked';
+            }
+
+            const [h, m] = appt.time.split(':').map(Number);
+            const slotDate = new Date(date);
+            slotDate.setHours(h, m, 0, 0);
+
+            if (isToday && isBefore(slotDate, now) && status !== 'blocked') {
+                // If past and occupied, it remains occupied/past contextually
+                // but for UI consistency we often treat past occupied as occupied.
+                // However, "past" status usually implies "missed" or "free in the past".
+                // Let's keep it 'occupied' so it shows the patient name.
+            }
+
+            slots.push({
+                time: appt.time,
+                status: status,
+                appointment: appt
+            });
+        });
+
+        // 5. Final Sort
+        slots.sort((a, b) => a.time.localeCompare(b.time));
+
         return slots;
     }
 };

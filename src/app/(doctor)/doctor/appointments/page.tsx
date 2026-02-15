@@ -7,14 +7,7 @@ import { SobreturnoDialog } from "@/components/appointments/SobreturnoDialog";
 import { useState, useEffect } from "react";
 // ... (existing imports)
 
-// Inside component
-// Multi-Select State
-const [isSelectionMode, setIsSelectionMode] = useState(false);
-const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
-
-// Sobreturno State
-const [isSobreturnoOpen, setIsSobreturnoOpen] = useState(false);
-const [refreshTrigger, setRefreshTrigger] = useState(0); // To force re-fetch
+// ... (existing imports)
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -55,6 +48,10 @@ export default function AppointmentsPage() {
     // Multi-Select State
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
+
+    // Sobreturno State
+    const [isSobreturnoOpen, setIsSobreturnoOpen] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Fetch Doctor Profile (Self)
     useEffect(() => {
@@ -409,8 +406,8 @@ export default function AppointmentsPage() {
                                         const hasAppointments = busyDays.has(key);
                                         const isPastWithAppointments = isPast && hasAppointments;
 
-                                        // Highlight as "Busy" (Black) if it IS a working day AND NOT fully blocked/vacation AND NOT past busy
-                                        return isWorkDay && !isBlocked && !isVacation && !isPastWithAppointments;
+                                        // Highlight as "Busy" (Black) if it IS a working day AND NOT fully blocked/vacation AND NOT past
+                                        return isWorkDay && !isBlocked && !isVacation && !isPast;
                                     },
                                     hasBlocked: (date) => {
                                         if (!doctor) return false;

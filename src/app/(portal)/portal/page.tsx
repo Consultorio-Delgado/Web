@@ -27,7 +27,7 @@ export default function PortalDashboard() {
     // Redirect Doctors/Admins to their dashboard if they land here
     useEffect(() => {
         if (!loading && profile && (profile.role === 'doctor' || profile.role === 'admin')) {
-            router.push('/doctor/dashboard');
+            router.push('/doctor/daily');
         }
     }, [profile, loading, router]);
 

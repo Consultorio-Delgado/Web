@@ -28,7 +28,7 @@ export default function LoginPage() {
 
         if (user) {
             if (profile?.role === 'admin' || profile?.role === 'doctor') {
-                router.push("/doctor/dashboard"); // Updated to point to Doctor Dashboard
+                router.push("/doctor/daily"); // Updated to point to Doctor Daily Agenda
             } else {
                 router.push("/portal");
             }

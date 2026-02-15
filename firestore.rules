@@ -70,7 +70,7 @@ service cloud.firestore {
       
       // Update: Admin, Doctor (Owner), or Patient (Cancel only)
       allow update: if isAuthenticated() && (
-        (resource.data.doctorId == request.auth.uid) || // Doctor can update their own appointments (Check FIRST)
+        isDoctor() || // Any doctor can update appointments (Collaboration)
         isAdmin() || 
         (resource.data.patientId == request.auth.uid && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
@@ -78,7 +78,7 @@ service cloud.firestore {
       );
       
       allow delete: if isAuthenticated() && (
-        (resource.data.doctorId == request.auth.uid) ||  // Owner first
+        isDoctor() ||  // Any doctor can delete
         isAdmin()
       );
     }
