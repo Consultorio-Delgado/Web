@@ -26,6 +26,9 @@ export async function POST(request: Request) {
             case 'absence':
                 result = await emailService.sendAbsence(data);
                 break;
+            case 'sobreturno_confirmation':
+                result = await emailService.sendSobreturnoConfirmation(data);
+                break;
             default:
                 return NextResponse.json({ error: 'Invalid email type' }, { status: 400 });
         }

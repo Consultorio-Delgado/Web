@@ -434,7 +434,7 @@ export default function DoctorProfilePage() {
                                     )}
                                     <p className="text-xs text-muted-foreground">
                                         {schedulingMode === 'custom_bimonthly'
-                                            ? "Turnos se habilitan automáticamente cada 15 días."
+                                            ? "Turnos se habilitan automáticamente cada 15 días a las 11am."
                                             : "Días futuros habilitados para reservar."}
                                     </p>
                                 </div>
@@ -473,37 +473,69 @@ export default function DoctorProfilePage() {
                                             return (
                                                 <div key={idx} className="flex items-center gap-3">
                                                     <div className="w-24 font-medium text-sm text-slate-700">{dayName}</div>
-                                                    <Select
-                                                        value={range.startHour}
-                                                        onValueChange={(v) => updateDayRange(idx, 'start', v)}
-                                                    >
-                                                        <SelectTrigger className="w-[100px] h-8">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {Array.from({ length: 13 }, (_, i) => i + 7).map(h => (
-                                                                <SelectItem key={h} value={`${h.toString().padStart(2, '0')}:00`}>
-                                                                    {h.toString().padStart(2, '0')}:00
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <div className="flex items-center gap-1">
+                                                        <Select
+                                                            value={range.startHour.split(':')[0]}
+                                                            onValueChange={(h) => updateDayRange(idx, 'start', `${h}:${range.startHour.split(':')[1] || '00'}`)}
+                                                        >
+                                                            <SelectTrigger className="w-[70px] h-8">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {Array.from({ length: 12 }, (_, i) => i + 8).map(h => (
+                                                                    <SelectItem key={h} value={h.toString().padStart(2, '0')}>
+                                                                        {h.toString().padStart(2, '0')}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <span className="text-slate-400 text-xs">:</span>
+                                                        <Select
+                                                            value={range.startHour.split(':')[1] || '00'}
+                                                            onValueChange={(m) => updateDayRange(idx, 'start', `${range.startHour.split(':')[0]}:${m}`)}
+                                                        >
+                                                            <SelectTrigger className="w-[70px] h-8">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {['00', '10', '20', '30', '40', '50'].map(m => (
+                                                                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                     <span className="text-slate-400 text-sm">a</span>
-                                                    <Select
-                                                        value={range.endHour}
-                                                        onValueChange={(v) => updateDayRange(idx, 'end', v)}
-                                                    >
-                                                        <SelectTrigger className="w-[100px] h-8">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {Array.from({ length: 13 }, (_, i) => i + 10).map(h => (
-                                                                <SelectItem key={h} value={`${h.toString().padStart(2, '0')}:00`}>
-                                                                    {h.toString().padStart(2, '0')}:00
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <div className="flex items-center gap-1">
+                                                        <Select
+                                                            value={range.endHour.split(':')[0]}
+                                                            onValueChange={(h) => updateDayRange(idx, 'end', `${h}:${range.endHour.split(':')[1] || '00'}`)}
+                                                        >
+                                                            <SelectTrigger className="w-[70px] h-8">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {Array.from({ length: 12 }, (_, i) => i + 8).map(h => (
+                                                                    <SelectItem key={h} value={h.toString().padStart(2, '0')}>
+                                                                        {h.toString().padStart(2, '0')}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <span className="text-slate-400 text-xs">:</span>
+                                                        <Select
+                                                            value={range.endHour.split(':')[1] || '00'}
+                                                            onValueChange={(m) => updateDayRange(idx, 'end', `${range.endHour.split(':')[0]}:${m}`)}
+                                                        >
+                                                            <SelectTrigger className="w-[70px] h-8">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {['00', '10', '20', '30', '40', '50'].map(m => (
+                                                                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -529,31 +561,69 @@ export default function DoctorProfilePage() {
                                             min={new Date().toISOString().split('T')[0]}
                                         />
                                         <div className="flex items-center gap-2">
-                                            <Select value={newExceptionalStart} onValueChange={setNewExceptionalStart}>
-                                                <SelectTrigger className="w-[100px]">
-                                                    <SelectValue placeholder="Inicio" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {Array.from({ length: 13 }, (_, i) => i + 7).map(h => (
-                                                        <SelectItem key={h} value={`${h.toString().padStart(2, '0')}:00`}>
-                                                            {h.toString().padStart(2, '0')}:00
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <div className="flex items-center gap-1">
+                                                <Select
+                                                    value={newExceptionalStart.split(':')[0]}
+                                                    onValueChange={(h) => setNewExceptionalStart(`${h}:${newExceptionalStart.split(':')[1] || '00'}`)}
+                                                >
+                                                    <SelectTrigger className="w-[70px]">
+                                                        <SelectValue placeholder="HH" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {Array.from({ length: 12 }, (_, i) => i + 8).map(h => (
+                                                            <SelectItem key={h} value={h.toString().padStart(2, '0')}>
+                                                                {h.toString().padStart(2, '0')}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <span className="text-slate-400 text-xs">:</span>
+                                                <Select
+                                                    value={newExceptionalStart.split(':')[1] || '00'}
+                                                    onValueChange={(m) => setNewExceptionalStart(`${newExceptionalStart.split(':')[0]}:${m}`)}
+                                                >
+                                                    <SelectTrigger className="w-[70px]">
+                                                        <SelectValue placeholder="MM" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {['00', '10', '20', '30', '40', '50'].map(m => (
+                                                            <SelectItem key={m} value={m}>{m}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                             <span className="text-slate-400">-</span>
-                                            <Select value={newExceptionalEnd} onValueChange={setNewExceptionalEnd}>
-                                                <SelectTrigger className="w-[100px]">
-                                                    <SelectValue placeholder="Fin" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {Array.from({ length: 13 }, (_, i) => i + 10).map(h => (
-                                                        <SelectItem key={h} value={`${h.toString().padStart(2, '0')}:00`}>
-                                                            {h.toString().padStart(2, '0')}:00
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <div className="flex items-center gap-1">
+                                                <Select
+                                                    value={newExceptionalEnd.split(':')[0]}
+                                                    onValueChange={(h) => setNewExceptionalEnd(`${h}:${newExceptionalEnd.split(':')[1] || '00'}`)}
+                                                >
+                                                    <SelectTrigger className="w-[70px]">
+                                                        <SelectValue placeholder="HH" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {Array.from({ length: 12 }, (_, i) => i + 8).map(h => (
+                                                            <SelectItem key={h} value={h.toString().padStart(2, '0')}>
+                                                                {h.toString().padStart(2, '0')}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <span className="text-slate-400 text-xs">:</span>
+                                                <Select
+                                                    value={newExceptionalEnd.split(':')[1] || '00'}
+                                                    onValueChange={(m) => setNewExceptionalEnd(`${newExceptionalEnd.split(':')[0]}:${m}`)}
+                                                >
+                                                    <SelectTrigger className="w-[70px]">
+                                                        <SelectValue placeholder="MM" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {['00', '10', '20', '30', '40', '50'].map(m => (
+                                                            <SelectItem key={m} value={m}>{m}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
                                         <Button
                                             variant="outline"

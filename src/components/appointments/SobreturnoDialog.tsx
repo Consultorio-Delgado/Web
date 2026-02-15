@@ -42,6 +42,7 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
 
     // Manual Patient State
     const [manualPatientName, setManualPatientName] = useState("");
+    const [manualPatientEmail, setManualPatientEmail] = useState("");
 
     // Load Doctors
     useEffect(() => {
@@ -54,6 +55,7 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
             setSearchResults([]);
             setSelectedPatient(null);
             setManualPatientName("");
+            setManualPatientEmail("");
             setIsManualPatient(false);
         }
     }, [isOpen]);
@@ -100,10 +102,14 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
                 toast.error("Ingrese el nombre del paciente");
                 return;
             }
+            if (manualPatientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(manualPatientEmail)) {
+                toast.error("Ingrese un email válido o déjelo vacío");
+                return;
+            }
             patientData = {
                 id: `manual_${Date.now()}`,
                 name: manualPatientName,
-                email: "" // No email for manual patients
+                email: manualPatientEmail.trim()
             };
         } else {
             if (!selectedPatient) {
@@ -135,6 +141,31 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
                 type: 'Sobreturno',
                 notes: 'Generado manualmente (Sobreturno)'
             });
+
+            // Send sobreturno confirmation email for manual patients with email
+            if (isManualPatient && patientData.email) {
+                const specialty = doctor.id === 'secondi' || doctor.lastName?.toLowerCase().includes('secondi')
+                    ? 'Ginecología'
+                    : doctor.id === 'capparelli' || doctor.lastName?.toLowerCase().includes('capparelli')
+                        ? 'Clínica Médica'
+                        : undefined;
+
+                fetch('/api/emails', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'sobreturno_confirmation',
+                        data: {
+                            to: patientData.email,
+                            patientName: patientData.name,
+                            doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                            date: appointmentDate.toLocaleDateString('es-AR'),
+                            time: time,
+                            specialty: specialty
+                        }
+                    })
+                }).catch(err => console.error("Failed to send sobreturno email:", err));
+            }
 
             toast.success("Sobreturno generado correctamente");
             onSuccess();
@@ -214,22 +245,40 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
                                 onCheckedChange={(checked) => setIsManualPatient(checked as boolean)}
                             />
                             <Label htmlFor="manual-mode" className="font-medium cursor-pointer">
-                                Paciente sin cuenta (Solo nombre)
+                                Paciente sin cuenta (Nombre y Email)
                             </Label>
                         </div>
 
                         {isManualPatient ? (
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="manualName" className="text-right">
-                                    Nombre
-                                </Label>
-                                <Input
-                                    id="manualName"
-                                    placeholder="Nombre y Apellido"
-                                    value={manualPatientName}
-                                    onChange={(e) => setManualPatientName(e.target.value)}
-                                    className="col-span-3"
-                                />
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="manualName" className="text-right">
+                                        Nombre
+                                    </Label>
+                                    <Input
+                                        id="manualName"
+                                        placeholder="Nombre y Apellido"
+                                        value={manualPatientName}
+                                        onChange={(e) => setManualPatientName(e.target.value)}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="manualEmail" className="text-right">
+                                        Email
+                                    </Label>
+                                    <Input
+                                        id="manualEmail"
+                                        type="email"
+                                        placeholder="paciente@email.com (opcional)"
+                                        value={manualPatientEmail}
+                                        onChange={(e) => setManualPatientEmail(e.target.value)}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground ml-[25%] pl-4">
+                                    Si se ingresa email, se enviará confirmación e invitación a registrarse.
+                                </p>
                             </div>
                         ) : (
                             <div className="space-y-2">

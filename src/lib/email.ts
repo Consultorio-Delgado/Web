@@ -5,6 +5,7 @@ import CancellationEmail from '@/components/emails/CancellationEmail';
 import ReminderEmail from '@/components/emails/ReminderEmail';
 import ActionReminderEmail from '@/components/emails/ActionReminderEmail';
 import AbsenceEmail from '@/components/emails/AbsenceEmail';
+import SobreturnoConfirmationEmail from '@/components/emails/SobreturnoConfirmationEmail';
 
 // Initialize Resend with API Key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -45,6 +46,29 @@ export const emailService = {
             return { success: true };
         } catch (error) {
             console.error('[EmailService] Confirmation Error:', error);
+            return { success: false, error };
+        }
+    },
+
+    async sendSobreturnoConfirmation(data: EmailData) {
+        try {
+            const html = await render(SobreturnoConfirmationEmail({
+                patientName: data.patientName,
+                doctorName: data.doctorName,
+                date: data.date,
+                time: data.time,
+                specialty: data.specialty
+            }));
+
+            await resend.emails.send({
+                from: FROM_EMAIL,
+                to: data.to,
+                subject: 'Turno Asignado - Consultorio Delgado (NO RESPONDER MAIL)',
+                html: html
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[EmailService] Sobreturno Confirmation Error:', error);
             return { success: false, error };
         }
     },

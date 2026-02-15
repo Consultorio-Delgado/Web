@@ -467,6 +467,62 @@ export default function AppointmentsPage() {
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-semibold capitalize">
                             {selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Seleccione Fecha"}
+                            {selectedDate && doctor && (() => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const date = new Date(selectedDate);
+                                date.setHours(0, 0, 0, 0);
+
+                                // Past dates are never visible
+                                if (date < today) {
+                                    return <span className="text-sm font-normal text-muted-foreground ml-2">(NO visible para los pacientes)</span>;
+                                }
+
+                                let isVisible = true;
+
+                                if (doctor.schedulingMode === 'custom_bimonthly') {
+                                    const todayDay = today.getDate();
+                                    const currentHour = new Date().getHours();
+
+                                    let isBatch1 = false;
+                                    if (todayDay === 1) {
+                                        if (currentHour >= 11) isBatch1 = true;
+                                    } else if (todayDay > 1 && todayDay < 15) {
+                                        isBatch1 = true;
+                                    } else if (todayDay === 15) {
+                                        if (currentHour < 11) isBatch1 = true;
+                                    }
+
+                                    let limitDate: Date;
+                                    if (isBatch1) {
+                                        limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                                    } else {
+                                        if (todayDay === 1 && currentHour < 11) {
+                                            limitDate = new Date(today.getFullYear(), today.getMonth(), 15);
+                                        } else {
+                                            limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+                                        }
+                                    }
+                                    limitDate.setHours(23, 59, 59, 999);
+                                    if (date > limitDate) isVisible = false;
+                                } else {
+                                    // Standard rolling window
+                                    let maxDays = doctor.maxDaysAhead || 30;
+                                    const isSecondi = doctor.id === 'secondi' || doctor.lastName?.toLowerCase().includes('secondi');
+                                    if (isSecondi) {
+                                        const currentHour = new Date().getHours();
+                                        if (currentHour < 11) maxDays = Math.max(0, maxDays - 1);
+                                    }
+                                    const maxDate = new Date();
+                                    maxDate.setDate(today.getDate() + maxDays);
+                                    maxDate.setHours(23, 59, 59, 999);
+                                    if (date > maxDate) isVisible = false;
+                                }
+
+                                return isVisible
+                                    ? <span className="text-sm font-normal text-green-600 ml-2">(VISIBLE para los pacientes)</span>
+                                    : <span className="text-sm font-normal text-muted-foreground ml-2">(NO visible para los pacientes)</span>;
+                            })()}
                         </h2>
                         <div className="flex gap-2">
                             {/* Selection Mode Toggle */}
