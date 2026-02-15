@@ -399,6 +399,9 @@ export default function AppointmentsPage() {
                                             }
                                         }
 
+                                        // Check for Exceptional Schedule (Added Work Day)
+                                        const isExceptional = doctor.exceptionalSchedule?.some(s => s.date === key);
+
                                         // Check if it's a past day WITH appointments
                                         const today = new Date();
                                         today.setHours(0, 0, 0, 0);
@@ -406,8 +409,12 @@ export default function AppointmentsPage() {
                                         const hasAppointments = busyDays.has(key);
                                         const isPastWithAppointments = isPast && hasAppointments;
 
-                                        // Highlight as "Busy" (Black) if it IS a working day AND NOT fully blocked/vacation AND NOT past
-                                        return isWorkDay && !isBlocked && !isVacation && !isPast;
+                                        // Highlight as "Busy" (Black) if:
+                                        // 1. It IS a working day OR IS an Exceptional Day OR HAS appointments (Sobreturno on off-day)
+                                        // 2. AND NOT fully blocked/vacation
+                                        // 3. AND NOT a past day (past days have their own styling)
+                                        const shouldShowBusy = (isWorkDay || isExceptional || hasAppointments);
+                                        return shouldShowBusy && !isBlocked && !isVacation && !isPast;
                                     },
                                     hasBlocked: (date) => {
                                         if (!doctor) return false;

@@ -38,8 +38,17 @@ export const availabilityService = {
         // If simply not a work day and no exception, return empty.
 
         if (!isRegularWorkDay && !exceptionalDay) {
-            return [];
+            // Check if there are appointments on this day (e.g. Sobreturnos on a Sunday)
+            const hasAppointments = existingAppointments.some(a =>
+                a.doctorId === doctor.id && a.status !== 'cancelled'
+            );
+
+            // If NO appointments and NOT a work day, THEN return empty.
+            if (!hasAppointments) {
+                return [];
+            }
         }
+
 
         // 3. Generate Slots
         let slotTimes: string[] = [];
