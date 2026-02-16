@@ -47,7 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
+        console.log("[AuthContext] Mounting...");
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            console.log("[AuthContext] onAuthStateChanged:", firebaseUser?.uid || 'null');
             if (firebaseUser) {
                 const isSameUser = userUidRef.current === firebaseUser.uid;
 
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 // Only update user state if it's a NEW user (avoids cascading re-renders)
                 if (!isSameUser) {
+                    console.log("[AuthContext] New user detected, updating state.");
                     setUser(firebaseUser);
                     userUidRef.current = firebaseUser.uid;
                 }
@@ -65,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Always refresh the session cookie silently
                 const token = await firebaseUser.getIdToken();
                 Cookies.set("session", token, { expires: 1, path: '/' });
+                console.log("[AuthContext] Session cookie set.");
 
                 // Only fetch profile for new users (not on token refresh)
                 if (!isSameUser) {
@@ -74,8 +78,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (!initialLoadDone.current) {
                     initialLoadDone.current = true;
                     setLoading(false);
+                    console.log("[AuthContext] Initial load done. Loading set to false.");
                 }
             } else {
+                console.log("[AuthContext] No user. Clearing state.");
                 setUser(null);
                 setProfile(null);
                 userUidRef.current = null;

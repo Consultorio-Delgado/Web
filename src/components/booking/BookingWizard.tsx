@@ -70,9 +70,11 @@ export function BookingWizard() {
 
     // Auth Guard
     useEffect(() => {
+        console.log(`[BookingWizard] Render. User: ${user?.uid || 'null'}, Loading: ${loading}`);
         if (!loading && !user) {
             const currentParams = searchParams.toString();
             const redirectUrl = currentParams ? `${pathname}?${currentParams}` : pathname;
+            console.log(`[BookingWizard] Redirecting to login...`);
             router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
         }
     }, [user, loading, router, pathname, searchParams]);

@@ -46,6 +46,7 @@ interface PrescriptionFormData {
 
 export default function PrescriptionsPage() {
     const { user, profile, loading: authLoading } = useAuth();
+    console.log(`[PrescriptionsPage] Render. User: ${user?.uid || 'null'}, Loading: ${authLoading}`);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);

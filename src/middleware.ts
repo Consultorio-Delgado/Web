@@ -8,6 +8,7 @@ export function middleware(request: NextRequest) {
     // 1. Protect Doctor Routes
     if (pathname.startsWith('/doctor') || pathname.startsWith('/admin')) {
         if (!session) {
+            console.log(`[Middleware] Redirecting ${pathname} to /login (No Session)`);
             return NextResponse.redirect(new URL('/login', request.url))
         }
     }
@@ -15,7 +16,10 @@ export function middleware(request: NextRequest) {
     // 2. Protect Portal Routes (Patients)
     if (pathname.startsWith('/portal')) {
         if (!session) {
+            console.log(`[Middleware] Redirecting ${pathname} to /login (No Session)`);
             return NextResponse.redirect(new URL('/login', request.url))
+        } else {
+            console.log(`[Middleware] Allowing ${pathname} (Session Exists)`);
         }
     }
 
