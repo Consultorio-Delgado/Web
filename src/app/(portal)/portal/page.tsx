@@ -100,11 +100,12 @@ export default function PortalDashboard() {
                             Consulta Virtual
                         </Button>
                     </Link>
-                    <Link href="/portal/prescriptions" className="block w-full md:w-auto" prefetch={false}>
+                    {/* Force hard refresh for Prescriptions to avoid Next.js router loop issues */}
+                    <a href="/portal/prescriptions" className="block w-full md:w-auto">
                         <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-primary text-primary hover:bg-primary/5 font-medium transition-transform hover:scale-105">
                             Solicitar Receta
                         </Button>
-                    </Link>
+                    </a>
                     <Link href="/portal/studies" className="block w-full md:w-auto" prefetch={false}>
                         <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-purple-600 text-purple-600 hover:bg-purple-50 font-medium transition-transform hover:scale-105">
                             <Microscope className="mr-2 h-5 w-5" />
