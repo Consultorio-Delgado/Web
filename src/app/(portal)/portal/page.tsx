@@ -54,7 +54,7 @@ export default function PortalDashboard() {
     }, []);
 
     const fetchAppts = useCallback(async () => {
-        if (user) {
+        if (user?.uid) {
             setLoadingAppts(true);
             try {
                 const data = await appointmentService.getMyAppointments(user.uid);
@@ -65,7 +65,8 @@ export default function PortalDashboard() {
                 setLoadingAppts(false);
             }
         }
-    }, [user]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.uid]);
 
     useEffect(() => {
         fetchAppts();

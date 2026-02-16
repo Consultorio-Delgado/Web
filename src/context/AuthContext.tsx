@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { userService } from "@/services/user";
@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const initialLoadDone = useRef(false);
 
     const fetchProfile = async (uid: string) => {
         try {
@@ -49,24 +50,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-                // Only show loading spinner on initial load (no previous user)
-                // Token refreshes should be silent to avoid UI disruption
-                const isInitialLoad = !user;
-                if (isInitialLoad) setLoading(true);
+                // Only show loading on the very first auth check (app start)
+                // Token refreshes should be silent — no UI disruption
+                if (!initialLoadDone.current) {
+                    setLoading(true);
+                }
 
                 setUser(firebaseUser);
                 // Sync session to cookie for Middleware
                 const token = await firebaseUser.getIdToken();
-                // Set cookie that expires in 1 day
                 Cookies.set("session", token, { expires: 1, path: '/' });
 
                 await fetchProfile(firebaseUser.uid);
 
-                if (isInitialLoad) setLoading(false);
+                if (!initialLoadDone.current) {
+                    initialLoadDone.current = true;
+                    setLoading(false);
+                }
             } else {
                 setUser(null);
                 setProfile(null);
                 Cookies.remove("session", { path: '/' });
+                initialLoadDone.current = true;
                 setLoading(false);
             }
         });
