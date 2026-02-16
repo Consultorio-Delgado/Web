@@ -48,8 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            setLoading(true);
             if (firebaseUser) {
+                // Only show loading spinner on initial load (no previous user)
+                // Token refreshes should be silent to avoid UI disruption
+                const isInitialLoad = !user;
+                if (isInitialLoad) setLoading(true);
+
                 setUser(firebaseUser);
                 // Sync session to cookie for Middleware
                 const token = await firebaseUser.getIdToken();
@@ -57,12 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 Cookies.set("session", token, { expires: 1, path: '/' });
 
                 await fetchProfile(firebaseUser.uid);
+
+                if (isInitialLoad) setLoading(false);
             } else {
                 setUser(null);
                 setProfile(null);
                 Cookies.remove("session", { path: '/' });
+                setLoading(false);
             }
-            setLoading(false);
         });
 
         return () => unsubscribe();
