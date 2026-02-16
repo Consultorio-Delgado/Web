@@ -68,21 +68,7 @@ export function BookingWizard() {
     // Track which doctors patient already has active appointments with
     const [existingAppointmentDoctors, setExistingAppointmentDoctors] = useState<{ id: string, name: string }[]>([]);
 
-    // Auth Guard: removed explicit redirect to avoid race conditions with Middleware/AuthContext
-    // The Middleware already protects this route.
-    // If we reach here without a user, it's likely a sync issue or session expiry that will be handled by the next auth check.
 
-    // If still loading, show spinner (or nothing to avoid flash)
-    if (loading) return null;
-
-    // If not loading and no user, show spinner instead of redirecting loop
-    if (!user) {
-        return (
-            <div className="flex justify-center p-8">
-                <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-            </div>
-        );
-    }
 
     // Auto-select "No" (Not first visit) if previously visited
     useEffect(() => {
@@ -282,7 +268,11 @@ export function BookingWizard() {
     }
 
     if (!user) {
-        return null; // Prevents flashing content before redirect
+        return (
+            <div className="flex justify-center items-center min-h-[400px]">
+                <Loader2 className="animate-spin text-primary h-8 w-8" />
+            </div>
+        );
     }
 
     // Show limit reached blocker for specific doctor
