@@ -68,16 +68,21 @@ export function BookingWizard() {
     // Track which doctors patient already has active appointments with
     const [existingAppointmentDoctors, setExistingAppointmentDoctors] = useState<{ id: string, name: string }[]>([]);
 
-    // Auth Guard
-    useEffect(() => {
-        console.log(`[BookingWizard] Render. User: ${user?.uid || 'null'}, Loading: ${loading}`);
-        if (!loading && !user) {
-            const currentParams = searchParams.toString();
-            const redirectUrl = currentParams ? `${pathname}?${currentParams}` : pathname;
-            console.log(`[BookingWizard] Redirecting to login...`);
-            router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
-        }
-    }, [user, loading, router, pathname, searchParams]);
+    // Auth Guard: removed explicit redirect to avoid race conditions with Middleware/AuthContext
+    // The Middleware already protects this route.
+    // If we reach here without a user, it's likely a sync issue or session expiry that will be handled by the next auth check.
+
+    // If still loading, show spinner (or nothing to avoid flash)
+    if (loading) return null;
+
+    // If not loading and no user, show spinner instead of redirecting loop
+    if (!user) {
+        return (
+            <div className="flex justify-center p-8">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+            </div>
+        );
+    }
 
     // Auto-select "No" (Not first visit) if previously visited
     useEffect(() => {
