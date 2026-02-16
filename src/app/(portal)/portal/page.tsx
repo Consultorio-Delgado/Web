@@ -111,11 +111,12 @@ export default function PortalDashboard() {
                             Solicitar Estudios
                         </Button>
                     </Link>
-                    <Link href="/portal/new-appointment" className="block w-full md:w-auto" prefetch={false}>
+                    {/* Force hard refresh for New Appointment to avoid Next.js router loop issues */}
+                    <a href="/portal/new-appointment" className="block w-full md:w-auto">
                         <Button size="lg" className="w-full md:w-auto h-12 px-8 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-cyan-900/10 text-white font-medium transition-transform hover:scale-105">
                             Solicitar Nuevo Turno
                         </Button>
-                    </Link>
+                    </a>
                 </div>
             </div>
 
@@ -156,11 +157,11 @@ export default function PortalDashboard() {
                         <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[2rem] border border-slate-100 shadow-sm text-center">
                             <CalendarDays className="h-12 w-12 text-slate-200 mb-4" />
                             <p className="text-lg text-slate-500 font-light mb-6">No tienes turnos próximos.</p>
-                            <Link href="/portal/new-appointment">
+                            <a href="/portal/new-appointment">
                                 <Button className="rounded-full px-8 bg-primary text-white hover:bg-primary/90">
                                     Solicitar Nuevo Turno
                                 </Button>
-                            </Link>
+                            </a>
                         </div>
                     )}
                 </section>
