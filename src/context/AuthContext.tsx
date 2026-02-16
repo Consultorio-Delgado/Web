@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useRef } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef, useMemo } from "react";
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { userService } from "@/services/user";
@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const initialLoadDone = useRef(false);
+    const userUidRef = useRef<string | null>(null);
 
     const fetchProfile = async (uid: string) => {
         try {
@@ -45,23 +46,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // ...
-
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-                // Only show loading on the very first auth check (app start)
-                // Token refreshes should be silent — no UI disruption
+                const isSameUser = userUidRef.current === firebaseUser.uid;
+
+                // Only show loading on the very first auth check
                 if (!initialLoadDone.current) {
                     setLoading(true);
                 }
 
-                setUser(firebaseUser);
-                // Sync session to cookie for Middleware
+                // Only update user state if it's a NEW user (avoids cascading re-renders)
+                if (!isSameUser) {
+                    setUser(firebaseUser);
+                    userUidRef.current = firebaseUser.uid;
+                }
+
+                // Always refresh the session cookie silently
                 const token = await firebaseUser.getIdToken();
                 Cookies.set("session", token, { expires: 1, path: '/' });
 
-                await fetchProfile(firebaseUser.uid);
+                // Only fetch profile for new users (not on token refresh)
+                if (!isSameUser) {
+                    await fetchProfile(firebaseUser.uid);
+                }
 
                 if (!initialLoadDone.current) {
                     initialLoadDone.current = true;
@@ -70,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } else {
                 setUser(null);
                 setProfile(null);
+                userUidRef.current = null;
                 Cookies.remove("session", { path: '/' });
                 initialLoadDone.current = true;
                 setLoading(false);
@@ -78,8 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return () => unsubscribe();
     }, []);
-
-    // ...
 
     const refreshProfile = async () => {
         if (user) {
@@ -91,11 +98,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await signOut(auth);
         setUser(null);
         setProfile(null);
+        userUidRef.current = null;
         Cookies.remove("session", { path: '/' });
     };
 
+    // Memoize context value to prevent unnecessary re-renders of consumers
+    // when AuthProvider re-renders due to layout/children changes
+    const value = useMemo(() => ({
+        user, profile, loading, error, refreshProfile, logout
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [user, profile, loading, error]);
+
     return (
-        <AuthContext.Provider value={{ user, profile, loading, error, refreshProfile, logout }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

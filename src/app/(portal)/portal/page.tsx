@@ -76,7 +76,10 @@ export default function PortalDashboard() {
         return `${first?.charAt(0) || ""}${last?.charAt(0) || ""}`.toUpperCase() || "U";
     };
 
-    if (loading) return <div className="p-8 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div></div>;
+    // Only show full-page spinner on genuine initial load (no user data yet).
+    // If we already have user data and loading flips briefly (token refresh), 
+    // keep the page rendered to avoid destroying DOM (which cancels navigations).
+    if (loading && !user && !profile) return <div className="p-8 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div></div>;
 
     const upcomingAppts = appointments.filter(a => new Date(a.date) >= new Date() && a.status !== 'cancelled' && a.status !== 'completed');
     const pastAppts = appointments.filter(a => !(new Date(a.date) >= new Date() && a.status !== 'cancelled' && a.status !== 'completed'));
