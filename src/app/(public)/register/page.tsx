@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { userService } from "@/services/user";
@@ -81,6 +81,10 @@ export default function RegisterPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
             const user = userCredential.user;
 
+            // 1b. Send Verification Email
+            await sendEmailVerification(user);
+            // toast.success("Cuenta creada. Enviamos un email de verificación."); // We don't have toast imported here yet? Let's check imports.
+
             // 2. Create Firestore Profile
             await userService.createUserProfile(user.uid, {
                 firstName: formData.firstName,
@@ -99,7 +103,9 @@ export default function RegisterPage() {
             Cookies.set("session", token, { expires: 1, path: '/' });
 
             // 4. Redirect
-            router.push("/portal");
+            // router.push("/portal"); // Let's adding a query param to show a specific welcome message?
+            // "portal?registered=true"
+            router.push("/portal?registered=true");
 
         } catch (err: any) {
             console.error(err);

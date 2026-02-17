@@ -123,25 +123,26 @@ export default function PortalDashboard() {
 
             <div className="space-y-12">
                 {/* Vacation Banners */}
-                {doctorsList.filter(isDoctorOnVacation).length > 0 && (
-                    <div className="space-y-3">
-                        {doctorsList.filter(isDoctorOnVacation).map(doc => (
-                            <div key={doc.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+                {/* Vacation Banners Container - Prevents jerky shifts if loaded late */}
+                <div className="min-h-[0px] space-y-3 transition-all duration-500 ease-in-out">
+                    {doctorsList.filter(isDoctorOnVacation).length > 0 && (
+                        doctorsList.filter(isDoctorOnVacation).map(doc => (
+                            <div key={doc.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <span className="text-2xl">🌴</span>
                                 <p className="text-amber-800 font-medium">
                                     {getDoctorTitle(doc)} {doc.lastName} está de vacaciones hasta el {getVacationEndFormatted(doc)}. No se pueden enviar recetas, consultas virtuales ni estudios.
                                 </p>
                             </div>
-                        ))}
-                    </div>
-                )}
+                        ))
+                    )}
+                </div>
 
                 <section>
                     <h2 className="text-xl font-medium text-slate-900 mb-6">Próximos Turnos</h2>
 
                     {loadingAppts ? (
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {[1, 2].map(i => <div key={i} className="h-48 bg-slate-50 animate-pulse rounded-[2rem]"></div>)}
+                            {[1, 2].map(i => <div key={i} className="h-52 bg-slate-50 animate-pulse rounded-[2rem]"></div>)}
                         </div>
                     ) : upcomingAppts.length > 0 ? (
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

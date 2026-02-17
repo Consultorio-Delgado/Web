@@ -522,7 +522,7 @@ export function BookingWizard() {
     );
 
     const renderStep3_Selection = () => (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[600px]">
             <header className="mb-8 text-center">
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">3. Seleccione Fecha y Hora</h1>
                 <p className="text-lg text-slate-500">
