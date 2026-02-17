@@ -67,11 +67,20 @@ export default function RegisterPage() {
 
         try {
             // 0. Validate Unique DNI
-            const usersRef = collection(db, "users");
-            const q = query(usersRef, where("dni", "==", formData.dni));
-            const querySnapshot = await getDocs(q);
+            const response = await fetch('/api/auth/check-dni', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dni: formData.dni }),
+            });
 
-            if (!querySnapshot.empty) {
+            if (!response.ok) {
+                // Handle 500 or 400
+                throw new Error("Error checking DNI");
+            }
+
+            const { exists } = await response.json();
+
+            if (exists) {
                 setError("Ya existe un usuario registrado con este documento de identidad.");
                 setLoading(false);
                 return;
