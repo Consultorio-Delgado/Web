@@ -89,33 +89,38 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
 
         setUpdatingEmail(true);
         try {
-            const { verifyBeforeUpdateEmail } = await import("firebase/auth");
-            const { userService } = await import("@/services/user");
+            if (!auth.currentUser) return;
 
-            if (auth.currentUser) {
-                // 1. Send verification to new email (email only changes after user clicks the link)
-                await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
+            // 1. Call server-side API to update email in Auth + Firestore via Admin SDK
+            const response = await fetch('/api/auth/update-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: auth.currentUser.uid,
+                    newEmail: newEmail,
+                }),
+            });
 
-                // 2. Update Firestore Profile with new email
-                await userService.updateUserProfile(auth.currentUser.uid, { email: newEmail });
-
-                // 3. Refresh Profile in AuthContext
-                await refreshProfile();
-
-                toast.success("Se envió un link de verificación a " + newEmail + ". Tu email se actualizará cuando confirmes el link.");
-                setIsEditingEmail(false);
+            if (!response.ok) {
+                const data = await response.json();
+                toast.error(data.error || "Error al actualizar el email.");
+                return;
             }
+
+            // 2. Reload the user to pick up the new email from Auth
+            await auth.currentUser.reload();
+
+            // 3. Send verification email to the new address
+            await sendEmailVerification(auth.currentUser);
+
+            // 4. Refresh profile in AuthContext
+            await refreshProfile();
+
+            toast.success("Email actualizado. Se envió un link de verificación a " + newEmail + ".");
+            setIsEditingEmail(false);
         } catch (error: any) {
             console.error("Error updating email:", error);
-            if (error.code === 'auth/requires-recent-login') {
-                toast.error("Por seguridad, debés cerrar sesión y volver a ingresar para cambiar tu email.");
-            } else if (error.code === 'auth/invalid-email') {
-                toast.error("El formato del email no es válido.");
-            } else if (error.code === 'auth/email-already-in-use') {
-                toast.error("Este email ya está en uso por otro usuario.");
-            } else {
-                toast.error("Error al actualizar el email. Intentá nuevamente.");
-            }
+            toast.error("Error al actualizar el email. Intentá nuevamente.");
         } finally {
             setUpdatingEmail(false);
         }
