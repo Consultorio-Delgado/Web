@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { format, addDays, isSameDay } from "date-fns";
+import { useState, useEffect, useCallback } from "react";
+import { format, addDays, isSameDay, eachDayOfInterval } from "date-fns";
 import { es } from "date-fns/locale";
 import { Doctor } from "@/types";
 import { doctorService } from "@/services/doctorService";
@@ -58,6 +58,10 @@ export function BookingWizard() {
     const [availableSlots, setAvailableSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [doctorExceptions, setDoctorExceptions] = useState<{ date: string }[]>([]);
+
+    // Smart calendar: pre-fetched availability per date
+    const [dateAvailability, setDateAvailability] = useState<Record<string, number>>({});
+    const [loadingAvailability, setLoadingAvailability] = useState(false);
 
     // Processing
     const [bookingProcessing, setBookingProcessing] = useState(false);
@@ -146,6 +150,109 @@ export function BookingWizard() {
             fetchExceptions();
         }
     }, [selectedDoctor]);
+
+    // Helper: compute the limit date for a doctor
+    const computeLimitDate = useCallback((doctor: Doctor): Date => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (doctor.schedulingMode === 'custom_bimonthly') {
+            const todayDay = today.getDate();
+            const currentHour = new Date().getHours();
+            let isBatch1 = false;
+            if (todayDay === 1) {
+                if (currentHour >= 11) isBatch1 = true;
+            } else if (todayDay > 1 && todayDay < 15) {
+                isBatch1 = true;
+            } else if (todayDay === 15) {
+                if (currentHour < 11) isBatch1 = true;
+            }
+            let limitDate: Date;
+            if (isBatch1) {
+                limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            } else {
+                if (todayDay === 1 && currentHour < 11) {
+                    limitDate = new Date(today.getFullYear(), today.getMonth(), 15);
+                } else {
+                    limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+                }
+            }
+            limitDate.setHours(23, 59, 59, 999);
+            return limitDate;
+        } else {
+            let maxDays = doctor.maxDaysAhead || 30;
+            const isDoc = doctor.id === 'secondi' || doctor.lastName.toLowerCase().includes('secondi');
+            if (isDoc) {
+                const currentHour = new Date().getHours();
+                if (currentHour < 11) maxDays = Math.max(0, maxDays - 1);
+            }
+            const maxDate = new Date();
+            maxDate.setDate(today.getDate() + maxDays);
+            maxDate.setHours(23, 59, 59, 999);
+            return maxDate;
+        }
+    }, []);
+
+    // Pre-fetch availability for ALL eligible dates when entering Step 3
+    useEffect(() => {
+        if (step !== 3 || !selectedDoctor) return;
+
+        const prefetchAvailability = async () => {
+            setLoadingAvailability(true);
+            setDateAvailability({});
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const limitDate = computeLimitDate(selectedDoctor);
+
+            // Get all dates in range
+            const allDates = eachDayOfInterval({ start: today, end: limitDate });
+
+            // Build set of exception dates for quick lookup
+            const exceptionDateSet = new Set(doctorExceptions.map(e => e.date));
+            const exceptionalScheduleDates = new Set(
+                selectedDoctor.exceptionalSchedule?.map(s => s.date) || []
+            );
+
+            // Filter to eligible dates (work days or exceptional schedule, not exceptions)
+            const eligibleDates = allDates.filter(date => {
+                const dateString = format(date, 'yyyy-MM-dd');
+                // Blocked by exception
+                if (exceptionDateSet.has(dateString)) return false;
+                // Exceptional schedule explicitly enables this day
+                if (exceptionalScheduleDates.has(dateString)) return true;
+                // Standard work day
+                if (selectedDoctor.schedule.workDays) {
+                    return selectedDoctor.schedule.workDays.includes(date.getDay());
+                }
+                return false;
+            });
+
+            // Fetch availability in parallel (batched to avoid overwhelming Firestore)
+            const BATCH_SIZE = 5;
+            const result: Record<string, number> = {};
+
+            for (let i = 0; i < eligibleDates.length; i += BATCH_SIZE) {
+                const batch = eligibleDates.slice(i, i + BATCH_SIZE);
+                const promises = batch.map(async (date) => {
+                    const dateString = format(date, 'yyyy-MM-dd');
+                    try {
+                        const busyAppointments = await appointmentService.getDoctorAppointmentsOnDate(selectedDoctor.id, date);
+                        const freeSlots = await availabilityService.getAvailableSlots(selectedDoctor, date, busyAppointments);
+                        result[dateString] = freeSlots.length;
+                    } catch {
+                        result[dateString] = 0;
+                    }
+                });
+                await Promise.all(promises);
+            }
+
+            setDateAvailability(result);
+            setLoadingAvailability(false);
+        };
+
+        prefetchAvailability();
+    }, [step, selectedDoctor, doctorExceptions, computeLimitDate]);
 
     // Fetch availability when Date changes (within Step 3)
     useEffect(() => {
@@ -398,14 +505,19 @@ export function BookingWizard() {
                                     </h3>
                                     <Badge variant="secondary" className="mt-1 bg-slate-100 text-slate-700 hover:bg-slate-200">{doc.specialty}</Badge>
                                     <div className="flex flex-wrap gap-1 mt-2">
-                                        {doc.acceptedInsurances?.slice(0, 3).map(ins => (
-                                            <span key={ins} className="text-[10px] uppercase tracking-wider font-medium bg-slate-50 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200">
-                                                {ins}
-                                            </span>
-                                        ))}
-                                        {(doc.acceptedInsurances?.length || 0) > 3 && (
-                                            <span className="text-[10px] px-1.5 py-0.5 text-slate-400">+{doc.acceptedInsurances!.length - 3}</span>
-                                        )}
+                                        {doc.acceptedInsurances
+                                            ?.slice()
+                                            .sort((a, b) => {
+                                                if (a.toUpperCase() === 'PARTICULAR') return -1;
+                                                if (b.toUpperCase() === 'PARTICULAR') return 1;
+                                                return 0;
+                                            })
+                                            .filter((ins, i, arr) => arr.findIndex(x => x.toUpperCase() === ins.toUpperCase()) === i)
+                                            .map(ins => (
+                                                <span key={ins} className="text-[10px] uppercase tracking-wider font-medium bg-slate-50 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200">
+                                                    {ins}
+                                                </span>
+                                            ))}
                                     </div>
                                 </div>
                             </Card>
@@ -419,8 +531,8 @@ export function BookingWizard() {
     // Consultation types for Dra. Secondi
     const SECONDI_CONSULTATION_TYPES = [
         { id: 'consulta-ginecologica', label: 'Consulta Ginecológica' },
-        { id: 'pap-colpo', label: 'Consulta Pap y Colpo' },
-        { id: 'prueba-hpv', label: 'Prueba de HPV' },
+        { id: 'pap-colpo', label: 'Consulta Ginecológica + Pap y Colpo' },
+        { id: 'prueba-hpv', label: 'Consulta Ginecológica + Prueba de HPV' },
     ];
 
     const isSecondi = selectedDoctor?.id === 'secondi' || selectedDoctor?.lastName?.toLowerCase().includes('secondi');
@@ -521,251 +633,307 @@ export function BookingWizard() {
         </div>
     );
 
-    const renderStep3_Selection = () => (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[600px]">
-            <header className="mb-8 text-center">
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">3. Seleccione Fecha y Hora</h1>
-                <p className="text-lg text-slate-500">
-                    Turnos disponibles para <span className="font-semibold text-slate-800">
-                        {selectedDoctor?.id === 'secondi' ? 'Dra. María Verónica Secondi' :
-                            selectedDoctor?.id === 'capparelli' ? 'Dr. Germán Capparelli' :
-                                `${selectedDoctor?.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor?.lastName}, ${selectedDoctor?.firstName}`}
-                    </span>
-                </p>
-            </header>
+    // Check if all dates have been checked and none have availability
+    const hasAvailabilityData = Object.keys(dateAvailability).length > 0;
+    const hasAnyFreeSlot = hasAvailabilityData && Object.values(dateAvailability).some(count => count > 0);
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-                {/* Left Column: Calendar */}
-                <div className="lg:col-span-5 flex flex-col items-center">
-                    <div className="bg-white rounded-xl shadow-md border border-slate-100 p-6 w-full max-w-sm mx-auto">
-                        <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={handleDateSelect}
-                            disabled={(date) => {
-                                const today = new Date();
-                                today.setHours(0, 0, 0, 0);
-
-                                const dateString = format(date, 'yyyy-MM-dd');
-
-                                // 1. Past dates
-                                if (date < today) return true;
-
-                                // 2. Max days ahead (Appointment Limits)
-                                if (selectedDoctor?.schedulingMode === 'custom_bimonthly') {
-                                    const todayDay = today.getDate();
-                                    const currentHour = new Date().getHours();
-
-                                    // Logic:
-                                    // 1st to 14th -> Open until end of CURRENT month
-                                    // 15th before 11am -> Open until end of CURRENT month
-                                    // 15th after 11am -> Open until 15th of NEXT month
-                                    // 16th onwards -> Open until 15th of NEXT month
-
-                                    // Batch 1: End of Current Month Limit.
-                                    // Batch 2: 15th of Next Month Limit.
-
-                                    let isBatch1 = false;
-                                    if (todayDay === 1) {
-                                        if (currentHour >= 11) isBatch1 = true;
-                                    } else if (todayDay > 1 && todayDay < 15) {
-                                        isBatch1 = true;
-                                    } else if (todayDay === 15) {
-                                        if (currentHour < 11) isBatch1 = true;
-                                    }
-
-                                    let limitDate: Date;
-
-                                    if (isBatch1) {
-                                        // Batch 1: Limit is End of Current Month
-                                        limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                                    } else {
-                                        // Batch 2
-                                        if (todayDay === 1 && currentHour < 11) {
-                                            // Handling the trailing end of previous month's Batch 2 (e.g. Feb 1st < 11am)
-                                            // Limit is 15th of THIS month
-                                            limitDate = new Date(today.getFullYear(), today.getMonth(), 15);
-                                        } else {
-                                            // Standard Batch 2 (15th 11am -> End)
-                                            // Limit is 15th of NEXT month
-                                            limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
-                                        }
-                                    }
-
-                                    limitDate.setHours(23, 59, 59, 999);
-                                    if (date > limitDate) return true;
-
-                                } else {
-                                    // Standard maxDaysAhead (Rolling Window)
-                                    let maxDays = selectedDoctor?.maxDaysAhead || 30;
-
-                                    // New Rule for Dra. Secondi: 
-                                    // The "newest" day in the rolling window only opens at 11:00 AM.
-                                    // Before 11 AM, we show one day less.
-                                    const isSecondi = selectedDoctor?.id === 'secondi' || selectedDoctor?.lastName.toLowerCase().includes('secondi');
-
-                                    if (isSecondi) {
-                                        const currentHour = new Date().getHours();
-                                        if (currentHour < 11) {
-                                            maxDays = Math.max(0, maxDays - 1);
-                                        }
-                                    }
-
-                                    const maxDate = new Date();
-                                    maxDate.setDate(today.getDate() + maxDays);
-                                    maxDate.setHours(23, 59, 59, 999);
-                                    if (date > maxDate) return true;
-                                }
-
-                                // 3. Exceptions/Holidays (Block days - Strongest Constraint)
-                                if (doctorExceptions.some(e => e.date === dateString)) return true;
-
-                                // 4. Added Availability (Exceptional Schedule) - Explicitly ENABLE these days
-                                if (selectedDoctor?.exceptionalSchedule?.some(s => s.date === dateString)) return false;
-
-                                // 5. Standard Work Days (Fallback)
-                                if (selectedDoctor && selectedDoctor.schedule.workDays) {
-                                    const day = date.getDay(); // 0-6
-                                    if (!selectedDoctor.schedule.workDays.includes(day)) return true;
-                                }
-
-                                return false;
-                            }}
-                            modifiers={{
-                                exceptional: (date) => selectedDoctor?.exceptionalSchedule?.some(s => s.date === format(date, 'yyyy-MM-dd')) || false
-                            }}
-                            modifiersClassNames={{
-                                exceptional: "font-semibold text-slate-900 bg-slate-50 border border-slate-200"
-                            }}
-                            initialFocus
-                            locale={es}
-                            className="p-0 w-full"
-                            classNames={{
-                                months: "w-full flex flex-col",
-                                month: "space-y-4 w-full",
-                                caption: "flex justify-center pt-1 relative items-center mb-4 capitalize font-bold text-lg text-slate-800",
-                                caption_label: "text-sm font-medium",
-                                nav: "space-x-1 flex items-center absolute right-1 top-1",
-                                table: "w-full border-collapse space-y-1",
-                                head_row: "flex w-full justify-between mb-2",
-                                head_cell: "text-slate-400 font-medium text-[0.8rem] capitalize w-10 text-center",
-                                row: "flex w-full mt-2 justify-between",
-                                cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                                day: cn(
-                                    "h-10 w-10 p-0 font-normal aria-selected:opacity-100 hover:bg-slate-100 rounded-lg transition-all duration-200 flex items-center justify-center"
-                                ),
-                                day_selected: "bg-slate-900 text-white hover:bg-slate-800 hover:text-white focus:bg-slate-900 focus:text-white shadow-lg scale-105 font-medium",
-                                day_today: "bg-blue-50 text-blue-700 font-semibold border border-blue-100",
-                                day_outside: "text-slate-300 opacity-30",
-                                day_disabled: "text-slate-200 opacity-40 cursor-not-allowed",
-                                day_hidden: "invisible",
-                            }}
-                        />
-                    </div>
-                    <Button variant="ghost" onClick={() => setStep(2)} className="mt-6 text-slate-500 hover:text-slate-900 hover:bg-slate-100">
-                        <ChevronLeft className="mr-2 h-4 w-4" />
-                        Volver
-                    </Button>
+    const renderStep3_Selection = () => {
+        // Show loading while pre-fetching availability
+        if (loadingAvailability) {
+            return (
+                <div className="animate-in fade-in duration-500 min-h-[600px] flex flex-col items-center justify-center">
+                    <Loader2 className="animate-spin text-primary h-10 w-10 mb-4" />
+                    <p className="text-slate-500 text-lg">Verificando disponibilidad...</p>
                 </div>
+            );
+        }
 
-                {/* Right Column: Time Slots */}
-                <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-slate-200 p-8 flex flex-col min-h-[500px]">
-                    <div className="mb-6 flex items-baseline justify-between border-b border-slate-100 pb-4">
-                        <h3 className="text-xl font-semibold text-slate-800">Horarios Disponibles</h3>
-                        <span className="text-slate-500 font-medium capitalize">
-                            {selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Seleccione un día"}
+        // Show warning when NO dates have free slots
+        if (hasAvailabilityData && !hasAnyFreeSlot) {
+            return (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[600px] flex items-center justify-center p-4">
+                    <Card className="max-w-lg w-full text-center border-amber-300 bg-amber-50 shadow-lg">
+                        <CardHeader>
+                            <div className="mx-auto bg-amber-100 rounded-full p-5 w-fit mb-4">
+                                <AlertCircle className="h-14 w-14 text-amber-600" />
+                            </div>
+                            <CardTitle className="text-2xl text-amber-800">No hay turnos disponibles</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-amber-700 text-base leading-relaxed">
+                                Nuevos turnos se abrirán el <strong>1</strong> o <strong>15</strong> del mes a las <strong>11:00 AM</strong>. Aguarde a esas fechas y vuelva a ingresar.
+                            </p>
+                            <p className="text-amber-700 text-sm leading-relaxed">
+                                En su defecto, turnos se podrían liberar frente a la cancelación de un turno tomado actualmente. No podemos decirle con exactitud cuándo será.
+                            </p>
+                            <p className="text-amber-800 font-semibold text-sm mt-4 italic">
+                                Atte. Consultorio Delgado
+                            </p>
+                        </CardContent>
+                        <CardFooter className="flex-col gap-3 pb-6">
+                            <Button variant="outline" onClick={() => setStep(2)} className="w-full">
+                                <ChevronLeft className="mr-2 h-4 w-4" />
+                                Volver
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                </div>
+            );
+        }
+
+        return (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[600px]">
+                <header className="mb-8 text-center">
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">3. Seleccione Fecha y Hora</h1>
+                    <p className="text-lg text-slate-500">
+                        Turnos disponibles para <span className="font-semibold text-slate-800">
+                            {selectedDoctor?.id === 'secondi' ? 'Dra. María Verónica Secondi' :
+                                selectedDoctor?.id === 'capparelli' ? 'Dr. Germán Capparelli' :
+                                    `${selectedDoctor?.gender === 'female' ? 'Dra.' : 'Dr.'} ${selectedDoctor?.lastName}, ${selectedDoctor?.firstName}`}
                         </span>
+                    </p>
+                </header>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                    {/* Left Column: Calendar */}
+                    <div className="lg:col-span-5 flex flex-col items-center">
+                        <div className="bg-white rounded-xl shadow-md border border-slate-100 p-6 w-full max-w-sm mx-auto">
+                            <Calendar
+                                mode="single"
+                                selected={selectedDate}
+                                onSelect={handleDateSelect}
+                                disabled={(date) => {
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+
+                                    const dateString = format(date, 'yyyy-MM-dd');
+
+                                    // 1. Past dates
+                                    if (date < today) return true;
+
+                                    // 2. Max days ahead (Appointment Limits)
+                                    if (selectedDoctor?.schedulingMode === 'custom_bimonthly') {
+                                        const todayDay = today.getDate();
+                                        const currentHour = new Date().getHours();
+
+                                        // Logic:
+                                        // 1st to 14th -> Open until end of CURRENT month
+                                        // 15th before 11am -> Open until end of CURRENT month
+                                        // 15th after 11am -> Open until 15th of NEXT month
+                                        // 16th onwards -> Open until 15th of NEXT month
+
+                                        // Batch 1: End of Current Month Limit.
+                                        // Batch 2: 15th of Next Month Limit.
+
+                                        let isBatch1 = false;
+                                        if (todayDay === 1) {
+                                            if (currentHour >= 11) isBatch1 = true;
+                                        } else if (todayDay > 1 && todayDay < 15) {
+                                            isBatch1 = true;
+                                        } else if (todayDay === 15) {
+                                            if (currentHour < 11) isBatch1 = true;
+                                        }
+
+                                        let limitDate: Date;
+
+                                        if (isBatch1) {
+                                            // Batch 1: Limit is End of Current Month
+                                            limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                                        } else {
+                                            // Batch 2
+                                            if (todayDay === 1 && currentHour < 11) {
+                                                // Handling the trailing end of previous month's Batch 2 (e.g. Feb 1st < 11am)
+                                                // Limit is 15th of THIS month
+                                                limitDate = new Date(today.getFullYear(), today.getMonth(), 15);
+                                            } else {
+                                                // Standard Batch 2 (15th 11am -> End)
+                                                // Limit is 15th of NEXT month
+                                                limitDate = new Date(today.getFullYear(), today.getMonth() + 1, 15);
+                                            }
+                                        }
+
+                                        limitDate.setHours(23, 59, 59, 999);
+                                        if (date > limitDate) return true;
+
+                                    } else {
+                                        // Standard maxDaysAhead (Rolling Window)
+                                        let maxDays = selectedDoctor?.maxDaysAhead || 30;
+
+                                        // New Rule for Dra. Secondi: 
+                                        // The "newest" day in the rolling window only opens at 11:00 AM.
+                                        // Before 11 AM, we show one day less.
+                                        const isSecondi = selectedDoctor?.id === 'secondi' || selectedDoctor?.lastName.toLowerCase().includes('secondi');
+
+                                        if (isSecondi) {
+                                            const currentHour = new Date().getHours();
+                                            if (currentHour < 11) {
+                                                maxDays = Math.max(0, maxDays - 1);
+                                            }
+                                        }
+
+                                        const maxDate = new Date();
+                                        maxDate.setDate(today.getDate() + maxDays);
+                                        maxDate.setHours(23, 59, 59, 999);
+                                        if (date > maxDate) return true;
+                                    }
+
+                                    // 3. Exceptions/Holidays (Block days - Strongest Constraint)
+                                    if (doctorExceptions.some(e => e.date === dateString)) return true;
+
+                                    // 4. Added Availability (Exceptional Schedule) - Explicitly ENABLE these days
+                                    if (selectedDoctor?.exceptionalSchedule?.some(s => s.date === dateString)) {
+                                        // Even if exceptional, disable if no free slots
+                                        if (hasAvailabilityData && (dateAvailability[dateString] ?? 0) === 0) return true;
+                                        return false;
+                                    }
+
+                                    // 5. Standard Work Days (Fallback)
+                                    if (selectedDoctor && selectedDoctor.schedule.workDays) {
+                                        const day = date.getDay(); // 0-6
+                                        if (!selectedDoctor.schedule.workDays.includes(day)) return true;
+                                    }
+
+                                    // 6. Smart Availability: Disable if pre-fetched and 0 free slots
+                                    if (hasAvailabilityData && (dateAvailability[dateString] ?? 0) === 0) return true;
+
+                                    return false;
+                                }}
+                                modifiers={{
+                                    exceptional: (date) => selectedDoctor?.exceptionalSchedule?.some(s => s.date === format(date, 'yyyy-MM-dd')) || false
+                                }}
+                                modifiersClassNames={{
+                                    exceptional: "font-semibold text-slate-900 bg-slate-50 border border-slate-200"
+                                }}
+                                initialFocus
+                                locale={es}
+                                className="p-0 w-full"
+                                classNames={{
+                                    months: "w-full flex flex-col",
+                                    month: "space-y-4 w-full",
+                                    caption: "flex justify-center pt-1 relative items-center mb-4 capitalize font-bold text-lg text-slate-800",
+                                    caption_label: "text-sm font-medium",
+                                    nav: "space-x-1 flex items-center absolute right-1 top-1",
+                                    table: "w-full border-collapse space-y-1",
+                                    head_row: "flex w-full justify-between mb-2",
+                                    head_cell: "text-slate-400 font-medium text-[0.8rem] capitalize w-10 text-center",
+                                    row: "flex w-full mt-2 justify-between",
+                                    cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                                    day: cn(
+                                        "h-10 w-10 p-0 font-normal aria-selected:opacity-100 hover:bg-slate-100 rounded-lg transition-all duration-200 flex items-center justify-center"
+                                    ),
+                                    day_selected: "bg-slate-900 text-white hover:bg-slate-800 hover:text-white focus:bg-slate-900 focus:text-white shadow-lg scale-105 font-medium",
+                                    day_today: "bg-blue-50 text-blue-700 font-semibold border border-blue-100",
+                                    day_outside: "text-slate-300 opacity-30",
+                                    day_disabled: "text-slate-200 opacity-40 cursor-not-allowed",
+                                    day_hidden: "invisible",
+                                }}
+                            />
+                        </div>
+                        <Button variant="ghost" onClick={() => setStep(2)} className="mt-6 text-slate-500 hover:text-slate-900 hover:bg-slate-100">
+                            <ChevronLeft className="mr-2 h-4 w-4" />
+                            Volver
+                        </Button>
                     </div>
 
-                    <div className="flex-grow">
-                        {!selectedDate ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                                <CalendarIcon className="h-12 w-12 mb-3 opacity-20" />
-                                <p>Seleccione una fecha en el calendario</p>
-                            </div>
-                        ) : loadingSlots ? (
-                            <div className="flex flex-col items-center justify-center h-64">
-                                <Loader2 className="animate-spin text-primary h-8 w-8 mb-2" />
-                                <p className="text-slate-400">Buscando horarios...</p>
-                            </div>
-                        ) : availableSlots.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                                <AlertCircle className="h-10 w-10 mb-2 opacity-50" />
-                                <p>No hay turnos disponibles para esta fecha.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                {morningSlots.length > 0 && (
-                                    <div>
-                                        <p className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wide">Mañana</p>
-                                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                            {morningSlots.map(time => (
-                                                <button
-                                                    key={time}
-                                                    onClick={() => handleTimeSelect(time)}
-                                                    className={cn(
-                                                        "py-2 px-3 rounded-lg border text-sm font-medium transition-all duration-200",
-                                                        selectedTime === time
-                                                            ? "bg-slate-900 text-white border-slate-900 shadow-md scale-105"
-                                                            : "border-slate-200 text-slate-700 hover:border-slate-900 hover:text-slate-900 bg-transparent"
-                                                    )}
-                                                >
-                                                    {time}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+                    {/* Right Column: Time Slots */}
+                    <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-slate-200 p-8 flex flex-col min-h-[500px]">
+                        <div className="mb-6 flex items-baseline justify-between border-b border-slate-100 pb-4">
+                            <h3 className="text-xl font-semibold text-slate-800">Horarios Disponibles</h3>
+                            <span className="text-slate-500 font-medium capitalize">
+                                {selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Seleccione un día"}
+                            </span>
+                        </div>
 
-                                {afternoonSlots.length > 0 && (
-                                    <div>
-                                        <p className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wide">Tarde</p>
-                                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                            {afternoonSlots.map(time => (
-                                                <button
-                                                    key={time}
-                                                    onClick={() => handleTimeSelect(time)}
-                                                    className={cn(
-                                                        "py-2 px-3 rounded-lg border text-sm font-medium transition-all duration-200",
-                                                        selectedTime === time
-                                                            ? "bg-slate-900 text-white border-slate-900 shadow-md scale-105"
-                                                            : "border-slate-200 text-slate-700 hover:border-slate-900 hover:text-slate-900 bg-transparent"
-                                                    )}
-                                                >
-                                                    {time}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Footer Action */}
-                    <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="text-sm text-slate-500">
-                            {selectedDate && selectedTime ? (
-                                <span>
-                                    Seleccionado: <span className="font-semibold text-slate-900 capitalize">{format(selectedDate, "EEEE d", { locale: es })} - {selectedTime} hs</span>
-                                </span>
+                        <div className="flex-grow">
+                            {!selectedDate ? (
+                                <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                                    <CalendarIcon className="h-12 w-12 mb-3 opacity-20" />
+                                    <p>Seleccione una fecha en el calendario</p>
+                                </div>
+                            ) : loadingSlots ? (
+                                <div className="flex flex-col items-center justify-center h-64">
+                                    <Loader2 className="animate-spin text-primary h-8 w-8 mb-2" />
+                                    <p className="text-slate-400">Buscando horarios...</p>
+                                </div>
+                            ) : availableSlots.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-64 text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                    <AlertCircle className="h-10 w-10 mb-2 opacity-50" />
+                                    <p>No hay turnos disponibles para esta fecha.</p>
+                                </div>
                             ) : (
-                                <span>Selecciona fecha y hora para continuar</span>
+                                <div className="space-y-6 animate-in fade-in duration-300">
+                                    {morningSlots.length > 0 && (
+                                        <div>
+                                            <p className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wide">Mañana</p>
+                                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                                                {morningSlots.map(time => (
+                                                    <button
+                                                        key={time}
+                                                        onClick={() => handleTimeSelect(time)}
+                                                        className={cn(
+                                                            "py-2 px-3 rounded-lg border text-sm font-medium transition-all duration-200",
+                                                            selectedTime === time
+                                                                ? "bg-slate-900 text-white border-slate-900 shadow-md scale-105"
+                                                                : "border-slate-200 text-slate-700 hover:border-slate-900 hover:text-slate-900 bg-transparent"
+                                                        )}
+                                                    >
+                                                        {time}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {afternoonSlots.length > 0 && (
+                                        <div>
+                                            <p className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wide">Tarde</p>
+                                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                                                {afternoonSlots.map(time => (
+                                                    <button
+                                                        key={time}
+                                                        onClick={() => handleTimeSelect(time)}
+                                                        className={cn(
+                                                            "py-2 px-3 rounded-lg border text-sm font-medium transition-all duration-200",
+                                                            selectedTime === time
+                                                                ? "bg-slate-900 text-white border-slate-900 shadow-md scale-105"
+                                                                : "border-slate-200 text-slate-700 hover:border-slate-900 hover:text-slate-900 bg-transparent"
+                                                        )}
+                                                    >
+                                                        {time}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
-                        <Button
-                            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-6 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                            disabled={!selectedDate || !selectedTime}
-                            onClick={() => setStep(4)} // Go to Confirm
-                        >
-                            Confirmar Turno <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
+
+                        {/* Footer Action */}
+                        <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="text-sm text-slate-500">
+                                {selectedDate && selectedTime ? (
+                                    <span>
+                                        Seleccionado: <span className="font-semibold text-slate-900 capitalize">{format(selectedDate, "EEEE d", { locale: es })} - {selectedTime} hs</span>
+                                    </span>
+                                ) : (
+                                    <span>Selecciona fecha y hora para continuar</span>
+                                )}
+                            </div>
+                            <Button
+                                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium py-6 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                                disabled={!selectedDate || !selectedTime}
+                                onClick={() => setStep(4)} // Go to Confirm
+                            >
+                                Confirmar Turno <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderStep4_Confirm = () => (
         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-2xl mx-auto">

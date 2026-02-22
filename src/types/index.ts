@@ -11,6 +11,7 @@ export interface UserProfile {
     phone?: string;
     insurance?: string; // Obra Social
     insuranceNumber?: string; // Numero de afiliado
+    plan?: string; // Plan de la obra social (e.g. "310", "510")
     permissions?: string[]; // E.g., ['admin'] to grant admin access regardless of role
     createdAt: Date;
     isDeleted?: boolean;

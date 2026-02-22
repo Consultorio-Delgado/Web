@@ -17,15 +17,18 @@ import {
 import { Loader2, FileText, Send, CheckCircle, AlertTriangle, Paperclip, XCircle, Microscope } from "lucide-react";
 import { toast } from "sonner";
 import { doctorService } from "@/services/doctorService";
+import { userService } from "@/services/user";
 import type { Doctor } from "@/types";
 import { isDoctorOnVacation, getVacationEndFormatted, getDoctorTitle } from "@/lib/vacationUtils";
 
 const COBERTURAS = [
+    "PARTICULAR",
     "OSDE",
     "Swiss Medical",
     "Omint",
     "Luis Pasteur",
     "Galeno",
+    "OSA",
     "Otra"
 ];
 
@@ -124,6 +127,7 @@ export default function StudiesPage() {
                 email: user?.email || prev.email,
                 cobertura: profile.insurance || prev.cobertura,
                 numeroAfiliado: profile.insuranceNumber || prev.numeroAfiliado,
+                plan: profile.plan || prev.plan,
             }));
         }
     }, [profile, user]);
@@ -182,6 +186,16 @@ export default function StudiesPage() {
 
             setSuccess(true);
             setFiles([]); // Reset files
+
+            // Auto-save plan to user profile if provided and different
+            if (formData.plan && user && formData.plan !== (profile?.plan || "")) {
+                try {
+                    await userService.updateUserProfile(user.uid, { plan: formData.plan });
+                } catch (err) {
+                    console.error("Error saving plan to profile:", err);
+                }
+            }
+
             setFormData(prev => ({
                 ...prev,
                 doctorId: "",
@@ -234,10 +248,10 @@ export default function StudiesPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-purple-700">
                         <Microscope className="h-6 w-6" />
-                        Solicitud y envíos de estudios/PAPs
+                        Envío de Estudios y Solicitar Resultados de PAPs
                     </CardTitle>
                     <CardDescription>
-                        Complete el formulario para solicitar órdenes de estudios o PAPs a su profesional.
+                        Complete el formulario para enviar estudios o solicitar resultados de PAPs a su profesional.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

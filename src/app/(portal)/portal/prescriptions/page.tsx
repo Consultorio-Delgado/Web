@@ -17,15 +17,18 @@ import {
 import { Loader2, FileText, Send, CheckCircle, AlertTriangle, Paperclip, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { doctorService } from "@/services/doctorService";
+import { userService } from "@/services/user";
 import type { Doctor } from "@/types";
 import { isDoctorOnVacation, getVacationEndFormatted, getDoctorTitle } from "@/lib/vacationUtils";
 
 const COBERTURAS = [
+    "PARTICULAR",
     "OSDE",
     "Swiss Medical",
     "Omint",
     "Luis Pasteur",
     "Galeno",
+    "OSA",
     "Otra"
 ];
 
@@ -125,6 +128,7 @@ export default function PrescriptionsPage() {
                 email: user?.email || prev.email,
                 cobertura: profile.insurance || prev.cobertura,
                 numeroAfiliado: profile.insuranceNumber || prev.numeroAfiliado,
+                plan: profile.plan || prev.plan,
             }));
         }
     }, [profile, user]);
@@ -183,6 +187,16 @@ export default function PrescriptionsPage() {
 
             setSuccess(true);
             setFiles([]); // Reset files
+
+            // Auto-save plan to user profile if provided and different
+            if (formData.plan && user && formData.plan !== (profile?.plan || "")) {
+                try {
+                    await userService.updateUserProfile(user.uid, { plan: formData.plan });
+                } catch (err) {
+                    console.error("Error saving plan to profile:", err);
+                }
+            }
+
             setFormData(prev => ({
                 ...prev,
                 doctorId: "",
@@ -235,7 +249,7 @@ export default function PrescriptionsPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <FileText className="h-5 w-5 text-primary" />
-                        Solicitar Receta Médica
+                        Solicitar Recetas y Estudios Médicos
                     </CardTitle>
                     <CardDescription>
                         Complete el formulario para solicitar una receta médica a su profesional.

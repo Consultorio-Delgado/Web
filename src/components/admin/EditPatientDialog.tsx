@@ -28,6 +28,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSuccess }: Pr
         email: "",
         insurance: "",
         insuranceNumber: "",
+        plan: "",
         birthDate: ""
     });
 
@@ -41,6 +42,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSuccess }: Pr
                 email: patient.email || "",
                 insurance: patient.insurance || "",
                 insuranceNumber: patient.insuranceNumber || "",
+                plan: patient.plan || "",
                 birthDate: patient.birthDate || ""
             });
         }
@@ -59,6 +61,7 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSuccess }: Pr
                 phone: formData.phone,
                 insurance: formData.insurance,
                 insuranceNumber: formData.insuranceNumber,
+                plan: formData.plan,
                 birthDate: formData.birthDate // Assuming string YYYY-MM-DD
             });
             toast.success("Paciente actualizado correctamente");
@@ -158,6 +161,16 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSuccess }: Pr
                             value={formData.insuranceNumber}
                             onChange={(e) => setFormData({ ...formData, insuranceNumber: e.target.value })}
                             placeholder="Ej: 123456789"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="plan">Plan</Label>
+                        <Input
+                            id="plan"
+                            value={formData.plan}
+                            onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
+                            placeholder="Ej: 310, 510, A1"
                         />
                     </div>
 

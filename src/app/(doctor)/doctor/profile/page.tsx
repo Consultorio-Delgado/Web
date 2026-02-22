@@ -6,6 +6,7 @@ import { doctorService } from "@/services/doctorService";
 import { Doctor } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -336,9 +337,8 @@ export default function DoctorProfilePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="currentPassword">Contraseña Actual</Label>
-                                        <Input
+                                        <PasswordInput
                                             id="currentPassword"
-                                            type="password"
                                             placeholder="••••••"
                                             value={currentPassword}
                                             onChange={(e) => setCurrentPassword(e.target.value)}
@@ -346,9 +346,8 @@ export default function DoctorProfilePage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="newPassword">Nueva Contraseña</Label>
-                                        <Input
+                                        <PasswordInput
                                             id="newPassword"
-                                            type="password"
                                             placeholder="••••••"
                                             value={newPassword}
                                             onChange={(e) => setNewPassword(e.target.value)}
@@ -356,9 +355,8 @@ export default function DoctorProfilePage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="confirmPassword">Confirmar Nueva</Label>
-                                        <Input
+                                        <PasswordInput
                                             id="confirmPassword"
-                                            type="password"
                                             placeholder="••••••"
                                             value={confirmPassword}
                                             onChange={(e) => setConfirmPassword(e.target.value)}

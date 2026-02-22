@@ -27,7 +27,7 @@ function Calendar({
                 nav: "space-x-1 flex items-center absolute right-1", // Keep nav absolute right
                 nav_button: cn(
                     buttonVariants({ variant: "outline" }),
-                    "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+                    "h-8 w-8 bg-transparent p-0 text-slate-900 hover:bg-slate-100"
                 ),
                 nav_button_previous: "static", // Override absolute
                 nav_button_next: "static", // Override absolute
@@ -54,8 +54,8 @@ function Calendar({
                 ...classNames,
             }}
             components={{
-                IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-                IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
+                IconLeft: ({ ...props }) => <ChevronLeft className="h-5 w-5 text-slate-900" />,
+                IconRight: ({ ...props }) => <ChevronRight className="h-5 w-5 text-slate-900" />,
             }}
             {...props}
         />

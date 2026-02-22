@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MapPin, Phone, Instagram, Facebook } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { ContactButton } from "@/components/shared/ContactButton";
 
 export function Footer() {
     const pathname = usePathname();
@@ -71,6 +72,10 @@ export function Footer() {
                             >
                                 <Facebook className="h-5 w-5" />
                             </a>
+                        </div>
+                        <h3 className="text-lg font-serif text-white mb-2 mt-4">Contacto</h3>
+                        <div className="flex justify-center md:justify-end">
+                            <ContactButton variant="footer" className="h-10 w-10 bg-slate-800 rounded-lg flex items-center justify-center text-slate-300 hover:bg-slate-700 hover:text-white transition-all" />
                         </div>
                     </div>
                 </div>

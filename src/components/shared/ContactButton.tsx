@@ -23,7 +23,7 @@ interface ContactFormData {
 }
 
 interface ContactButtonProps {
-    variant?: 'floating' | 'link';
+    variant?: 'floating' | 'link' | 'footer';
     className?: string;
     onClose?: () => void;
 }
@@ -90,6 +90,17 @@ export function ContactButton({ variant = 'floating', className = '' }: ContactB
                     className={className}
                 >
                     Contacto
+                </button>
+            )}
+
+            {/* Footer variant */}
+            {variant === 'footer' && (
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className={className}
+                    aria-label="Contacto"
+                >
+                    <Mail className="h-5 w-5" />
                 </button>
             )}
 

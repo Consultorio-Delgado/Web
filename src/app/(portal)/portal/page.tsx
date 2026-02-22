@@ -86,35 +86,31 @@ export default function PortalDashboard() {
 
     return (
         <div className="container py-10 max-w-5xl">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
-                <div className="flex items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-serif font-medium text-slate-900 mb-1">Hola, {profile?.firstName || user?.displayName?.split(' ')[0] || 'Paciente'}</h1>
-                        <p className="text-slate-500 font-light">Bienvenido a tu portal de salud.</p>
-                    </div>
-                </div>
-                <div className="w-full md:w-auto flex flex-col md:flex-row gap-4">
-                    <Link href="/portal/virtual-consultation" className="block w-full md:w-auto" prefetch={false}>
-                        <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 font-medium transition-transform hover:scale-105">
+            <div className="flex flex-col mb-12 gap-4">
+                <h1 className="text-3xl font-serif font-medium text-slate-900">Hola, {profile?.firstName || user?.displayName?.split(' ')[0] || 'Paciente'}</h1>
+                <p className="text-slate-500 font-light">Bienvenido a tu portal de salud.</p>
+                <div className="flex flex-wrap justify-center gap-4 mt-2">
+                    <Link href="/portal/virtual-consultation" prefetch={false}>
+                        <Button variant="outline" size="lg" className="h-12 px-8 rounded-full border-blue-600 text-blue-600 hover:bg-blue-50 font-medium transition-transform hover:scale-105">
                             <Video className="mr-2 h-5 w-5" />
                             Consulta Virtual
                         </Button>
                     </Link>
                     {/* Force hard refresh for Prescriptions to avoid Next.js router loop issues */}
-                    <a href="/portal/prescriptions" className="block w-full md:w-auto">
-                        <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-primary text-primary hover:bg-primary/5 font-medium transition-transform hover:scale-105">
-                            Solicitar Receta
+                    <a href="/portal/prescriptions">
+                        <Button variant="outline" size="lg" className="h-12 px-8 rounded-full border-primary text-primary hover:bg-primary/5 font-medium transition-transform hover:scale-105">
+                            Solicitar Recetas y Estudios
                         </Button>
                     </a>
-                    <Link href="/portal/studies" className="block w-full md:w-auto" prefetch={false}>
-                        <Button variant="outline" size="lg" className="w-full md:w-auto h-12 px-8 rounded-full border-purple-600 text-purple-600 hover:bg-purple-50 font-medium transition-transform hover:scale-105">
+                    <Link href="/portal/studies" prefetch={false}>
+                        <Button variant="outline" size="lg" className="h-12 px-8 rounded-full border-purple-600 text-purple-600 hover:bg-purple-50 font-medium transition-transform hover:scale-105">
                             <Microscope className="mr-2 h-5 w-5" />
-                            Solicitar Estudios
+                            Envío de Estudios
                         </Button>
                     </Link>
                     {/* Force hard refresh for New Appointment to avoid Next.js router loop issues */}
-                    <a href="/portal/new-appointment" className="block w-full md:w-auto">
-                        <Button size="lg" className="w-full md:w-auto h-12 px-8 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-cyan-900/10 text-white font-medium transition-transform hover:scale-105">
+                    <a href="/portal/new-appointment">
+                        <Button size="lg" className="h-12 px-8 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-cyan-900/10 text-white font-medium transition-transform hover:scale-105">
                             Solicitar Nuevo Turno
                         </Button>
                     </a>

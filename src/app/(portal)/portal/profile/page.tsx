@@ -25,6 +25,7 @@ const profileSchema = z.object({
     phone: z.string().min(6, "El teléfono debe tener al menos 6 caracteres"),
     insurance: z.string().min(1, "Seleccione una obra social"),
     insuranceNumber: z.string().optional(),
+    plan: z.string().optional(),
 }).refine((data) => {
     if (data.insurance !== "PARTICULAR" && (!data.insuranceNumber || data.insuranceNumber.length < 3)) {
         return false;
@@ -93,6 +94,7 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
             phone: "",
             insurance: "",
             insuranceNumber: "",
+            plan: "",
         },
     });
 
@@ -109,6 +111,7 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
             form.setValue("phone", profile.phone || "");
             form.setValue("insurance", validInsurance || "PARTICULAR");
             form.setValue("insuranceNumber", profile.insuranceNumber || "");
+            form.setValue("plan", profile.plan || "");
         }
     }, [profile, form]);
 
@@ -120,6 +123,7 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
                 phone: data.phone,
                 insurance: data.insurance,
                 insuranceNumber: data.insuranceNumber,
+                plan: data.plan || "",
             });
             await refreshProfile();
             toast.success("Perfil actualizado correctamente");
@@ -214,18 +218,28 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
                             </div>
 
                             {watchedInsurance !== "PARTICULAR" && (
-                                <div className="space-y-2 animate-in fade-in zoom-in-95 duration-300">
-                                    <Label htmlFor="insuranceNumber">Número de Credencial / Afiliado</Label>
-                                    <Input
-                                        id="insuranceNumber"
-                                        {...form.register("insuranceNumber")}
-                                        placeholder="Ej: 1234567890"
-                                        className={form.formState.errors.insuranceNumber ? "border-red-500" : ""}
-                                    />
-                                    {form.formState.errors.insuranceNumber && (
-                                        <p className="text-xs text-red-500">{form.formState.errors.insuranceNumber.message}</p>
-                                    )}
-                                </div>
+                                <>
+                                    <div className="space-y-2 animate-in fade-in zoom-in-95 duration-300">
+                                        <Label htmlFor="insuranceNumber">Número de Credencial / Afiliado</Label>
+                                        <Input
+                                            id="insuranceNumber"
+                                            {...form.register("insuranceNumber")}
+                                            placeholder="Ej: 1234567890"
+                                            className={form.formState.errors.insuranceNumber ? "border-red-500" : ""}
+                                        />
+                                        {form.formState.errors.insuranceNumber && (
+                                            <p className="text-xs text-red-500">{form.formState.errors.insuranceNumber.message}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2 animate-in fade-in zoom-in-95 duration-300">
+                                        <Label htmlFor="plan">Plan <span className="text-xs text-slate-400 font-normal">(opcional)</span></Label>
+                                        <Input
+                                            id="plan"
+                                            {...form.register("plan")}
+                                            placeholder="Ej: 310, 510, A1"
+                                        />
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>

@@ -166,7 +166,6 @@ function NavItems({ mobile = false, onClick }: { mobile?: boolean; onClick?: () 
             <Link href="/portal/prescriptions" className={className} onClick={onClick}>
                 Recetas
             </Link>
-            <ContactButton variant="link" className={className} />
         </>
     );
 }

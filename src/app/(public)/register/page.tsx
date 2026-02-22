@@ -29,6 +29,7 @@ export default function RegisterPage() {
         birthDate: "",
         insuranceProvider: "",
         insuranceNumber: "",
+        plan: "",
     });
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -105,6 +106,7 @@ export default function RegisterPage() {
                 birthDate: formData.birthDate,
                 insurance: formData.insuranceProvider,
                 insuranceNumber: formData.insuranceNumber,
+                ...(formData.plan ? { plan: formData.plan } : {}),
             });
 
             // 3. Set Session Cookie (Manual sync to be safe, though AuthContext might do it too)
@@ -192,10 +194,16 @@ export default function RegisterPage() {
                         </div>
 
                         {formData.insuranceProvider && formData.insuranceProvider !== 'PARTICULAR' && (
-                            <div className="space-y-2">
-                                <Label htmlFor="insuranceNumber">Número de Credencial / Afiliado <span className="text-red-500">*</span></Label>
-                                <Input id="insuranceNumber" required value={formData.insuranceNumber} onChange={handleChange} disabled={loading} />
-                            </div>
+                            <>
+                                <div className="space-y-2">
+                                    <Label htmlFor="insuranceNumber">Número de Credencial / Afiliado <span className="text-red-500">*</span></Label>
+                                    <Input id="insuranceNumber" required value={formData.insuranceNumber} onChange={handleChange} disabled={loading} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="plan">Plan <span className="text-xs text-slate-400 font-normal">(opcional)</span></Label>
+                                    <Input id="plan" placeholder="Ej: 310, 510, A1" value={formData.plan} onChange={handleChange} disabled={loading} />
+                                </div>
+                            </>
                         )}
 
                         <div className="space-y-2">

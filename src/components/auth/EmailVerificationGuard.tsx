@@ -15,9 +15,12 @@ interface EmailVerificationGuardProps {
 }
 
 export function EmailVerificationGuard({ children }: EmailVerificationGuardProps) {
-    const { user, loading, logout } = useAuth();
+    const { user, loading, logout, refreshProfile } = useAuth();
     const [sending, setSending] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [isEditingEmail, setIsEditingEmail] = useState(false);
+    const [newEmail, setNewEmail] = useState("");
+    const [updatingEmail, setUpdatingEmail] = useState(false);
     const router = useRouter();
 
     // 1. Loading State
@@ -78,6 +81,49 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
         }
     };
 
+    const handleEmailUpdate = async () => {
+        if (!newEmail || !newEmail.includes('@')) {
+            toast.error("Por favor ingresá un email válido.");
+            return;
+        }
+
+        setUpdatingEmail(true);
+        try {
+            const { updateEmail } = await import("firebase/auth");
+            const { userService } = await import("@/services/user");
+
+            if (auth.currentUser) {
+                // 1. Update Firebase Auth
+                await updateEmail(auth.currentUser, newEmail);
+
+                // 2. Update Firestore Profile
+                await userService.updateUserProfile(auth.currentUser.uid, { email: newEmail });
+
+                // 3. Refresh Profile in AuthContext
+                await refreshProfile();
+
+                // 4. Send new verification email
+                await sendEmailVerification(auth.currentUser);
+
+                toast.success("Email actualizado correctamente. Se envió un nuevo link de verificación.");
+                setIsEditingEmail(false);
+            }
+        } catch (error: any) {
+            console.error("Error updating email:", error);
+            if (error.code === 'auth/requires-recent-login') {
+                toast.error("Por seguridad, debés cerrar sesión y volver a ingresar para cambiar tu email.");
+            } else if (error.code === 'auth/invalid-email') {
+                toast.error("El formato del email no es válido.");
+            } else if (error.code === 'auth/email-already-in-use') {
+                toast.error("Este email ya está en uso por otro usuario.");
+            } else {
+                toast.error("Error al actualizar el email. Intentá nuevamente.");
+            }
+        } finally {
+            setUpdatingEmail(false);
+        }
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
             <Card className="w-full max-w-md shadow-lg">
@@ -87,41 +133,88 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
                     </div>
                     <CardTitle className="text-2xl">Verificá tu Email</CardTitle>
                     <CardDescription className="text-base text-slate-600 mt-2">
-                        Para proteger tu seguridad y la de tus datos médicos, necesitamos que verifiques tu dirección de correo:
-                        <br />
-                        <span className="font-medium text-slate-900 block mt-1">{user.email}</span>
+                        {isEditingEmail ? (
+                            "Ingresá la dirección de correo correcta:"
+                        ) : (
+                            <>
+                                Para proteger tu seguridad y la de tus datos médicos, necesitamos que verifiques tu dirección de correo:
+                                <br />
+                                <span className="font-medium text-slate-900 block mt-1">{user.email}</span>
+                            </>
+                        )}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm">
-                        <p>
-                            <strong>1.</strong> Revisá tu bandeja de entrada (y Spam).
-                            <br />
-                            <strong>2.</strong> Hacé clic en el enlace de verificación.
-                            <br />
-                            <strong>3.</strong> Volvé acá y presioná "Ya lo verifiqué".
-                        </p>
-                    </div>
+                    {isEditingEmail ? (
+                        <div className="space-y-3">
+                            <input
+                                type="email"
+                                placeholder="nuevo@email.com"
+                                className="w-full p-2 border rounded-md"
+                                value={newEmail}
+                                onChange={(e) => setNewEmail(e.target.value)}
+                                autoFocus
+                            />
+                            <div className="flex gap-2">
+                                <Button
+                                    className="flex-1"
+                                    onClick={handleEmailUpdate}
+                                    disabled={updatingEmail}
+                                >
+                                    {updatingEmail ? "Guardando..." : "Guardar y Reenviar"}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsEditingEmail(false)}
+                                    disabled={updatingEmail}
+                                >
+                                    Cancelar
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm">
+                                <p>
+                                    <strong>1.</strong> Revisá tu bandeja de entrada (y Spam).
+                                    <br />
+                                    <strong>2.</strong> Hacé clic en el enlace de verificación.
+                                    <br />
+                                    <strong>3.</strong> Volvé acá y presioná "Ya lo verifiqué".
+                                </p>
+                            </div>
 
-                    <div className="grid grid-cols-1 gap-3">
-                        <Button
-                            onClick={handleRefresh}
-                            className="w-full h-11 text-base"
-                            disabled={refreshing}
-                        >
-                            {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                            Ya lo verifiqué
-                        </Button>
+                            <div className="grid grid-cols-1 gap-3">
+                                <Button
+                                    onClick={handleRefresh}
+                                    className="w-full h-11 text-base text-white"
+                                    disabled={refreshing}
+                                >
+                                    {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                                    Ya lo verifiqué
+                                </Button>
 
-                        <Button
-                            variant="outline"
-                            onClick={handleResend}
-                            disabled={sending}
-                            className="w-full"
-                        >
-                            {sending ? "Enviando..." : "Reenviar Email"}
-                        </Button>
-                    </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleResend}
+                                        disabled={sending}
+                                    >
+                                        {sending ? "Enviando..." : "Reenviar Email"}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            setNewEmail(user.email || "");
+                                            setIsEditingEmail(true);
+                                        }}
+                                    >
+                                        Editar Email
+                                    </Button>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </CardContent>
                 <CardFooter className="justify-center pt-2">
                     <Button variant="ghost" className="text-slate-500 hover:text-slate-700" onClick={() => logout()}>
