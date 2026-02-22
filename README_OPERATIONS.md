@@ -20,95 +20,60 @@ Todo el stack corre en planes gratuitos:
 
 ---
 
-## � Uso Real Medido (Feb 1-8, 2026)
+## 📊 Uso Real Medido (Semana Feb 15-22, 2026)
 
-### Vercel (25% del mes)
+Basado en 7 días de operación real con tráfico moderado y testeos.
 
-| Recurso | Usado | Límite | % |
-|---------|-------|--------|---|
-| Edge Requests | 22K | 1M | 2.2% |
-| Data Transfer | 379 MB | 100 GB | 0.4% |
-| Function Invocations | 2.4K | 1M | 0.2% |
+### Vercel (Hobby)
+| Recurso | Usado (7d) | Proyección Mes | Límite | % |
+|---------|------------|----------------|--------|---|
+| Edge Requests | 61K | 261K | 1M | 26% |
+| Data Transfer | 1.07 GB | 4.6 GB | 100 GB | 4.6% |
+| Function Invocations | 7.5K | 32K | 1M | 3.2% |
 
-### Firebase Firestore (8 días)
+### Firebase Firestore (Spark)
+| Operación | Total (7d) | Proyección Mes | Límite | % |
+|-----------|------------|----------------|--------|---|
+| Lecturas | 34K | 145K | 1.5M | 10% |
+| Escrituras | 491 | 2.1K | 600K | 0.3% |
+| Usuarios Activos | 125 | ~150 | 50K | <1% |
 
-| Operación | Total | Proyección mes | Límite Spark | % |
-|-----------|-------|----------------|--------------|---|
-| Lecturas | 13K | ~52K | 1.5M | 3.5% |
-| Escrituras | 384 | ~1.5K | 600K | 0.25% |
-| Eliminaciones | 144 | ~576 | 600K | 0.01% |
-
----
-
-## 🧪 Plan de Testing: Semana de Producción Real
-
-### Objetivo
-Validar que el sistema funciona correctamente con carga real durante 1 semana completa y proyectar si podemos escalar a 4x (400 turnos/mes) sin pagar.
-
-### Período de Prueba
-**Fecha inicio:** ___/___/2026  
-**Fecha fin:** ___/___/2026
-
-### Checklist Diario
-
-```
-[ ] Verificar que emails de confirmación llegaron
-[ ] Verificar que recordatorios se enviaron (9am)
-[ ] Revisar logs de Vercel por errores
-[ ] Anotar cantidad de turnos del día
-```
-
-### Métricas a Registrar
-
-| Día | Turnos | Emails OK | Errores | Notas |
-|-----|--------|-----------|---------|-------|
-| Lun | | | | |
-| Mar | | | | |
-| Mié | | | | |
-| Jue | | | | |
-| Vie | | | | |
-| Sáb | | | | |
-
-### Al Finalizar la Semana
-
-1. **Captura de pantalla** de uso en:
-   - Vercel → Usage
-   - Firebase → Usage and billing
-   - Resend → Logs (count de emails)
-
-2. **Calcular proyección 4x:**
-   - Si la semana usó X% → mes completo = X × 4
-   - Si mes completo × 4 < 80% del límite → ✅ Escalable gratis
+### Resend (Emails)
+| Recurso | Usado (7d) | Proyección Mes | Límite | % |
+|---------|------------|----------------|--------|---|
+| Emails Transaccionales| 209 | 895 | 3,000 | 30% |
 
 ---
 
 ## 📈 Análisis de Escalabilidad a 4x (400 turnos/mes)
 
-### Proyección basada en datos reales
+### Proyección basada en datos reales recopilados
 
-| Servicio | Uso actual/mes | Proyección 4x | Límite Free | ¿Alcanza? |
-|----------|---------------|---------------|-------------|-----------|
-| **Vercel Requests** | ~88K | ~352K | 1M | ✅ 35% |
-| **Vercel Bandwidth** | ~1.5 GB | ~6 GB | 100 GB | ✅ 6% |
-| **Firestore Reads** | ~52K | ~208K | 1.5M | ✅ 14% |
-| **Firestore Writes** | ~1.5K | ~6K | 600K | ✅ 1% |
-| **Emails** | ~300 | ~1,200 | 3K | ✅ 40% |
+| Servicio | Uso proyectado 1x | Proyección 4x | Límite Free | ¿Alcanza? |
+|----------|-------------------|---------------|-------------|-----------|
+| **Vercel Requests** | 261K | 1.04M | 1M | ⚠️ **Límite** |
+| **Vercel Bandwidth** | 4.6 GB | 18 GB | 100 GB | ✅ Súper OK |
+| **Firestore Reads** | 145K | 580K | 1.5M | ✅ 38% |
+| **Resend Emails** | 895 | 3,580 | 3,000 | ⚠️ **Límite** |
 
-### Veredicto Preliminar
+### Veredicto de Escalabilidad
 
-**✅ Podemos escalar a 4x sin pagar nada.**
+**✅ El sistema actual soporta hasta ~300 turnos/mes ($0 costo).**
 
-El recurso más ajustado sería:
-- **Emails Resend:** 40% del límite free (1,200 de 3,000)
-- **Firestore Reads:** 14% del límite (si hay picos, monitorear)
+Para llegar a los **400 turnos/mes** (crecimiento 4x), debemos monitorear dos cuellos de botella:
+
+1. **Vercel Edge Requests:** Estamos proyectando 1.04M (el límite es 1M). 
+   - *Solución:* Si nos pasamos frecuente, pasar a Vercel Pro ($20/mo) o optimizar llamadas al API.
+2. **Resend Emails:** Con 4x turnos, el volumen de emails (confirmación + recordatorios) llegaría a ~3,500.
+   - *Solución:* Pasar al plan Pro de Resend o agrupar recordatorios diarios/optivos.
 
 ### Cuándo empezar a pagar
 
 | Escenario | Acción |
 |-----------|--------|
-| < 500 turnos/mes | Seguir gratis |
-| 500-1000 turnos/mes | Considerar Blaze ($2-5/mes) |
-| > 1000 turnos/mes | Vercel Pro + Blaze (~$25/mes) |
+| < 300 turnos/mes | 🆓 100% Gratis. |
+| 300 - 450 turnos/mes | ⚠️ Monitorear Resend y Vercel. Considerar Vercel Pro ($20). |
+| > 500 turnos/mes | 💳 Pasar a Vercel Pro + Resend Pro. Registro como negocio real. |
 
 ---
 

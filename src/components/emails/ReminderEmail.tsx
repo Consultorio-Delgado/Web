@@ -20,7 +20,7 @@ export const ReminderEmail = ({
 
     return (
         <EmailLayout
-            previewText={`Recordatorio de turno: Mañana con ${prefix} ${doctorName}`}
+            previewText={`Recordatorio de turno: Pasado mañana con ${prefix} ${doctorName}`}
             heading="Recordatorio de Turno"
         >
             <Section className="my-[20px]">
@@ -28,7 +28,7 @@ export const ReminderEmail = ({
                     Hola <strong>{patientName}</strong>,
                 </Text>
                 <Text className="text-[14px] leading-[24px] text-black">
-                    Te recordamos que tienes un turno programado para <strong>mañana</strong>.
+                    Te recordamos que tienes un turno programado para <strong>pasado mañana</strong>.
                 </Text>
                 <Text className="text-[14px] leading-[24px] text-black">
                     Por favor, recuerda llegar 10 minutos antes.
@@ -62,6 +62,27 @@ export const ReminderEmail = ({
             <Text className="text-[12px] text-gray-500 mt-4">
                 Si no puedes asistir, por favor cancela tu turno desde el portal para liberar el horario a otro paciente.
             </Text>
+
+            <Section style={{ textAlign: 'center' as const, marginTop: '20px', marginBottom: '20px' }}>
+                <Text style={{ fontSize: '13px', color: '#475569', margin: '0 0 8px 0' }}>
+                    Seguinos en Instagram para las últimas novedades informativas del consultorio
+                </Text>
+                <a
+                    href="https://www.instagram.com/consultorio.delgado/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#E1306C', textDecoration: 'none', fontSize: '14px', fontWeight: 600 }}
+                >
+                    <img
+                        src="https://cdn-icons-png.flaticon.com/512/174/174855.png"
+                        width="20"
+                        height="20"
+                        alt="Instagram"
+                        style={{ verticalAlign: 'middle' }}
+                    />
+                    @consultorio.delgado
+                </a>
+            </Section>
         </EmailLayout>
     );
 };
