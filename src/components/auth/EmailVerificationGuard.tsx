@@ -89,23 +89,20 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
 
         setUpdatingEmail(true);
         try {
-            const { updateEmail } = await import("firebase/auth");
+            const { verifyBeforeUpdateEmail } = await import("firebase/auth");
             const { userService } = await import("@/services/user");
 
             if (auth.currentUser) {
-                // 1. Update Firebase Auth
-                await updateEmail(auth.currentUser, newEmail);
+                // 1. Send verification to new email (email only changes after user clicks the link)
+                await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
 
-                // 2. Update Firestore Profile
+                // 2. Update Firestore Profile with new email
                 await userService.updateUserProfile(auth.currentUser.uid, { email: newEmail });
 
                 // 3. Refresh Profile in AuthContext
                 await refreshProfile();
 
-                // 4. Send new verification email
-                await sendEmailVerification(auth.currentUser);
-
-                toast.success("Email actualizado correctamente. Se envió un nuevo link de verificación.");
+                toast.success("Se envió un link de verificación a " + newEmail + ". Tu email se actualizará cuando confirmes el link.");
                 setIsEditingEmail(false);
             }
         } catch (error: any) {
