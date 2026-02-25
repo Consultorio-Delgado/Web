@@ -621,6 +621,11 @@ export default function DailyAgendaPage() {
                                                             <User className="h-3 w-3" /> Primera vez
                                                         </span>
                                                     )}
+                                                    {(appt.type === 'Sobreturno' || appt.notes?.includes('Sobreturno')) && (
+                                                        <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                                            <CalendarPlus className="h-3 w-3" /> Sobreturno
+                                                        </span>
+                                                    )}
                                                     {appt.consultationType && (
                                                         <span className="flex items-center gap-1 text-blue-600 font-medium">
                                                             <FileText className="h-3 w-3" />

@@ -127,12 +127,16 @@ export const availabilityService = {
                 status = 'past';
             }
 
-            // Check Occupied
-            const foundAppt = existingAppointments.find(appt =>
+            // Check Occupied — prefer Sobreturno/real patient over Bloqueado when both exist
+            const allApptAtTime = existingAppointments.filter(appt =>
                 appt.status !== 'cancelled' &&
                 appt.time === timeString &&
-                appt.doctorId === doctor.id // Ensure it belongs to this doctor
+                appt.doctorId === doctor.id
             );
+
+            // Pick real patient appointment first; fall back to blocked only if nothing else
+            const foundAppt = allApptAtTime.find(a => a.type !== 'Bloqueado' && a.patientId !== 'blocked')
+                ?? allApptAtTime[0];
 
             if (foundAppt) {
                 if (foundAppt.type === 'Bloqueado' || foundAppt.patientId === 'blocked') {

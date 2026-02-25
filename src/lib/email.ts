@@ -107,7 +107,7 @@ export const emailService = {
             await resend.emails.send({
                 from: FROM_EMAIL,
                 to: data.to,
-                subject: 'Recordatorio de Turno - Mañana (NO RESPONDER MAIL)',
+                subject: 'Recordatorio de Turno - Pasado mañana (NO RESPONDER MAIL)',
                 html: html
             });
             return { success: true };
