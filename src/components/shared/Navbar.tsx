@@ -166,6 +166,12 @@ function NavItems({ mobile = false, onClick }: { mobile?: boolean; onClick?: () 
             <Link href="/portal/prescriptions" className={className} onClick={onClick}>
                 Recetas
             </Link>
+            <Link href="/portal/studies" className={className} onClick={onClick}>
+                Estudios
+            </Link>
+            <Link href="/portal/virtual-consultation" className={className} onClick={onClick}>
+                Consulta Virtual
+            </Link>
         </>
     );
 }

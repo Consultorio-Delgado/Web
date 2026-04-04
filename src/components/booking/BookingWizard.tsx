@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar as CalendarIcon, Clock, User as UserIcon, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, Clock, User as UserIcon, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, ArrowRight, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -355,7 +355,10 @@ export function BookingWizard() {
 
         } catch (error: any) {
             console.error(error);
-            if (error?.message?.includes('LIMIT_EXCEEDED')) {
+            if (error?.message?.includes('PATIENT_BLOCKED')) {
+                toast.error("Tu cuenta está temporalmente bloqueada para reservar turnos.");
+                await refreshProfile(); // Refresh to show the blocked banner
+            } else if (error?.message?.includes('LIMIT_EXCEEDED')) {
                 toast.error("Ya tienes un turno activo con este profesional.");
                 setDoctorLimitReached(selectedDoctor ? `${selectedDoctor.lastName}, ${selectedDoctor.firstName}` : 'este profesional');
             } else {
@@ -378,6 +381,44 @@ export function BookingWizard() {
         return (
             <div className="flex justify-center items-center min-h-[400px]">
                 <Loader2 className="animate-spin text-primary h-8 w-8" />
+            </div>
+        );
+    }
+
+    // Show patient blocked banner
+    // blockedUntil comes from Firestore as a Timestamp object, need to convert properly
+    const blockedUntilDate = profile?.blockedUntil 
+        ? ((profile.blockedUntil as any).toDate ? (profile.blockedUntil as any).toDate() : new Date(profile.blockedUntil))
+        : null;
+    const isPatientBlocked = blockedUntilDate && blockedUntilDate > new Date();
+    if (isPatientBlocked) {
+        return (
+            <div className="flex justify-center items-center min-h-[400px] p-4">
+                <Card className="max-w-md w-full text-center border-red-300 bg-red-50">
+                    <CardHeader>
+                        <div className="mx-auto bg-red-100 rounded-full p-4 w-fit mb-4">
+                            <Ban className="h-12 w-12 text-red-600" />
+                        </div>
+                        <CardTitle className="text-red-700">Cuenta temporalmente bloqueada</CardTitle>
+                        <CardDescription className="text-red-600">
+                            Debido a la cancelación de un turno con menos de 48hs de anticipación, tu cuenta ha sido temporalmente bloqueada para reservar nuevos turnos.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="bg-white border border-red-200 rounded-lg p-4">
+                            <p className="text-sm text-slate-700">
+                                Podrás volver a reservar a partir del:
+                            </p>
+                            <p className="text-lg font-bold text-red-700 mt-1">
+                                {format(blockedUntilDate!, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}
+                            </p>
+                        </div>
+                        <Button onClick={() => router.push('/portal')} className="w-full">
+                            <ArrowRight className="mr-2 h-4 w-4" />
+                            Ver Mis Turnos
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         );
     }

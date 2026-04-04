@@ -62,13 +62,14 @@ export function PatientsTable({ data, onUpdate }: Props) {
                             <TableHead>DNI</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Obra Social</TableHead>
+                            <TableHead>Plan</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredData.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                     No se encontraron pacientes.
                                 </TableCell>
                             </TableRow>
@@ -81,20 +82,23 @@ export function PatientsTable({ data, onUpdate }: Props) {
                                     <TableCell>{patient.dni || "-"}</TableCell>
                                     <TableCell>{patient.email}</TableCell>
                                     <TableCell>{patient.insurance || "-"}</TableCell>
-                                    <TableCell className="text-right space-x-2">
-                                        <Link href={`/doctor/patients/${patient.uid}`}>
-                                            <Button variant="ghost" size="icon" title="Ver Historia Clínica">
-                                                <FileText className="h-4 w-4 text-slate-500" />
+                                    <TableCell>{patient.plan || "-"}</TableCell>
+                                    <TableCell className="text-right whitespace-nowrap">
+                                        <div className="inline-flex items-center gap-1">
+                                            <Link href={`/doctor/patients/${patient.uid}`}>
+                                                <Button variant="ghost" size="icon" title="Ver Historia Clínica">
+                                                    <FileText className="h-4 w-4 text-slate-500" />
+                                                </Button>
+                                            </Link>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                title="Editar Datos"
+                                                onClick={() => handleEdit(patient)}
+                                            >
+                                                <Edit className="h-4 w-4 text-slate-500" />
                                             </Button>
-                                        </Link>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            title="Editar Datos"
-                                            onClick={() => handleEdit(patient)}
-                                        >
-                                            <Edit className="h-4 w-4 text-slate-500" />
-                                        </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))

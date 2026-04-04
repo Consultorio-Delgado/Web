@@ -199,10 +199,14 @@ export default async function LandingPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="hidden sm:flex">
+                  <div className="hidden sm:flex flex-col items-end gap-3 justify-center">
+                    <div className="text-sm text-slate-600 font-medium text-right bg-slate-100 px-3 py-1.5 rounded-lg">
+                      <p>Martes 14-18hs</p>
+                      <p>Miércoles 14-18hs</p>
+                    </div>
                     <Link href="/portal/new-appointment">
                       <Button variant="ghost" className="group-hover:translate-x-2 transition-transform">
-                        Ver Horarios <ArrowRight className="ml-2 h-4 w-4" />
+                        Sacar turno <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </Link>
                   </div>
@@ -241,7 +245,7 @@ export default async function LandingPage() {
                 OSDE
               </div>
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-2 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-10">
-                <p className="text-slate-800 font-medium text-sm">Planes: 210, 310, 410, 450, 510, 550</p>
+                <p className="text-slate-800 font-medium text-sm">Planes: 030, 210, 260, 310, 360, 410, 430, 450, 510, 550, 700</p>
                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"></div>
               </div>
             </div>
@@ -257,9 +261,15 @@ export default async function LandingPage() {
               </div>
             </div>
 
-            {/* Galeno */}
-            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
-              Galeno**
+            {/* Galeno with tooltip */}
+            <div className="group relative">
+              <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light cursor-default hover:border-slate-500 transition-colors">
+                Galeno**
+              </div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-2 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-10">
+                <p className="text-slate-800 font-medium text-sm">** No se atienden pacientes por primera vez.</p>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"></div>
+              </div>
             </div>
 
             {/* Omint with tooltip */}
@@ -285,14 +295,20 @@ export default async function LandingPage() {
               </div>
             </div>
 
-            {/* OSA */}
-            <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light">
-              OSA*
+            {/* OSA with tooltip */}
+            <div className="group relative">
+              <div className="px-8 py-3 rounded-full border border-slate-700 bg-slate-800/50 text-slate-200 font-light cursor-default hover:border-slate-500 transition-colors">
+                OSA*
+              </div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-2 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-10">
+                <p className="text-slate-800 font-medium text-sm">* Solo Dr. Capparelli.</p>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"></div>
+              </div>
             </div>
           </div>
 
           <div className="text-sm text-slate-500 space-y-2 font-light">
-            <p>* Solo Dr. Capparelli. Consultar por planes específicos.</p>
+            <p>* Solo Dr. Capparelli.</p>
             <p>** No se atienden pacientes por primera vez.</p>
           </div>
         </div>

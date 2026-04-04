@@ -47,5 +47,39 @@ export const auditService = {
             console.error("Failed to fetch audit logs:", error);
             return [];
         }
+    },
+    async getLogsForAppointments(action: AuditAction, appointmentIds: string[]) {
+        if (!appointmentIds || appointmentIds.length === 0) return [];
+        try {
+            const { query, where, getDocs } = await import("firebase/firestore");
+            
+            // Firestore 'in' queries are limited to 30 elements.
+            const chunks = [];
+            for (let i = 0; i < appointmentIds.length; i += 30) {
+                chunks.push(appointmentIds.slice(i, i + 30));
+            }
+            
+            let allLogs: any[] = [];
+            
+            for (const chunk of chunks) {
+                const q = query(
+                    collection(db, "audit_logs"),
+                    where("action", "==", action),
+                    where("metadata.appointmentId", "in", chunk)
+                );
+                const snapshot = await getDocs(q);
+                const logs = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    timestamp: doc.data().timestamp?.toDate() || new Date()
+                }));
+                allLogs = allLogs.concat(logs);
+            }
+            
+            return allLogs;
+        } catch (error) {
+            console.error("Failed to fetch audit logs for appointments:", error);
+            return [];
+        }
     }
 };

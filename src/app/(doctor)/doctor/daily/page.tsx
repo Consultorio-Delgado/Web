@@ -79,13 +79,22 @@ interface DailySlot {
     doctor: any; // Added doctor info to slot to identify owner
 }
 
+interface CancelledAppointmentData {
+    appointment: Appointment;
+    cancelledAt?: Date;
+    cancelReason?: string;
+    cancelledBy?: string;
+}
+
 export default function DailyAgendaPage() {
     const { user, profile } = useAuth();
-    const [date, setDate] = useState<Date>(addDays(new Date(), 1));
+    const [date, setDate] = useState<Date>(new Date());
     const [slots, setSlots] = useState<DailySlot[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [doctor, setDoctor] = useState<any>(null);
+    const [cancelledData, setCancelledData] = useState<CancelledAppointmentData[]>([]);
+    const [blockedData, setBlockedData] = useState<CancelledAppointmentData[]>([]);
 
     // Concurrent View State
     const [viewAllDoctors, setViewAllDoctors] = useState(false);
@@ -93,6 +102,36 @@ export default function DailyAgendaPage() {
     // Multi-Select State
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
+
+    // DrApp patient map: normalized DNI -> DrApp patient ID
+    const [drappMap, setDrappMap] = useState<Map<string, string>>(new Map());
+
+    // Normalize DNI for matching: strip leading zeros, lowercase, remove "dni" prefix
+    const normalizeDni = (dni: string): string => {
+        if (!dni) return '';
+        return dni.toLowerCase().replace(/^dni/, '').replace(/^0+/, '').trim();
+    };
+
+    // Fetch DrApp patients once on mount
+    useEffect(() => {
+        const fetchDrapp = async () => {
+            try {
+                const res = await fetch('/api/drapp-patients');
+                const data = await res.json();
+                const map = new Map<string, string>();
+                (data.patients || []).forEach((p: { dni: string; id: string }) => {
+                    const normalizedDni = normalizeDni(p.dni);
+                    if (normalizedDni && !map.has(normalizedDni)) {
+                        map.set(normalizedDni, p.id);
+                    }
+                });
+                setDrappMap(map);
+            } catch (e) {
+                console.error('Error fetching DrApp patients:', e);
+            }
+        };
+        fetchDrapp();
+    }, []);
 
     useEffect(() => {
         const fetchDoctor = async () => {
@@ -113,6 +152,38 @@ export default function DailyAgendaPage() {
 
             // 1. Get Appointments for the day (all of them, then filter needed)
             const allAppointments = await adminService.getDailyAppointments(date);
+
+            let cancelledAppts: Appointment[] = [];
+            if (viewAllDoctors) {
+                 cancelledAppts = allAppointments.filter(a => a.status === 'cancelled');
+            } else {
+                 cancelledAppts = allAppointments.filter(a => a.status === 'cancelled' && a.doctorId === doctor.id);
+            }
+
+            if (cancelledAppts.length > 0) {
+                const { auditService } = await import("@/services/auditService");
+                const logs = await auditService.getLogsForAppointments('APPOINTMENT_CANCELLED', cancelledAppts.map(a => a.id!));
+                
+                const combinedData = cancelledAppts.map(appt => {
+                    const log = logs.find(l => l.metadata?.appointmentId === appt.id);
+                    return {
+                        appointment: appt,
+                        cancelledAt: log?.timestamp,
+                        cancelReason: log?.metadata?.reason,
+                        cancelledBy: log?.performedBy
+                    };
+                });
+                combinedData.sort((a, b) => a.appointment.time.localeCompare(b.appointment.time));
+                
+                const realCancelled = combinedData.filter(d => d.appointment.patientId !== 'blocked' && d.appointment.patientName !== 'Bloqueado');
+                const blocked = combinedData.filter(d => d.appointment.patientId === 'blocked' || d.appointment.patientName === 'Bloqueado');
+                
+                setCancelledData(realCancelled);
+                setBlockedData(blocked);
+            } else {
+                setCancelledData([]);
+                setBlockedData([]);
+            }
 
             let finalSlots: DailySlot[] = [];
 
@@ -599,17 +670,28 @@ export default function DailyAgendaPage() {
                                         {slot.status === 'occupied' && appt && (
                                             <div className="space-y-2">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="font-bold text-lg">{appt.patientName}</span>
+                                                    <Link href={`/doctor/patients/${appt.patientId}`} className="font-bold text-lg text-blue-700 hover:underline">
+                                                        {appt.patientName}
+                                                    </Link>
                                                     {!isMySlot && (
                                                         <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 text-xs">
                                                             {slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {slot.doctor.lastName}
                                                         </Badge>
                                                     )}
-                                                    <Link href={`/doctor/patients/${appt.patientId}`}>
-                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
-                                                            <Stethoscope className="h-3 w-3 mr-1" /> Historia
-                                                        </Button>
-                                                    </Link>
+                                                    {(() => {
+                                                        const drappId = appt.patientDni ? drappMap.get(normalizeDni(appt.patientDni)) : undefined;
+                                                        return drappId ? (
+                                                            <a
+                                                                href={`https://app.drapp.la/teams/40fc3e9c/consumers/${drappId}/ehr`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
+                                                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50">
+                                                                    <Stethoscope className="h-3 w-3 mr-1" /> DrApp
+                                                                </Button>
+                                                            </a>
+                                                        ) : null;
+                                                    })()}
                                                     {isArrived && appt.arrivedAt && (
                                                         <WaitingTimer arrivedAt={appt.arrivedAt} />
                                                     )}
@@ -784,6 +866,117 @@ export default function DailyAgendaPage() {
                             </Card>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Cancelled Section */}
+            {cancelledData.length > 0 && (
+                <div className="mt-12 space-y-4">
+                    <h2 className="text-xl font-bold text-red-800 flex items-center gap-2">
+                        <XCircle className="h-5 w-5" /> Turnos Cancelados
+                    </h2>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {cancelledData.map(({ appointment: appt, cancelledAt, cancelReason, cancelledBy }, idx) => {
+                            let displayReason = cancelReason;
+                            if (cancelReason === 'Cancelled by user') {
+                                if (cancelledBy === appt.patientId) {
+                                    displayReason = "Cancelado por paciente";
+                                } else if (cancelledBy === 'secondi') {
+                                    displayReason = "Cancelado por Dra. Verónica";
+                                } else if (cancelledBy === 'capparelli' || cancelledBy?.includes('capparelli')) {
+                                    displayReason = "Cancelado por Dr. Germán";
+                                } else if (cancelledBy === appt.doctorId) {
+                                    displayReason = `Cancelado por ${appt.doctorName}`;
+                                } else {
+                                    displayReason = "Cancelado por clínica";
+                                }
+                            }
+                            return (
+                                <Card key={`canc-${appt.id}-${idx}`} className="bg-red-50/50 border-red-200">
+                                    <CardContent className="p-4 flex flex-col gap-2">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4 text-red-500" />
+                                                    <span className="font-bold text-lg text-red-700">{appt.time}</span>
+                                                    <Badge variant="outline" className="text-red-600 border-red-200 bg-white">
+                                                        Cancelado
+                                                    </Badge>
+                                                </div>
+                                                <Link href={`/doctor/patients/${appt.patientId}`} className="font-semibold text-blue-700 hover:underline mt-1 block">
+                                                    {appt.patientName}
+                                                </Link>
+                                                {viewAllDoctors && appt.doctorName && (
+                                                    <span className="text-xs text-slate-500 block mt-1">
+                                                        {!appt.doctorName.includes('Dr') && !appt.doctorName.includes('Dra') ? 'Dr./Dra. ' : ''}{appt.doctorName}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <hr className="border-red-100 my-1" />
+                                        <div className="text-sm text-slate-600 space-y-1 mt-1">
+                                            <p>
+                                                <span className="font-medium">Sacado el:</span> {appt.createdAt ? format(appt.createdAt, "dd/MM/yyyy HH:mm") : "N/A"}
+                                            </p>
+                                            <p>
+                                                <span className="font-medium">Cancelado el:</span> {cancelledAt ? format(cancelledAt, "dd/MM/yyyy HH:mm") : "N/A"}
+                                            </p>
+                                            {displayReason && (
+                                                <p className="text-red-600 italic text-xs mt-1">
+                                                    Motivo: {displayReason}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* Blocked Section */}
+            {blockedData.length > 0 && (
+                <div className="mt-8 space-y-4">
+                    <h2 className="text-xl font-bold text-orange-800 flex items-center gap-2">
+                        <Lock className="h-5 w-5" /> Turnos Bloqueados
+                    </h2>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {blockedData.map(({ appointment: appt, cancelledAt }, idx) => (
+                            <Card key={`block-${appt.id}-${idx}`} className="bg-orange-50/50 border-orange-200">
+                                <CardContent className="p-4 flex flex-col gap-2">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <Clock className="h-4 w-4 text-orange-500" />
+                                                <span className="font-bold text-lg text-orange-700">{appt.time}</span>
+                                                <Badge variant="outline" className="text-orange-600 border-orange-200 bg-white">
+                                                    Bloqueado
+                                                </Badge>
+                                            </div>
+                                            <span className="font-semibold text-orange-800 mt-1 block">
+                                                Bloqueo de horario (Desbloqueado)
+                                            </span>
+                                            {viewAllDoctors && appt.doctorName && (
+                                                <span className="text-xs text-orange-600 block mt-1">
+                                                    Profesional: {!appt.doctorName.includes('Dr') && !appt.doctorName.includes('Dra') ? 'Dr./Dra. ' : ''}{appt.doctorName}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <hr className="border-orange-100 my-1" />
+                                    <div className="text-sm text-orange-700 space-y-1 mt-1">
+                                        <p>
+                                            <span className="font-medium">Bloqueado el:</span> {appt.createdAt ? format(appt.createdAt, "dd/MM/yyyy HH:mm") : "N/A"}
+                                        </p>
+                                        <p>
+                                            <span className="font-medium">Desbloqueado el:</span> {cancelledAt ? format(cancelledAt, "dd/MM/yyyy HH:mm") : "N/A"}
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
                 </div>
             )}
 

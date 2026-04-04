@@ -41,7 +41,27 @@ export const appointmentService = {
         try {
             // Check if patient already has an active appointment with THIS specific doctor
             // Skip this check for blocked slots or if patientId is 'blocked'
-            if (appointmentData.patientId !== 'blocked') {
+            if (appointmentData.patientId !== 'blocked' && !appointmentData.patientId?.startsWith('manual_')) {
+                // Check if patient is blocked from booking (late cancellation penalty)
+                // Only enforce this when the PATIENT is booking for themselves, not when a doctor creates a sobreturno
+                const { auth } = await import("@/lib/firebase");
+                const currentUserId = auth.currentUser?.uid;
+                const isPatientBookingForSelf = currentUserId === appointmentData.patientId;
+
+                if (isPatientBookingForSelf) {
+                    const { getDoc } = await import("firebase/firestore");
+                    const patientSnap = await getDoc(doc(db, "users", appointmentData.patientId));
+                    if (patientSnap.exists()) {
+                        const patientData = patientSnap.data();
+                        if (patientData.blockedUntil) {
+                            const blockedUntilDate = patientData.blockedUntil.toDate ? patientData.blockedUntil.toDate() : new Date(patientData.blockedUntil);
+                            if (blockedUntilDate > new Date()) {
+                                throw new Error("PATIENT_BLOCKED: Tu cuenta está temporalmente bloqueada para reservar turnos debido a una cancelación tardía.");
+                            }
+                        }
+                    }
+                }
+
                 const activeWithDoctor = await this.countActiveAppointments(appointmentData.patientId, appointmentData.doctorId);
                 if (activeWithDoctor >= 1) {
                     throw new Error("LIMIT_EXCEEDED: Ya tienes un turno activo con este profesional. Puedes sacar turno con otro profesional.");

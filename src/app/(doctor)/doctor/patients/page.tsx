@@ -29,7 +29,7 @@ export default function PatientsPage() {
     const handleExport = () => {
         if (!patients.length) return;
 
-        const headers = ["Nombre", "Apellido", "DNI", "Email", "Teléfono", "Obra Social"];
+        const headers = ["Nombre", "Apellido", "DNI", "Email", "Teléfono", "Obra Social", "Plan"];
         const csvContent = [
             headers.join(","),
             ...patients.map(p => [
@@ -38,7 +38,8 @@ export default function PatientsPage() {
                 `"${p.dni || ''}"`,
                 `"${p.email}"`,
                 `"${p.phone || ''}"`,
-                `"${p.insurance || ''}"`
+                `"${p.insurance || ''}"`,
+                `"${p.plan || ''}"`
             ].join(","))
         ].join("\n");
 

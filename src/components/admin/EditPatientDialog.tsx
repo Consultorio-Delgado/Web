@@ -77,113 +77,118 @@ export function EditPatientDialog({ patient, open, onOpenChange, onSuccess }: Pr
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-[425px] flex flex-col max-h-[90vh] p-0 gap-0">
+                {/* Fixed Header */}
+                <DialogHeader className="px-6 pt-6 pb-4 border-b">
                     <DialogTitle>Editar Paciente</DialogTitle>
                     <DialogDescription>Modifique los datos personales del paciente.</DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+
+                {/* Scrollable Body */}
+                <div className="flex-1 overflow-y-auto px-6 py-4">
+                    <form id="edit-patient-form" onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="firstName">Nombre</Label>
+                                <Input
+                                    id="firstName"
+                                    value={formData.firstName}
+                                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lastName">Apellido</Label>
+                                <Input
+                                    id="lastName"
+                                    value={formData.lastName}
+                                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="dni">DNI</Label>
+                                <Input
+                                    id="dni"
+                                    value={formData.dni}
+                                    onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+                                <Input
+                                    id="birthDate"
+                                    type="date"
+                                    value={formData.birthDate}
+                                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
-                            <Label htmlFor="firstName">Nombre</Label>
+                            <Label htmlFor="email">Email (No editable)</Label>
                             <Input
-                                id="firstName"
-                                value={formData.firstName}
-                                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                required
+                                id="email"
+                                value={formData.email}
+                                disabled
+                                className="bg-slate-100"
                             />
                         </div>
+
                         <div className="space-y-2">
-                            <Label htmlFor="lastName">Apellido</Label>
+                            <Label htmlFor="phone">Teléfono</Label>
                             <Input
-                                id="lastName"
-                                value={formData.lastName}
-                                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                required
+                                id="phone"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                             />
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="dni">DNI</Label>
+                            <Label htmlFor="insurance">Obra Social</Label>
                             <Input
-                                id="dni"
-                                value={formData.dni}
-                                onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                                id="insurance"
+                                value={formData.insurance}
+                                onChange={(e) => setFormData({ ...formData, insurance: e.target.value })}
+                                placeholder="Ej. OSDE 210"
                             />
                         </div>
+
                         <div className="space-y-2">
-                            <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+                            <Label htmlFor="insuranceNumber">Número de Afiliado</Label>
                             <Input
-                                id="birthDate"
-                                type="date"
-                                value={formData.birthDate}
-                                onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                                id="insuranceNumber"
+                                value={formData.insuranceNumber}
+                                onChange={(e) => setFormData({ ...formData, insuranceNumber: e.target.value })}
+                                placeholder="Ej: 123456789"
                             />
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Email (No editable)</Label>
-                        <Input
-                            id="email"
-                            value={formData.email}
-                            disabled
-                            className="bg-slate-100"
-                        />
-                    </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="plan">Plan</Label>
+                            <Input
+                                id="plan"
+                                value={formData.plan}
+                                onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
+                                placeholder="Ej: 310, 510, A1"
+                            />
+                        </div>
+                    </form>
+                </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="phone">Teléfono</Label>
-                        <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="insurance">Obra Social</Label>
-                        <Input
-                            id="insurance"
-                            value={formData.insurance}
-                            onChange={(e) => setFormData({ ...formData, insurance: e.target.value })}
-                            placeholder="Ej. OSDE 210"
-                        />
-                    </div>
-
-                    {/* New input field for insuranceNumber */}
-                    <div className="space-y-2">
-                        <Label htmlFor="insuranceNumber">Número de Afiliado</Label>
-                        <Input
-                            id="insuranceNumber"
-                            value={formData.insuranceNumber}
-                            onChange={(e) => setFormData({ ...formData, insuranceNumber: e.target.value })}
-                            placeholder="Ej: 123456789"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="plan">Plan</Label>
-                        <Input
-                            id="plan"
-                            value={formData.plan}
-                            onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
-                            placeholder="Ej: 310, 510, A1"
-                        />
-                    </div>
-
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                            Cancelar
-                        </Button>
-                        <Button type="submit" disabled={loading}>
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Guardar Cambios
-                        </Button>
-                    </DialogFooter>
-                </form>
+                {/* Fixed Footer */}
+                <DialogFooter className="px-6 py-4 border-t">
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        Cancelar
+                    </Button>
+                    <Button type="submit" form="edit-patient-form" disabled={loading}>
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Guardar Cambios
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

@@ -4,23 +4,22 @@ import Link from "next/link";
 import { PatientSearch } from "@/components/doctor/PatientSearch";
 import { SobreturnoDialog } from "@/components/appointments/SobreturnoDialog";
 
-import { useState, useEffect } from "react";
-// ... (existing imports)
-
-// ... (existing imports)
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { adminService } from "@/services/adminService";
 import { appointmentService } from "@/services/appointments";
 import { doctorService } from "@/services/doctorService";
 import { availabilityService } from "@/services/availabilityService";
 import { exceptionService } from "@/services/exceptionService";
 import { Appointment, Doctor } from "@/types";
-import { Loader2, Unlock, ShieldAlert, User, Trash2 } from "lucide-react";
+import { Loader2, Unlock, ShieldAlert, User, Trash2, Stethoscope, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -35,15 +34,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+interface MonthlySlot {
+    time: string;
+    status: string;
+    appointment?: Appointment;
+    doctor: Doctor;
+}
+
 export default function AppointmentsPage() {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-    const [daySlots, setDaySlots] = useState<{ time: string, status: string, appointment?: Appointment }[]>([]);
+    const [daySlots, setDaySlots] = useState<MonthlySlot[]>([]);
     const [loading, setLoading] = useState(false);
-    const { profile } = useAuth(); // Need doctor profile for schedule
+    const { profile } = useAuth();
     const [doctor, setDoctor] = useState<Doctor | null>(null);
-    const [busyDays, setBusyDays] = useState<Set<string>>(new Set()); // Days with appointments
-    const [blockedDays, setBlockedDays] = useState<Set<string>>(new Set()); // Days fully blocked by exception
+    const [busyDays, setBusyDays] = useState<Set<string>>(new Set());
+    const [blockedDays, setBlockedDays] = useState<Set<string>>(new Set());
     const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+
+    // Multi-Doctor View State
+    const [viewAllDoctors, setViewAllDoctors] = useState(false);
 
     // Multi-Select State
     const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -52,6 +61,35 @@ export default function AppointmentsPage() {
     // Sobreturno State
     const [isSobreturnoOpen, setIsSobreturnoOpen] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    // DrApp patient map: normalized DNI -> DrApp patient ID
+    const [drappMap, setDrappMap] = useState<Map<string, string>>(new Map());
+
+    const normalizeDni = (dni: string): string => {
+        if (!dni) return '';
+        return dni.toLowerCase().replace(/^dni/, '').replace(/^0+/, '').trim();
+    };
+
+    // Fetch DrApp patients once on mount
+    useEffect(() => {
+        const fetchDrapp = async () => {
+            try {
+                const res = await fetch('/api/drapp-patients');
+                const data = await res.json();
+                const map = new Map<string, string>();
+                (data.patients || []).forEach((p: { dni: string; id: string }) => {
+                    const normalizedDni = normalizeDni(p.dni);
+                    if (normalizedDni && !map.has(normalizedDni)) {
+                        map.set(normalizedDni, p.id);
+                    }
+                });
+                setDrappMap(map);
+            } catch (e) {
+                console.error('Error fetching DrApp patients:', e);
+            }
+        };
+        fetchDrapp();
+    }, []);
 
     // Fetch Doctor Profile (Self)
     useEffect(() => {
@@ -108,34 +146,53 @@ export default function AppointmentsPage() {
         fetchBusyAndBlockedDays();
     }, [doctor, currentMonth]);
 
-    // Fetch slots whenever selectedDate or doctor changes
-    useEffect(() => {
+    // Fetch slots whenever selectedDate, doctor, or viewAllDoctors changes
+    const fetchData = useCallback(async () => {
         if (!selectedDate || !doctor) return;
+        setLoading(true);
+        try {
+            const allAppointments = await adminService.getDailyAppointments(selectedDate);
 
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // 1. Get appointments for the day
-                const appointments = await adminService.getDailyAppointments(selectedDate);
+            let finalSlots: MonthlySlot[] = [];
 
-                // 2. Generate all slots with status
-                const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
-                setDaySlots(slots);
-            } catch (error) {
-                console.error("Failed to fetch slots", error);
-            } finally {
-                setLoading(false);
+            if (viewAllDoctors) {
+                const allDoctors = await doctorService.getAllDoctors();
+                const promises = allDoctors.map(async (doc) => {
+                    const docAppointments = allAppointments.filter(a => a.doctorId === doc.id);
+                    const slots = await availabilityService.getAllDaySlots(doc, selectedDate, docAppointments);
+                    return slots.map(s => ({ ...s, doctor: doc }));
+                });
+                const results = await Promise.all(promises);
+                finalSlots = results.flat().sort((a, b) => a.time.localeCompare(b.time));
+            } else {
+                const myAppointments = allAppointments.filter(a => a.doctorId === doctor.id);
+                const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, myAppointments);
+                finalSlots = slots.map(s => ({ ...s, doctor: doctor }));
             }
-        };
 
-        fetchData();
-        fetchData();
-    }, [selectedDate, doctor, refreshTrigger]);
+            setDaySlots(finalSlots);
+        } catch (error) {
+            console.error("Failed to fetch slots", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedDate, doctor, viewAllDoctors]);
+
+    useEffect(() => {
+        if (doctor && selectedDate) {
+            fetchData();
+        }
+    }, [fetchData, doctor, selectedDate, refreshTrigger]);
 
 
 
     const [bookingSlot, setBookingSlot] = useState<string | null>(null);
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+    // Manual Patient Booking State
+    const [isManualPatient, setIsManualPatient] = useState(false);
+    const [manualPatientName, setManualPatientName] = useState("");
+    const [manualPatientEmail, setManualPatientEmail] = useState("");
 
     const handleBooking = async (patient: any) => {
         if (!selectedDate || !doctor || !bookingSlot) return;
@@ -152,7 +209,7 @@ export default function AppointmentsPage() {
                 // Update existing block to be a confirmed appointment
                 await appointmentService.updateAppointment(existingBlock.id, {
                     patientId: patient.uid,
-                    patientName: `${patient.firstName} ${patient.lastName}`,
+                    patientName: `${patient.firstName} ${patient.lastName}`.trim(),
                     patientEmail: patient.email,
                     // doctorId and date remain same
                     status: 'confirmed',
@@ -164,7 +221,7 @@ export default function AppointmentsPage() {
                 // Create new appointment
                 await appointmentService.createAppointment({
                     patientId: patient.uid,
-                    patientName: `${patient.firstName} ${patient.lastName}`,
+                    patientName: `${patient.firstName} ${patient.lastName}`.trim(),
                     patientEmail: patient.email,
                     doctorId: doctor.id,
                     doctorName: `${doctor.firstName} ${doctor.lastName}`,
@@ -178,9 +235,7 @@ export default function AppointmentsPage() {
             }
 
             // Refresh
-            const appointments = await adminService.getDailyAppointments(selectedDate);
-            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
-            setDaySlots(slots);
+            await fetchData();
             setBookingSlot(null);
         } catch (error) {
             console.error(error);
@@ -215,9 +270,7 @@ export default function AppointmentsPage() {
             } as any); // Type cast due to some missing fields like status that createAppointment overrides
 
             // Refresh
-            const appointments = await adminService.getDailyAppointments(selectedDate);
-            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
-            setDaySlots(slots);
+            await fetchData();
             toast.success(`Horiario ${time} bloqueado.`);
         } catch (error) {
             console.error(error);
@@ -235,9 +288,7 @@ export default function AppointmentsPage() {
             const dateString = format(selectedDate, 'yyyy-MM-dd');
             await exceptionService.deleteByDateAndDoctor(dateString, doctor.id);
             // Refresh
-            const appointments = await adminService.getDailyAppointments(selectedDate);
-            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
-            setDaySlots(slots);
+            await fetchData();
             // Update blocked days in calendar
             setBlockedDays(prev => {
                 const next = new Set(prev);
@@ -264,9 +315,7 @@ export default function AppointmentsPage() {
                 reason: "Bloqueado desde Agenda"
             });
             // Refresh
-            const appointments = await adminService.getDailyAppointments(selectedDate);
-            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
-            setDaySlots(slots);
+            await fetchData();
             // Update blocked days in calendar
             setBlockedDays(prev => {
                 const next = new Set(prev);
@@ -288,9 +337,7 @@ export default function AppointmentsPage() {
             setLoading(true);
             await appointmentService.cancelAppointment(appointmentId);
             // Refresh
-            const appointments = await adminService.getDailyAppointments(selectedDate);
-            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
-            setDaySlots(slots);
+            await fetchData();
             toast.success("Horario desbloqueado.");
         } catch (error) {
             console.error(error);
@@ -341,9 +388,7 @@ export default function AppointmentsPage() {
             setSelectedSlots(new Set());
 
             // Refresh
-            const appointments = await adminService.getDailyAppointments(selectedDate);
-            const slots = await availabilityService.getAllDaySlots(doctor, selectedDate, appointments);
-            setDaySlots(slots);
+            await fetchData();
         } catch (error) {
             console.error(error);
             toast.error("Error al bloquear horarios seleccionados");
@@ -354,12 +399,23 @@ export default function AppointmentsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Agenda Mensual</h1>
                     <p className="text-muted-foreground">Gestión turnos por fecha.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-4">
+                    {/* Multi-Doctor Toggle */}
+                    <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <Switch
+                            checked={viewAllDoctors}
+                            onCheckedChange={setViewAllDoctors}
+                        />
+                        <span className="text-sm font-medium whitespace-nowrap">
+                            {viewAllDoctors ? "Todos" : "Solo Yo"}
+                        </span>
+                    </div>
                     <Button variant="outline" onClick={() => setIsSobreturnoOpen(true)}>
                         Agregar Sobreturno
                     </Button>
@@ -600,20 +656,51 @@ export default function AppointmentsPage() {
                                             <span className="text-lg font-bold w-16">{slot.time}</span>
                                             <div>
                                                 {slot.status === 'free' ? (
-                                                    <span className="text-green-600 font-medium">Libre</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-green-600 font-medium">Libre</span>
+                                                        {viewAllDoctors && (slot as MonthlySlot).doctor && (
+                                                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-200 bg-orange-50">
+                                                                {(slot as MonthlySlot).doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {(slot as MonthlySlot).doctor.lastName}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 ) : slot.status === 'blocked' ? (
-                                                    <div>
-                                                        <span className="text-red-700 font-bold block">BLOQUEADO</span>
-                                                        <span className="text-sm text-red-600">No disponible</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <div>
+                                                            <span className="text-red-700 font-bold block">BLOQUEADO</span>
+                                                            <span className="text-sm text-red-600">No disponible</span>
+                                                        </div>
+                                                        {viewAllDoctors && (slot as MonthlySlot).doctor && (
+                                                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-200 bg-orange-50">
+                                                                {(slot as MonthlySlot).doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {(slot as MonthlySlot).doctor.lastName}
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                 ) : (
-                                                    <div>
-                                                        <span className="text-blue-900 font-bold block">
-                                                            {slot.appointment?.patientName || "Paciente"}
-                                                        </span>
-                                                        <span className="text-sm text-blue-600 capitalize">
-                                                            {slot.appointment?.type || "Consulta"}
-                                                        </span>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <div>
+                                                            <Link href={`/doctor/patients/${slot.appointment?.patientId}`} className="text-blue-900 font-bold block hover:underline">
+                                                                {slot.appointment?.patientName || "Paciente"}
+                                                            </Link>
+                                                            <span className="text-sm text-blue-600 capitalize">
+                                                                {slot.appointment?.type || "Consulta"}
+                                                            </span>
+                                                        </div>
+                                                        {viewAllDoctors && (slot as MonthlySlot).doctor && doctor && (slot as MonthlySlot).doctor.id !== doctor.id && (
+                                                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-200 bg-orange-50">
+                                                                {(slot as MonthlySlot).doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {(slot as MonthlySlot).doctor.lastName}
+                                                            </Badge>
+                                                        )}
+                                                        {(() => {
+                                                            const drappId = slot.appointment?.patientDni ? drappMap.get(normalizeDni(slot.appointment.patientDni)) : undefined;
+                                                            return drappId ? (
+                                                                <a href={`https://app.drapp.la/teams/40fc3e9c/consumers/${drappId}/ehr`} target="_blank" rel="noopener noreferrer">
+                                                                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50">
+                                                                        <Stethoscope className="h-3 w-3 mr-1" /> DrApp
+                                                                    </Button>
+                                                                </a>
+                                                            ) : null;
+                                                        })()}
                                                     </div>
                                                 )}
                                             </div>
@@ -766,18 +853,99 @@ export default function AppointmentsPage() {
                 </DialogContent>
             </Dialog>
             {/* Manual Booking Dialog */}
-            <Dialog open={!!bookingSlot} onOpenChange={(open) => !open && setBookingSlot(null)}>
+            <Dialog open={!!bookingSlot} onOpenChange={(open) => {
+                if (!open) {
+                    setBookingSlot(null);
+                    setIsManualPatient(false);
+                    setManualPatientName("");
+                    setManualPatientEmail("");
+                }
+            }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Reservar Turno: {bookingSlot}</DialogTitle>
                         <DialogDescription>Búsqueda y asignación de paciente para el turno.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <Label>Buscar Paciente</Label>
-                        <PatientSearch onSelect={handleBooking} />
-                        <div className="flex justify-end">
-                            <Button variant="outline" onClick={() => setBookingSlot(null)}>Cancelar</Button>
+                        {/* Manual Patient Toggle */}
+                        <div className="flex items-center space-x-2 border-b pb-3">
+                            <Checkbox
+                                id="manual-booking-mode"
+                                checked={isManualPatient}
+                                onCheckedChange={(checked) => setIsManualPatient(checked as boolean)}
+                            />
+                            <Label htmlFor="manual-booking-mode" className="font-medium cursor-pointer">
+                                Paciente sin cuenta (Nombre y Email)
+                            </Label>
                         </div>
+
+                        {isManualPatient ? (
+                            <div className="space-y-3">
+                                <div className="space-y-2">
+                                    <Label htmlFor="bookingManualName">Nombre y Apellido *</Label>
+                                    <Input
+                                        id="bookingManualName"
+                                        placeholder="Nombre y Apellido"
+                                        value={manualPatientName}
+                                        onChange={(e) => setManualPatientName(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="bookingManualEmail">Email (opcional)</Label>
+                                    <Input
+                                        id="bookingManualEmail"
+                                        type="email"
+                                        placeholder="paciente@email.com"
+                                        value={manualPatientEmail}
+                                        onChange={(e) => setManualPatientEmail(e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Si se ingresa email, se enviará confirmación.
+                                    </p>
+                                </div>
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <Button variant="outline" onClick={() => {
+                                        setBookingSlot(null);
+                                        setIsManualPatient(false);
+                                        setManualPatientName("");
+                                        setManualPatientEmail("");
+                                    }}>Cancelar</Button>
+                                    <Button
+                                        disabled={!manualPatientName.trim() || loading}
+                                        onClick={async () => {
+                                            if (!manualPatientName.trim()) {
+                                                toast.error("Ingrese el nombre del paciente");
+                                                return;
+                                            }
+                                            if (manualPatientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(manualPatientEmail)) {
+                                                toast.error("Ingrese un email válido o déjelo vacío");
+                                                return;
+                                            }
+                                            await handleBooking({
+                                                uid: `manual_${Date.now()}`,
+                                                firstName: manualPatientName.trim(),
+                                                lastName: '',
+                                                email: manualPatientEmail.trim()
+                                            });
+                                            setIsManualPatient(false);
+                                            setManualPatientName("");
+                                            setManualPatientEmail("");
+                                        }}
+                                    >
+                                        {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                        Reservar
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <Label>Buscar Paciente</Label>
+                                <PatientSearch onSelect={handleBooking} />
+                                <div className="flex justify-end">
+                                    <Button variant="outline" onClick={() => setBookingSlot(null)}>Cancelar</Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>

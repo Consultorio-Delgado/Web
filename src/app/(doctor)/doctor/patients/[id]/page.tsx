@@ -7,10 +7,12 @@ import { appointmentService } from "@/services/appointments";
 import { UserProfile, Appointment } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Calendar, Mail, Phone, User, FileText } from "lucide-react";
+import { Loader2, ArrowLeft, Calendar, Mail, Phone, User, FileText, Ban, ShieldOff } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { userService } from "@/services/user";
+import { toast } from "sonner";
 
 export default function PatientProfilePage() {
     const params = useParams();
@@ -96,11 +98,58 @@ export default function PatientProfilePage() {
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
                                 <span>{patient.birthDate ? format(new Date(patient.birthDate), 'dd/MM/yyyy') : 'Sin fecha de nac.'}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <FileText className="h-4 w-4 text-muted-foreground" />
-                                <span>{patient.insurance} {patient.insuranceNumber ? `(#${patient.insuranceNumber})` : ''}</span>
+                            <div className="flex flex-col gap-1 mt-3">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                    <span>{patient.insurance} {patient.insuranceNumber ? `(#${patient.insuranceNumber})` : ''}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm pl-6">
+                                    <span className={patient.plan ? "font-semibold text-slate-800" : "text-red-500 font-semibold text-xs"}>{patient.plan ? `Plan: ${patient.plan}` : 'PLAN NO CARGADO POR EL PACIENTE'}</span>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Blocked Patient Warning */}
+                        {(() => {
+                            const blockedDate = patient.blockedUntil 
+                                ? ((patient.blockedUntil as any).toDate ? (patient.blockedUntil as any).toDate() : new Date(patient.blockedUntil))
+                                : null;
+                            if (!blockedDate || blockedDate <= new Date()) return null;
+                            return (
+                            <div className="border-t pt-4">
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <Ban className="h-5 w-5 text-red-600" />
+                                        <span className="font-semibold text-red-700">Paciente bloqueado</span>
+                                    </div>
+                                    <p className="text-sm text-red-600">
+                                        Bloqueado hasta: <strong>{format(blockedDate, "d/MM/yyyy 'a las' HH:mm", { locale: es })}</strong>
+                                    </p>
+                                    <p className="text-xs text-red-500">
+                                        Canceló un turno con menos de 48hs de anticipación.
+                                    </p>
+                                    <Button 
+                                        variant="outline" 
+                                        className="w-full border-red-300 text-red-700 hover:bg-red-100"
+                                        onClick={async () => {
+                                            try {
+                                                const { deleteField } = await import("firebase/firestore");
+                                                await userService.updateUserProfile(patientId, { blockedUntil: deleteField() } as any);
+                                                setPatient(prev => prev ? { ...prev, blockedUntil: undefined } : null);
+                                                toast.success("Paciente desbloqueado exitosamente.");
+                                            } catch (err) {
+                                                console.error(err);
+                                                toast.error("Error al desbloquear paciente.");
+                                            }
+                                        }}
+                                    >
+                                        <ShieldOff className="mr-2 h-4 w-4" />
+                                        Desbloquear Paciente
+                                    </Button>
+                                </div>
+                            </div>
+                        );
+                        })()}
                     </CardContent>
                 </Card>
 

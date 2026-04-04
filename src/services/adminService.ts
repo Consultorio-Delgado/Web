@@ -46,19 +46,35 @@ export const adminService = {
             const appointments = await Promise.all(querySnapshot.docs.map(async doc => {
                 const data = doc.data();
                 let patientName = data.patientName;
+                let insurance = data.insurance;
+                let patientDni = '';
 
-                // Fallback: If no patientName, try to fetch from User Profile
-                if (!patientName || patientName === 'undefined undefined') {
-                    try {
+                // Always fetch user profile to get DNI (for DrApp matching) + fallback name/insurance
+                try {
+                    if (data.patientId && !data.patientId.startsWith('manual_') && data.patientId !== 'blocked') {
                         const { getDoc, doc: docRef } = await import("firebase/firestore");
                         const userSnap = await getDoc(docRef(db, "users", data.patientId));
                         if (userSnap.exists()) {
                             const userData = userSnap.data();
-                            patientName = `${userData.firstName} ${userData.lastName}`;
+                            if (!patientName || patientName === 'undefined undefined') {
+                                patientName = `${userData.firstName} ${userData.lastName}`;
+                            }
+                            if (!insurance) {
+                                insurance = userData.insurance;
+                            }
+                            patientDni = userData.dni || '';
                         } else {
+                            if (!patientName || patientName === 'undefined undefined') {
+                                patientName = "Paciente";
+                            }
+                        }
+                    } else {
+                        if (!patientName || patientName === 'undefined undefined') {
                             patientName = "Paciente";
                         }
-                    } catch (e) {
+                    }
+                } catch (e) {
+                    if (!patientName || patientName === 'undefined undefined') {
                         patientName = "Paciente";
                     }
                 }
@@ -66,7 +82,9 @@ export const adminService = {
                 return {
                     id: doc.id,
                     ...data,
-                    patientName, // Override with fixed name
+                    patientName,
+                    insurance,
+                    patientDni,
                     date: data.date.toDate(),
                     createdAt: data.createdAt?.toDate() || new Date(),
                     arrivedAt: data.arrivedAt?.toDate() || undefined

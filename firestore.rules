@@ -50,7 +50,16 @@ service cloud.firestore {
     // 1. Users Collection (Patients)
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isDoctor());
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isDoctor());
+      allow update: if isAuthenticated() && (
+        isAdmin() || isDoctor() || 
+        // Patient can update their own doc, BUT cannot remove/reduce blockedUntil
+        (request.auth.uid == userId && (
+          // If blockedUntil is not being changed, allow
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['blockedUntil']) ||
+          // If blockedUntil is being SET (not removed) to a future date, allow (self-blocking on cancel)
+          (request.resource.data.blockedUntil is timestamp && request.resource.data.blockedUntil > request.time)
+        ))
+      );
       allow create: if isAuthenticated(); 
     }
 
@@ -68,13 +77,20 @@ service cloud.firestore {
       // Strict Creation
       allow create: if isAuthenticated() && isValidAppointment();
       
-      // Update: Admin, Doctor (Owner), or Patient (Cancel only)
+      // Update: Admin, Doctor (Owner), or Patient (Cancel or Same-Day Move)
       allow update: if isAuthenticated() && (
         isDoctor() || // Any doctor can update appointments (Collaboration)
         isAdmin() || 
         (resource.data.patientId == request.auth.uid && 
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-         request.resource.data.status == 'cancelled')
+         (
+           // Cancel rule (only updates status)
+           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+            request.resource.data.status == 'cancelled') ||
+           // Move rule (updates time and updatedAt, date must remain unchanged)
+           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['time', 'updatedAt']) &&
+            request.resource.data.date == resource.data.date)
+         )
+        )
       );
       
       allow delete: if isAuthenticated() && (

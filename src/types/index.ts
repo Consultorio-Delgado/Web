@@ -17,6 +17,7 @@ export interface UserProfile {
     isDeleted?: boolean;
     deletedAt?: Date;
     visitedDoctors?: string[]; // IDs of doctors the patient has visited (isFirstVisit = false)
+    blockedUntil?: Date; // If set and in the future, patient cannot book new appointments
 }
 
 export interface Doctor {
@@ -80,6 +81,7 @@ export interface Appointment {
     arrivedAt?: Date; // Time patient arrived in waiting room
     isFirstVisit?: boolean; // Is this the patient's first visit with this doctor?
     consultationType?: string | null; // For specialties like Ginecología: consulta-ginecologica, pap-colpo, prueba-hpv
+    patientDni?: string; // DNI from user profile, used for DrApp matching
 }
 
 export interface MedicalRecord {
