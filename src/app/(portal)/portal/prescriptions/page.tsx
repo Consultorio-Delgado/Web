@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { compressImage } from "@/lib/imageCompression";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,14 +81,12 @@ export default function PrescriptionsPage() {
                 return;
             }
 
-            /* Temporalmente desactivado para probar manejo de errores 413
             const totalSize = [...files, ...newFiles].reduce((acc, f) => acc + f.size, 0);
 
             if (totalSize > 3.2 * 1024 * 1024) {
                 toast.error("El peso total de los archivos supera el límite de 3.2MB");
                 return;
             }
-            */
 
             setFiles(prev => [...prev, ...newFiles]);
         }
@@ -160,11 +159,18 @@ export default function PrescriptionsPage() {
             };
 
             const attachments = await Promise.all(
-                files.map(async (file) => ({
-                    filename: file.name,
-                    content: (await convertToBase64(file)).split(",")[1], // Remove metadata prefix
-                    encoding: "base64"
-                }))
+                files.map(async (file) => {
+                    // Compress image if it's an image
+                    const processedFile = file.type.startsWith('image/')
+                        ? await compressImage(file)
+                        : file;
+
+                    return {
+                        filename: processedFile.name,
+                        content: (await convertToBase64(processedFile)).split(",")[1], // Remove metadata prefix
+                        encoding: "base64"
+                    };
+                })
             );
 
             const response = await fetch("/api/prescriptions", {
