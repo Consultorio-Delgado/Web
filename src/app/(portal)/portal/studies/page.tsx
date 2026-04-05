@@ -70,24 +70,34 @@ export default function StudiesPage() {
 
     const [files, setFiles] = useState<File[]>([]);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const newFiles = Array.from(e.target.files);
-            const totalFiles = files.length + newFiles.length;
+            const rawFiles = Array.from(e.target.files);
+            const totalFilesCount = files.length + rawFiles.length;
 
-            if (totalFiles > 3) {
+            if (totalFilesCount > 3) {
                 toast.error("Máximo 3 archivos permitidos");
                 return;
             }
 
-            const totalSize = [...files, ...newFiles].reduce((acc, f) => acc + f.size, 0);
+            // Compress all selected images
+            const processedNewFiles = await Promise.all(
+                rawFiles.map(async (file) => {
+                    if (file.type.startsWith('image/')) {
+                        return await compressImage(file);
+                    }
+                    return file;
+                })
+            );
 
-            if (totalSize > 3.2 * 1024 * 1024) {
-                toast.error("El peso total de los archivos supera el límite de 3.2MB");
+            const totalSizeAfterCompression = [...files, ...processedNewFiles].reduce((acc, f) => acc + f.size, 0);
+
+            if (totalSizeAfterCompression > 3.2 * 1024 * 1024) {
+                toast.error("El peso total de los archivos (después de comprimir) supera el límite de 3.2MB");
                 return;
             }
 
-            setFiles(prev => [...prev, ...newFiles]);
+            setFiles(prev => [...prev, ...processedNewFiles]);
         }
     };
 
@@ -159,14 +169,9 @@ export default function StudiesPage() {
 
             const attachments = await Promise.all(
                 files.map(async (file) => {
-                    // Compress image if it's an image
-                    const processedFile = file.type.startsWith('image/')
-                        ? await compressImage(file)
-                        : file;
-
                     return {
-                        filename: processedFile.name,
-                        content: (await convertToBase64(processedFile)).split(",")[1], // Remove metadata prefix
+                        filename: file.name,
+                        content: (await convertToBase64(file)).split(",")[1], // Remove metadata prefix
                         encoding: "base64"
                     };
                 })
@@ -186,12 +191,6 @@ export default function StudiesPage() {
                     attachments
                 }),
             });
-
-            if (response.status === 413) {
-                toast.error("Los archivos son muy pesados para este envío. Intenta subirlos por separado o con menor resolución.");
-                setLoading(false);
-                return;
-            }
 
             if (!response.ok) {
                 throw new Error("Error al enviar la solicitud");
@@ -216,18 +215,11 @@ export default function StudiesPage() {
                 otraCobertura: "",
                 token: ""
             }));
+            
             toast.success("¡Solicitud enviada! La orden llegará dentro de los 7 días hábiles.");
         } catch (error: any) {
             console.error("Error en el envío:", error);
-            
-            // Si el error es detectado por el catch (ej: error de red o fetch abortado por Vercel)
-            // y tenemos archivos pesados, es casi seguro un error 413
-            const totalSize = files.reduce((acc, f) => acc + f.size, 0);
-            if (totalSize > 3 * 1024 * 1024) {
-                toast.error("Parece que los archivos son muy pesados para este envío. Intenta con archivos más pequeños.");
-            } else {
-                toast.error("Error al enviar la solicitud. Por favor verifica tu conexión e intenta nuevamente.");
-            }
+            toast.error("Error al enviar la solicitud. Por favor verifica tu conexión e intenta nuevamente.");
         } finally {
             setLoading(false);
         }
