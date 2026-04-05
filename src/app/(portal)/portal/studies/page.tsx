@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { uploadTempFile } from "@/lib/upload";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,10 +80,10 @@ export default function StudiesPage() {
                 return;
             }
 
-            // Validate size (e.g. 4MB limit per file purely for email constraints)
-            const oversized = newFiles.find(f => f.size > 4 * 1024 * 1024);
+            // Validate size (using 8MB limit for temporary storage uploads)
+            const oversized = newFiles.find(f => f.size > 8 * 1024 * 1024);
             if (oversized) {
-                toast.error(`El archivo ${oversized.name} es muy pesado (máx 4MB)`);
+                toast.error(`El archivo ${oversized.name} es muy pesado (máx 8MB)`);
                 return;
             }
 
@@ -94,19 +95,7 @@ export default function StudiesPage() {
         setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    const convertToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                const result = reader.result as string;
-                // Remove data URL prefix (e.g. "data:image/png;base64,")
-                const base64 = result.split(',')[1];
-                resolve(base64);
-            };
-            reader.onerror = error => reject(error);
-        });
-    };
+
 
     useEffect(() => {
         const loadDoctors = async () => {
@@ -158,10 +147,10 @@ export default function StudiesPage() {
         try {
             const selectedDoctor = doctors.find(d => d.id === formData.doctorId);
 
-            // Process attachments
+            // Upload files to Firebase Storage temporarily
             const attachments = await Promise.all(files.map(async (file) => ({
                 filename: file.name,
-                content: await convertToBase64(file)
+                path: await uploadTempFile(file, user?.uid || "anonymous_studies")
             })));
 
             const response = await fetch("/api/studies", {
@@ -485,7 +474,7 @@ export default function StudiesPage() {
                                                     <span className="text-sm text-slate-600 font-medium">
                                                         {files.length >= 3 ? "Límite de archivos alcanzado" : "Hacé click para subir archivos"}
                                                     </span>
-                                                    <span className="text-xs text-slate-400">JPG, PNG, PDF (Máx 4MB)</span>
+                                                    <span className="text-xs text-slate-400">JPG, PNG, PDF (Máx 8MB)</span>
                                                 </div>
                                             </Label>
                                         </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { emailService } from "@/lib/email";
+import { downloadAndCleanupTempFiles } from "@/lib/serverStorage";
 
 // Doctor email mapping
 const DOCTOR_EMAILS: Record<string, string> = {
@@ -48,8 +49,18 @@ export async function POST(request: NextRequest) {
             doctorEmail = "dra.secondi@hotmail.com";
         }
 
+        // Process attachments (Download from temp Firebase Storage and delete them)
+        let processedAttachments;
+        if (data.attachments && data.attachments.length > 0) {
+            processedAttachments = await downloadAndCleanupTempFiles(data.attachments);
+        }
+
         // Send email
-        const result = await emailService.sendPrescriptionRequest(data, doctorEmail);
+        const emailData = {
+            ...data,
+            attachments: processedAttachments
+        };
+        const result = await emailService.sendPrescriptionRequest(emailData, doctorEmail);
 
         if (!result.success) {
             throw new Error("Failed to send email");

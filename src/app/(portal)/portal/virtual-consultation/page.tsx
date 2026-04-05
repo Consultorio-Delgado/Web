@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { uploadTempFile } from "@/lib/upload";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,18 +106,7 @@ export default function VirtualConsultationPage() {
         setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    const convertToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                const result = reader.result as string;
-                const base64 = result.split(',')[1];
-                resolve(base64);
-            };
-            reader.onerror = error => reject(error);
-        });
-    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -137,9 +127,10 @@ export default function VirtualConsultationPage() {
         setLoading(true);
 
         try {
+            // Upload files to Firebase Storage temporarily
             const attachments = await Promise.all(files.map(async (file) => ({
                 filename: file.name,
-                content: await convertToBase64(file)
+                path: await uploadTempFile(file, user?.uid || "anonymous_virtual")
             })));
 
             const response = await fetch("/api/virtual-consultation", {
