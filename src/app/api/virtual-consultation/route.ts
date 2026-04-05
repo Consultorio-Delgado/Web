@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { emailService } from "@/lib/email";
-import { downloadAndCleanupTempFiles } from "@/lib/serverStorage";
 
 // Doctor email - Dra. Secondi
 const DRA_SECONDI_EMAIL = "dra.secondi@hotmail.com";
@@ -20,18 +19,8 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Process attachments (Download from temp Firebase Storage and delete them)
-        let processedAttachments;
-        if (data.attachments && data.attachments.length > 0) {
-            processedAttachments = await downloadAndCleanupTempFiles(data.attachments);
-        }
-
         // Send email
-        const emailData = {
-            ...data,
-            attachments: processedAttachments
-        };
-        const result = await emailService.sendVirtualConsultationRequest(emailData, DRA_SECONDI_EMAIL);
+        const result = await emailService.sendVirtualConsultationRequest(data, DRA_SECONDI_EMAIL);
 
         if (!result.success) {
             throw new Error("Failed to send email");

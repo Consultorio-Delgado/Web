@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PatientSearch } from "@/components/doctor/PatientSearch";
 import { SobreturnoDialog } from "@/components/appointments/SobreturnoDialog";
+import { CancelAppointmentDialog } from "@/components/appointments/CancelAppointmentDialog";
 
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
@@ -189,6 +190,11 @@ export default function AppointmentsPage() {
     const [bookingSlot, setBookingSlot] = useState<string | null>(null);
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
+    // Cancel Reason Dialog State
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
+    const [cancellingInProgress, setCancellingInProgress] = useState(false);
+
     // Manual Patient Booking State
     const [isManualPatient, setIsManualPatient] = useState(false);
     const [manualPatientName, setManualPatientName] = useState("");
@@ -330,20 +336,32 @@ export default function AppointmentsPage() {
         }
     };
 
-    // Handle Unblock Single Slot
-    const handleUnblockSingleSlot = async (appointmentId: string) => {
+    // Handle Unblock Single Slot (or Cancel)
+    const handleUnblockSingleSlot = async (appointmentId: string, reason?: string) => {
         if (!selectedDate || !doctor) return;
         try {
             setLoading(true);
-            await appointmentService.cancelAppointment(appointmentId);
+            await appointmentService.cancelAppointment(appointmentId, reason);
             // Refresh
             await fetchData();
-            toast.success("Horario desbloqueado.");
+            toast.success(reason ? "Turno cancelado y notificado" : "Horario desbloqueado.");
         } catch (error) {
             console.error(error);
-            toast.error("Error al desbloquear horario");
+            toast.error("Error al procesar la cancelación");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleConfirmCancellation = async (reason: string) => {
+        if (!appointmentToCancel) return;
+        setCancellingInProgress(true);
+        try {
+            await handleUnblockSingleSlot(appointmentToCancel.id, reason);
+            setCancelDialogOpen(false);
+            setAppointmentToCancel(null);
+        } finally {
+            setCancellingInProgress(false);
         }
     };
 
@@ -744,10 +762,9 @@ export default function AppointmentsPage() {
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={async (e) => {
                                                         e.stopPropagation();
-                                                        if (!confirm("¿Está seguro que desea eliminar este turno?")) return;
                                                         if (slot.appointment) {
-                                                            await handleUnblockSingleSlot(slot.appointment.id); // Reusing cancel logic
-                                                            toast.success("Turno eliminado");
+                                                            setAppointmentToCancel(slot.appointment);
+                                                            setCancelDialogOpen(true);
                                                         }
                                                     }}>
                                                         <Trash2 className="h-4 w-4" />
@@ -949,7 +966,6 @@ export default function AppointmentsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-            {/* Sobreturno Dialog */}
             {
                 doctor && selectedDate && (
                     <SobreturnoDialog
@@ -961,6 +977,14 @@ export default function AppointmentsPage() {
                     />
                 )
             }
-        </div >
+
+            <CancelAppointmentDialog
+                open={cancelDialogOpen}
+                onOpenChange={setCancelDialogOpen}
+                onConfirm={handleConfirmCancellation}
+                patientName={appointmentToCancel?.patientName}
+                isSubmitting={cancellingInProgress}
+            />
+        </div>
     );
 }

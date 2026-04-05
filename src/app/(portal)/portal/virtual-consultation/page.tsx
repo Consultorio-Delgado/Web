@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { uploadTempFile } from "@/lib/upload";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,9 +91,9 @@ export default function VirtualConsultationPage() {
                 return;
             }
 
-            const oversized = newFiles.find(f => f.size > 8 * 1024 * 1024); // 8MB limit requirement
+            const oversized = newFiles.find(f => f.size > 4 * 1024 * 1024); // 4MB limit
             if (oversized) {
-                toast.error(`El archivo ${oversized.name} es muy pesado (máx 8MB)`);
+                toast.error(`El archivo ${oversized.name} es muy pesado (máx 4MB)`);
                 return;
             }
 
@@ -127,11 +126,23 @@ export default function VirtualConsultationPage() {
         setLoading(true);
 
         try {
-            // Upload files to Firebase Storage temporarily
-            const attachments = await Promise.all(files.map(async (file) => ({
-                filename: file.name,
-                path: await uploadTempFile(file, user?.uid || "anonymous_virtual")
-            })));
+            // Convert files to base64
+            const convertToBase64 = (file: File): Promise<string> => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = error => reject(error);
+                });
+            };
+
+            const attachments = await Promise.all(
+                files.map(async (file) => ({
+                    filename: file.name,
+                    content: (await convertToBase64(file)).split(",")[1], // Remove metadata prefix
+                    encoding: "base64"
+                }))
+            );
 
             const response = await fetch("/api/virtual-consultation", {
                 method: "POST",

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { uploadTempFile } from "@/lib/upload";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,10 +80,10 @@ export default function PrescriptionsPage() {
                 return;
             }
 
-            // Validate size (using 8MB limit for temporary storage uploads)
-            const oversized = newFiles.find(f => f.size > 8 * 1024 * 1024);
+            // Validate size (Vercel limit for serverless functions)
+            const oversized = newFiles.find(f => f.size > 4 * 1024 * 1024);
             if (oversized) {
-                toast.error(`El archivo ${oversized.name} es muy pesado (máx 8MB)`);
+                toast.error(`El archivo ${oversized.name} es muy pesado (máx 4MB)`);
                 return;
             }
 
@@ -148,17 +147,28 @@ export default function PrescriptionsPage() {
         try {
             const selectedDoctor = doctors.find(d => d.id === formData.doctorId);
 
-            // Upload files to Firebase Storage temporarily
-            const attachments = await Promise.all(files.map(async (file) => ({
-                filename: file.name,
-                path: await uploadTempFile(file, user?.uid || "anonymous_prescriptions")
-            })));
+            // Convert files to base64
+            const convertToBase64 = (file: File): Promise<string> => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = error => reject(error);
+                });
+            };
+
+            const attachments = await Promise.all(
+                files.map(async (file) => ({
+                    filename: file.name,
+                    content: (await convertToBase64(file)).split(",")[1], // Remove metadata prefix
+                    encoding: "base64"
+                }))
+            );
 
             const response = await fetch("/api/prescriptions", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    ...formData,
                     ...formData,
                     cobertura: formData.cobertura === "Otra" ? `Otra: ${formData.otraCobertura}` : formData.cobertura,
                     doctorName: selectedDoctor ? (

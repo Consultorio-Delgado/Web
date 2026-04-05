@@ -8,6 +8,7 @@ interface CancellationEmailProps {
     doctorName: string;
     date: string;
     time: string;
+    reason?: string;
 }
 
 export const CancellationEmail = ({
@@ -15,6 +16,7 @@ export const CancellationEmail = ({
     doctorName,
     date,
     time,
+    reason,
 }: CancellationEmailProps) => {
     const prefix = getDoctorPrefix(doctorName);
 
@@ -28,7 +30,7 @@ export const CancellationEmail = ({
                     Hola <strong>{patientName}</strong>,
                 </Text>
                 <Text className="text-[14px] leading-[24px] text-black">
-                    Te informamos que tu turno ha sido cancelado exitosamente.
+                    Te informamos que tu turno ha sido cancelado.
                 </Text>
             </Section>
 
@@ -40,6 +42,17 @@ export const CancellationEmail = ({
                     {prefix} {doctorName} - {date} a las {time} hs
                 </Text>
             </Section>
+
+            {reason && (
+                <Section className="bg-slate-50 rounded-lg p-4 my-4 border border-slate-200">
+                    <Text className="m-0 text-[13px] leading-[22px] text-slate-700 font-semibold italic">
+                        Mensaje del Profesional:
+                    </Text>
+                    <Text className="m-0 text-[14px] leading-[24px] text-slate-800 italic">
+                        "{reason}"
+                    </Text>
+                </Section>
+            )}
 
             <Section className="text-center mt-[32px] mb-[32px]">
                 <Button

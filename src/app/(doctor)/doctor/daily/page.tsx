@@ -857,6 +857,31 @@ export default function DailyAgendaPage() {
                                                                 </Button>
                                                             </>
                                                         )}
+                                                        {(isCompleted || isAbsent) && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-slate-400 hover:text-slate-600 font-medium"
+                                                                onClick={async () => {
+                                                                    setActionLoading(appt.id);
+                                                                    try {
+                                                                        await appointmentService.updateAppointment(appt.id, {
+                                                                            status: 'confirmed',
+                                                                            arrivedAt: null
+                                                                        } as any);
+                                                                        toast.success("Estado revertido a Confirmado");
+                                                                        fetchSlots();
+                                                                    } catch (error) {
+                                                                        toast.error("Error al revertir estado");
+                                                                    } finally {
+                                                                        setActionLoading(null);
+                                                                    }
+                                                                }}
+                                                                disabled={actionLoading === appt.id}
+                                                            >
+                                                                Deshacer
+                                                            </Button>
+                                                        )}
                                                     </>
                                                 )}
                                             </>

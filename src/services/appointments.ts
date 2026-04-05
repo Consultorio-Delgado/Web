@@ -257,7 +257,7 @@ export const appointmentService = {
             throw error;
         }
     },
-    async cancelAppointment(appointmentId: string): Promise<void> {
+    async cancelAppointment(appointmentId: string, reason?: string): Promise<void> {
         try {
             const docRef = doc(db, "appointments", appointmentId);
             await updateDoc(docRef, {
@@ -287,7 +287,7 @@ export const appointmentService = {
                     appointmentId: appointmentId,
                     patientName: appt.patientName,
                     doctorName: appt.doctorName,
-                    reason: 'Cancelled by user'
+                    reason: reason || 'Cancelled by user'
                 });
 
                 // Let's attempt to send what we have.
@@ -301,7 +301,8 @@ export const appointmentService = {
                                 patientName: appt.patientName,
                                 doctorName: appt.doctorName || 'Dr. (Consultar en Portal)',
                                 date: appt.date.toDate().toLocaleDateString(),
-                                time: appt.time
+                                time: appt.time,
+                                reason: reason
                             }
                         })
                     }).catch(console.error);
