@@ -91,11 +91,14 @@ export default function VirtualConsultationPage() {
                 return;
             }
 
-            const oversized = newFiles.find(f => f.size > 4 * 1024 * 1024); // 4MB limit
-            if (oversized) {
-                toast.error(`El archivo ${oversized.name} es muy pesado (máx 4MB)`);
+            /* Temporalmente desactivado para probar manejo de errores 413
+            const totalSize = [...files, ...newFiles].reduce((acc, f) => acc + f.size, 0);
+
+            if (totalSize > 3.2 * 1024 * 1024) {
+                toast.error("El peso total de los archivos supera el límite de 3.2MB");
                 return;
             }
+            */
 
             setFiles(prev => [...prev, ...newFiles]);
         }
@@ -157,6 +160,12 @@ export default function VirtualConsultationPage() {
                     attachments
                 }),
             });
+
+            if (response.status === 413) {
+                toast.error("Los archivos son muy pesados para este envío. Intenta subirlos por separado o con menor resolución.");
+                setLoading(false);
+                return;
+            }
 
             if (!response.ok) {
                 throw new Error("Error al enviar la solicitud");
@@ -400,7 +409,7 @@ export default function VirtualConsultationPage() {
 
                                     {/* File Attachments */}
                                     <div className="space-y-2">
-                                        <Label>Si desea adjuntar estudios (Máx 3, 8MB máx)</Label>
+                                        <Label>Si desea adjuntar estudios (Máximo 3 archivos, Total 3.2MB)</Label>
                                         <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors">
                                             <input
                                                 type="file"
@@ -417,7 +426,7 @@ export default function VirtualConsultationPage() {
                                                     <span className="text-sm text-slate-600 font-medium">
                                                         {files.length >= 3 ? "Límite de archivos alcanzado" : "Seleccionar archivos"}
                                                     </span>
-                                                    <span className="text-xs text-slate-400">JPG, PNG, PDF</span>
+                                                   <span className="text-xs text-slate-400">JPG, PNG, PDF (Máximo 3 archivos, Total 3.2MB)</span>
                                                 </div>
                                             </Label>
                                         </div>
