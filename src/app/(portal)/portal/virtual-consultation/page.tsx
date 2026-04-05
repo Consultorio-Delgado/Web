@@ -180,9 +180,15 @@ export default function VirtualConsultationPage() {
                 consulta: ""
             }));
             toast.success("¡Solicitud enviada correctamente!");
-        } catch (error) {
-            console.error(error);
-            toast.error("Error al enviar la solicitud. Intente nuevamente.");
+        } catch (error: any) {
+            console.error("Error en el envío:", error);
+            
+            const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+            if (totalSize > 3 * 1024 * 1024) {
+                toast.error("Parece que los archivos son muy pesados para este envío. Intenta con archivos más pequeños.");
+            } else {
+                toast.error("Error al enviar la solicitud. Por favor verifica tu conexión e intenta nuevamente.");
+            }
         } finally {
             setLoading(false);
         }

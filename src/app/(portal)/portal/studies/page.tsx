@@ -210,9 +210,17 @@ export default function StudiesPage() {
                 token: ""
             }));
             toast.success("¡Solicitud enviada! La orden llegará dentro de los 7 días hábiles.");
-        } catch (error) {
-            console.error(error);
-            toast.error("Error al enviar la solicitud. Intente nuevamente.");
+        } catch (error: any) {
+            console.error("Error en el envío:", error);
+            
+            // Si el error es detectado por el catch (ej: error de red o fetch abortado por Vercel)
+            // y tenemos archivos pesados, es casi seguro un error 413
+            const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+            if (totalSize > 3 * 1024 * 1024) {
+                toast.error("Parece que los archivos son muy pesados para este envío. Intenta con archivos más pequeños.");
+            } else {
+                toast.error("Error al enviar la solicitud. Por favor verifica tu conexión e intenta nuevamente.");
+            }
         } finally {
             setLoading(false);
         }
