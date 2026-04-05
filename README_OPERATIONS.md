@@ -2,7 +2,7 @@
 
 Guía de Operaciones para Consultorio Delgado.
 
-**Última actualización:** 8 Feb 2026
+**Última actualización:** 5 Abr 2026
 
 ---
 
@@ -20,28 +20,47 @@ Todo el stack corre en planes gratuitos:
 
 ---
 
-## 📊 Uso Real Medido (Semana Feb 15-22, 2026)
+## 📅 Ciclos de Facturación y Reset de Cuotas
 
-Basado en 7 días de operación real con tráfico moderado y testeos.
+Para monitorear los límites, es clave entender cuándo se "limpian" los contadores:
+
+| Servicio | Tipo de Ciclo | Cuándo Reinicia |
+|----------|---------------|-----------------|
+| **Vercel** | Ventana Progresiva | **Rolling 30 days.** No hay un día fijo; se cuenta lo usado en los últimos 30 días exactos. |
+| **Firebase** | Diario | **Cada 24hs** (00:00 Pacific Time / ~04:00 AM Argentina). |
+| **Resend** | Mensual (Suscripción) | El **día 7 de cada mes** (aniversario de creación de cuenta). |
+
+> [!TIP]
+> **Resend** tiene un límite adicional de **100 emails por día** en el plan gratuito, independientemente de los 3,000 mensuales.
+
+---
+
+## 📊 Uso Real Medido (Estado al 5 Abr 2026)
+
+Datos actualizados al ciclo de Abril (1-5 Abr). 
+
+> [!NOTE]
+> El pico de **37K lecturas** de hoy (5 Abr) se debe a actividad intensa de desarrollo y pruebas del usuario. Se espera que el promedio diario se estabilice en la próxima semana.
 
 ### Vercel (Hobby)
 | Recurso | Usado (7d) | Proyección Mes | Límite | % |
 |---------|------------|----------------|--------|---|
-| Edge Requests | 61K | 261K | 1M | 26% |
-| Data Transfer | 1.07 GB | 4.6 GB | 100 GB | 4.6% |
-| Function Invocations | 7.5K | 32K | 1M | 3.2% |
+| Edge Requests | 196K | 196K | 1M | 19.6% |
+| Data Transfer | 3.75 GB | 3.75 GB | 100 GB | 3.75% |
+| Function Invocations | 30K | 30K | 1M | 3% |
+| Speed Insights | 22K | 22K | 10K | 🛑 **220%** |
 
 ### Firebase Firestore (Spark)
 | Operación | Total (7d) | Proyección Mes | Límite | % |
 |-----------|------------|----------------|--------|---|
-| Lecturas | 34K | 145K | 1.5M | 10% |
-| Escrituras | 491 | 2.1K | 600K | 0.3% |
+| Lecturas | 14.2K avg | 426K (Abril) | 1.5M (50K/día) | ⚠️ **Creciendo** |
+| Escrituras | 34 avg | 1K | 600K (20K/día) | <1% |
 | Usuarios Activos | 125 | ~150 | 50K | <1% |
 
 ### Resend (Emails)
 | Recurso | Usado (7d) | Proyección Mes | Límite | % |
 |---------|------------|----------------|--------|---|
-| Emails Transaccionales| 209 | 895 | 3,000 | 30% |
+| Emails Transaccionales| 702 | ~730 | 3,000 | 24% |
 
 ---
 
@@ -51,10 +70,10 @@ Basado en 7 días de operación real con tráfico moderado y testeos.
 
 | Servicio | Uso proyectado 1x | Proyección 4x | Límite Free | ¿Alcanza? |
 |----------|-------------------|---------------|-------------|-----------|
-| **Vercel Requests** | 261K | 1.04M | 1M | ⚠️ **Límite** |
-| **Vercel Bandwidth** | 4.6 GB | 18 GB | 100 GB | ✅ Súper OK |
-| **Firestore Reads** | 145K | 580K | 1.5M | ✅ 38% |
-| **Resend Emails** | 895 | 3,580 | 3,000 | ⚠️ **Límite** |
+| **Vercel Requests** | 196K | 784K | 1M | ✅ OK |
+| **Vercel Bandwidth** | 4 GB | 16 GB | 100 GB | ✅ Súper OK |
+| **Firestore Reads** | 14.2K avg | 1.7M (Peak 148K) | 50K/día | 🛑 **Límite (x4)** |
+| **Resend Emails** | 730 | 2,920 | 3,000 | ✅ Ajustado |
 
 ### Veredicto de Escalabilidad
 
@@ -62,10 +81,12 @@ Basado en 7 días de operación real con tráfico moderado y testeos.
 
 Para llegar a los **400 turnos/mes** (crecimiento 4x), debemos monitorear dos cuellos de botella:
 
-1. **Vercel Edge Requests:** Estamos proyectando 1.04M (el límite es 1M). 
-   - *Solución:* Si nos pasamos frecuente, pasar a Vercel Pro ($20/mo) o optimizar llamadas al API.
-2. **Resend Emails:** Con 4x turnos, el volumen de emails (confirmación + recordatorios) llegaría a ~3,500.
-   - *Solución:* Pasar al plan Pro de Resend o agrupar recordatorios diarios/optivos.
+1. **Vercel Edge Requests:** Confirmado por reporte mensual: **784K** proyectados a 4x. Entra perfectamente en el plan Free (límite 1M).
+2. **Resend Emails:** Con 4x turnos, el volumen llegaría a ~2,920. Está al límite (3k).
+3. **Firestore Daily Reads:** En los primeros 5 días de abril promedias **14.2K lecturas/día**. 
+   - *Riesgo x4:* La proyección subió a **1.7M/mes**, lo que supera el límite Spark (1.5M). Además, los días pico (como hoy de 37K) bloquearían el sitio a las pocas horas.
+   - *Solución:* Revisar si hay "lecturas infinitas" (useEffect sin dependencias, etc.) o activar el Plan Blaze para evitar caídas por picos.
+4. **Speed Insights:** Te pasaste del límite (22K de 10K). No corta el sitio, pero deja de medir.
 
 ### Cuándo empezar a pagar
 

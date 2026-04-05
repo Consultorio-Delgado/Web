@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { format, addDays, isSameDay, eachDayOfInterval } from "date-fns";
+import { format, addDays, isSameDay, eachDayOfInterval, differenceInYears } from "date-fns";
 import { es } from "date-fns/locale";
 import { Doctor } from "@/types";
 import { doctorService } from "@/services/doctorService";
@@ -399,20 +399,26 @@ export function BookingWizard() {
                         <div className="mx-auto bg-red-100 rounded-full p-4 w-fit mb-4">
                             <Ban className="h-12 w-12 text-red-600" />
                         </div>
-                        <CardTitle className="text-red-700">Cuenta temporalmente bloqueada</CardTitle>
+                        <CardTitle className="text-red-700">
+                            {differenceInYears(blockedUntilDate!, new Date()) > 5 ? "Cuenta bloqueada permanentemente" : "Cuenta temporalmente bloqueada"}
+                        </CardTitle>
                         <CardDescription className="text-red-600">
-                            Debido a la cancelación de un turno con menos de 48hs de anticipación, tu cuenta ha sido temporalmente bloqueada para reservar nuevos turnos.
+                            {differenceInYears(blockedUntilDate!, new Date()) > 5 
+                                ? "Tu cuenta ha sido bloqueada de forma indefinida por administración. Por favor, contacta con nosotros para más detalles."
+                                : "Debido a la cancelación de un turno con menos de 48hs de anticipación, tu cuenta ha sido temporalmente bloqueada para reservar nuevos turnos."}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        <div className="bg-white border border-red-200 rounded-lg p-4">
-                            <p className="text-sm text-slate-700">
-                                Podrás volver a reservar a partir del:
-                            </p>
-                            <p className="text-lg font-bold text-red-700 mt-1">
-                                {format(blockedUntilDate!, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}
-                            </p>
-                        </div>
+                        {differenceInYears(blockedUntilDate!, new Date()) <= 5 && (
+                            <div className="bg-white border border-red-200 rounded-lg p-4">
+                                <p className="text-sm text-slate-700">
+                                    Podrás volver a reservar a partir del:
+                                </p>
+                                <p className="text-lg font-bold text-red-700 mt-1">
+                                    {format(blockedUntilDate!, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}
+                                </p>
+                            </div>
+                        )}
                         <Button onClick={() => router.push('/portal')} className="w-full">
                             <ArrowRight className="mr-2 h-4 w-4" />
                             Ver Mis Turnos

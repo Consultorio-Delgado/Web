@@ -8,7 +8,7 @@ import { UserProfile, Appointment } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, Calendar, Mail, Phone, User, FileText, Ban, ShieldOff } from "lucide-react";
-import { format } from "date-fns";
+import { format, differenceInYears } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { userService } from "@/services/user";
@@ -108,6 +108,55 @@ export default function PatientProfilePage() {
                                 </div>
                             </div>
                         </div>
+                        
+                        {/* Manual Block Actions */}
+                        {!patient.blockedUntil || (patient.blockedUntil as any).toDate?.() <= new Date() || new Date(patient.blockedUntil) <= new Date() ? (
+                            <div className="border-t pt-4 space-y-2">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Acciones de Bloqueo</span>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs"
+                                        onClick={async () => {
+                                            if (!confirm("¿Seguro que desea bloquear a este paciente por 7 días?")) return;
+                                            try {
+                                                const nextWeek = new Date();
+                                                nextWeek.setDate(nextWeek.getDate() + 7);
+                                                await userService.updateUserProfile(patientId, { blockedUntil: nextWeek });
+                                                setPatient(prev => prev ? { ...prev, blockedUntil: nextWeek } : null);
+                                                toast.success("Paciente bloqueado por 7 días.");
+                                            } catch (err) {
+                                                toast.error("Error al bloquear paciente.");
+                                            }
+                                        }}
+                                    >
+                                        <Ban className="mr-1 h-3 w-3" />
+                                        7 Días
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="text-red-600 border-red-200 hover:bg-red-50 text-xs"
+                                        onClick={async () => {
+                                            if (!confirm("¿Seguro que desea bloquear a este paciente PERMANENTEMENTE?")) return;
+                                            try {
+                                                const permanent = new Date();
+                                                permanent.setFullYear(permanent.getFullYear() + 100);
+                                                await userService.updateUserProfile(patientId, { blockedUntil: permanent });
+                                                setPatient(prev => prev ? { ...prev, blockedUntil: permanent } : null);
+                                                toast.success("Paciente bloqueado permanentemente.");
+                                            } catch (err) {
+                                                toast.error("Error al bloquear paciente.");
+                                            }
+                                        }}
+                                    >
+                                        <Ban className="mr-1 h-3 w-3" />
+                                        Permanente
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
 
                         {/* Blocked Patient Warning */}
                         {(() => {
@@ -120,14 +169,20 @@ export default function PatientProfilePage() {
                                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
                                     <div className="flex items-center gap-2">
                                         <Ban className="h-5 w-5 text-red-600" />
-                                        <span className="font-semibold text-red-700">Paciente bloqueado</span>
+                                        <span className="font-semibold text-red-700">
+                                            {differenceInYears(blockedDate, new Date()) > 5 ? "Bloqueo Permanente" : "Paciente bloqueado"}
+                                        </span>
                                     </div>
                                     <p className="text-sm text-red-600">
-                                        Bloqueado hasta: <strong>{format(blockedDate, "d/MM/yyyy 'a las' HH:mm", { locale: es })}</strong>
+                                        {differenceInYears(blockedDate, new Date()) > 5 
+                                            ? "Este paciente ha sido bloqueado por administración de forma indefinida."
+                                            : `Bloqueado hasta: ${format(blockedDate, "d/MM/yyyy 'a las' HH:mm", { locale: es })}`}
                                     </p>
-                                    <p className="text-xs text-red-500">
-                                        Canceló un turno con menos de 48hs de anticipación.
-                                    </p>
+                                    {differenceInYears(blockedDate, new Date()) <= 5 && (
+                                        <p className="text-xs text-red-500">
+                                            Canceló un turno con menos de 48hs de anticipación.
+                                        </p>
+                                    )}
                                     <Button 
                                         variant="outline" 
                                         className="w-full border-red-300 text-red-700 hover:bg-red-100"
