@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { adminService } from "@/services/adminService";
 import { availabilityService } from "@/services/availabilityService";
 import { appointmentService } from "@/services/appointments";
+import { userService } from "@/services/user";
 import { format, addDays, differenceInSeconds } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -253,6 +254,13 @@ export default function DailyAgendaPage() {
             await appointmentService.updateAppointment(appointmentId, {
                 status: 'absent'
             });
+
+            // Automatically block patient for 7 days
+            if (appt?.patientId) {
+                const nextWeek = new Date();
+                nextWeek.setDate(nextWeek.getDate() + 7);
+                await userService.updateUserProfile(appt.patientId, { blockedUntil: nextWeek });
+            }
 
             if (appt && appt.patientEmail) {
                 fetch('/api/emails', {
@@ -839,12 +847,25 @@ export default function DailyAgendaPage() {
                                                                     onClick={async () => {
                                                                         setActionLoading(appt.id);
                                                                         try {
-                                                                            await appointmentService.updateAppointment(appt.id, {
+                                                                            const { deleteField } = await import("firebase/firestore");
+                                                                        const updatePromises: Promise<any>[] = [
+                                                                            appointmentService.updateAppointment(appt.id, {
                                                                                 status: 'confirmed',
                                                                                 arrivedAt: null
-                                                                            } as any);
-                                                                            toast.success("Estado revertido a Confirmado");
-                                                                            fetchSlots();
+                                                                            } as any)
+                                                                        ];
+
+                                                                        if (appt.status === 'absent' && appt.patientId) {
+                                                                            updatePromises.push(
+                                                                                userService.updateUserProfile(appt.patientId, { 
+                                                                                    blockedUntil: deleteField() 
+                                                                                } as any)
+                                                                            );
+                                                                        }
+
+                                                                        await Promise.all(updatePromises);
+                                                                        toast.success("Estado revertido a Confirmado");
+                                                                        fetchSlots();
                                                                         } catch (error) {
                                                                             toast.error("Error al revertir estado");
                                                                         } finally {
@@ -865,10 +886,23 @@ export default function DailyAgendaPage() {
                                                                 onClick={async () => {
                                                                     setActionLoading(appt.id);
                                                                     try {
-                                                                        await appointmentService.updateAppointment(appt.id, {
-                                                                            status: 'confirmed',
-                                                                            arrivedAt: null
-                                                                        } as any);
+                                                                        const { deleteField } = await import("firebase/firestore");
+                                                                        const updatePromises: Promise<any>[] = [
+                                                                            appointmentService.updateAppointment(appt.id, {
+                                                                                status: 'confirmed',
+                                                                                arrivedAt: null
+                                                                            } as any)
+                                                                        ];
+
+                                                                        if (appt.status === 'absent' && appt.patientId) {
+                                                                            updatePromises.push(
+                                                                                userService.updateUserProfile(appt.patientId, { 
+                                                                                    blockedUntil: deleteField() 
+                                                                                } as any)
+                                                                            );
+                                                                        }
+
+                                                                        await Promise.all(updatePromises);
                                                                         toast.success("Estado revertido a Confirmado");
                                                                         fetchSlots();
                                                                     } catch (error) {
