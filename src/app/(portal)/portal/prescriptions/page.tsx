@@ -15,6 +15,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, FileText, Send, CheckCircle, AlertTriangle, Paperclip, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { doctorService } from "@/services/doctorService";
@@ -58,17 +59,18 @@ export default function PrescriptionsPage() {
         doctorId: "",
         nombre: profile?.firstName || "",
         apellido: profile?.lastName || "",
-        dni: "",
+        dni: profile?.dni || "",
         telefono: profile?.phone || "",
         email: user?.email || "",
-        cobertura: "",
-        numeroAfiliado: "",
-        plan: "",
+        cobertura: profile?.insurance || "",
+        numeroAfiliado: profile?.insuranceNumber || "",
+        plan: profile?.plan || "",
         token: "",
         otraCobertura: "",
         medicamentos: "",
     });
 
+    const [noToken, setNoToken] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,22 +120,32 @@ export default function PrescriptionsPage() {
 
     useEffect(() => {
         if (profile) {
-            setFormData(prev => ({
-                ...prev,
-                nombre: profile.firstName || prev.nombre,
-                apellido: profile.lastName || prev.apellido,
-                telefono: profile.phone || prev.telefono,
-                dni: profile.dni || prev.dni,
-                email: user?.email || prev.email,
-                cobertura: profile.insurance || prev.cobertura,
-                numeroAfiliado: profile.insuranceNumber || prev.numeroAfiliado,
-                plan: profile.plan || prev.plan,
-            }));
+            setFormData(prev => {
+                // Only update if values are different to avoid unnecessary renders
+                const updates: Partial<PrescriptionFormData> = {};
+                if (profile.firstName && profile.firstName !== prev.nombre) updates.nombre = profile.firstName;
+                if (profile.lastName && profile.lastName !== prev.apellido) updates.apellido = profile.lastName;
+                if (profile.phone && profile.phone !== prev.telefono) updates.telefono = profile.phone;
+                if (profile.dni && profile.dni !== prev.dni) updates.dni = profile.dni;
+                if (user?.email && user.email !== prev.email) updates.email = user.email;
+                if (profile.insurance && profile.insurance !== prev.cobertura) updates.cobertura = profile.insurance;
+                if (profile.insuranceNumber && profile.insuranceNumber !== prev.numeroAfiliado) updates.numeroAfiliado = profile.insuranceNumber;
+                if (profile.plan && profile.plan !== prev.plan) updates.plan = profile.plan;
+
+                if (Object.keys(updates).length > 0) {
+                    return { ...prev, ...updates };
+                }
+                return prev;
+            });
         }
-    }, [profile, user]);
+    }, [profile?.uid, user?.uid]); // Use stable IDs for dependency check
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }));
+        const { id, value } = e.target;
+        if (id === 'token' && value.trim() !== '') {
+            setNoToken(false);
+        }
+        setFormData(prev => ({ ...prev, [id]: value }));
     };
 
     const handleSelectChange = (field: string, value: string) => {
@@ -150,6 +162,11 @@ export default function PrescriptionsPage() {
 
         if (formData.cobertura === "Otra" && !formData.otraCobertura.trim()) {
             toast.error("Por favor especifique su cobertura social");
+            return;
+        }
+
+        if (!formData.token.trim() && !noToken) {
+            toast.error("Por favor ingrese el Token o marque 'No tengo token'");
             return;
         }
 
@@ -183,6 +200,7 @@ export default function PrescriptionsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...formData,
+                    token: noToken ? "el paciente marco no necesita token" : formData.token,
                     cobertura: formData.cobertura === "Otra" ? `Otra: ${formData.otraCobertura}` : formData.cobertura,
                     doctorName: selectedDoctor ? (
                         selectedDoctor.id === 'secondi' ? 'Dra. María Verónica Secondi' :
@@ -216,6 +234,7 @@ export default function PrescriptionsPage() {
                 otraCobertura: "",
                 token: ""
             }));
+            setNoToken(false);
             toast.success("¡Solicitud enviada! La receta llegará dentro de los 7 días hábiles.");
         } catch (error: any) {
             console.error("Error en el envío:", error);
@@ -466,19 +485,43 @@ export default function PrescriptionsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="token">Token (OMINT y SWISS)</Label>
-                                        <Input
-                                            id="token"
-                                            placeholder="Si tiene credencial digital"
-                                            value={formData.token}
-                                            onChange={handleChange}
-                                            disabled={loading}
-                                        />
-                                        <p className="text-xs text-slate-500">
-                                            Para OSDE y Galeno se solicitará por WhatsApp.
-                                        </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="token">Token (OMINT y SWISS) *</Label>
+                                            <Input
+                                                id="token"
+                                                placeholder="Si tiene credencial digital"
+                                                value={formData.token}
+                                                onChange={handleChange}
+                                                disabled={loading}
+                                                maxLength={10}
+                                            />
+                                        </div>
+                                        <div className="flex items-center h-10">
+                                            <Label 
+                                                htmlFor="noToken" 
+                                                className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 h-full cursor-pointer hover:bg-slate-100 transition-colors w-full"
+                                            >
+                                                <Checkbox 
+                                                    id="noToken" 
+                                                    checked={noToken}
+                                                    onCheckedChange={(checked) => {
+                                                        const isChecked = !!checked;
+                                                        setNoToken(isChecked);
+                                                        if (isChecked) {
+                                                            setFormData(prev => ({ ...prev, token: "" }));
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="text-sm font-medium leading-none selection:none">
+                                                    No tengo token
+                                                </span>
+                                            </Label>
+                                        </div>
                                     </div>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Para OSDE y Galeno se solicitará por WhatsApp.
+                                    </p>
 
                                     <div className="border-t pt-4" />
 
