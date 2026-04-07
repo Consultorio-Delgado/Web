@@ -164,7 +164,23 @@ export default function StudiesPage() {
             return;
         }
 
-        if (!formData.token.trim() && !noToken) {
+        const isParticular = formData.cobertura === "PARTICULAR";
+        const isTokenRequiredInsurance = ["Swiss Medical", "Omint"].includes(formData.cobertura);
+
+        // Required fields for non-particular
+        if (!isParticular) {
+            if (!formData.numeroAfiliado.trim()) {
+                toast.error("Por favor ingrese su número de afiliado");
+                return;
+            }
+            if (!formData.plan.trim()) {
+                toast.error("Por favor ingrese su plan");
+                return;
+            }
+        }
+
+        // Token check only for specific insurances
+        if (isTokenRequiredInsurance && !formData.token.trim() && !noToken) {
             toast.error("Por favor ingrese el Token o marque 'No tengo token'");
             return;
         }
@@ -444,67 +460,70 @@ export default function StudiesPage() {
                                         )}
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="numeroAfiliado">Número de Afiliado *</Label>
-                                            <Input
-                                                id="numeroAfiliado"
-                                                required
-                                                placeholder="Sin espacios entre los números"
-                                                value={formData.numeroAfiliado}
-                                                onChange={handleChange}
-                                                disabled={loading}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="plan">Plan *</Label>
-                                            <Input
-                                                id="plan"
-                                                required
-                                                value={formData.plan}
-                                                onChange={handleChange}
-                                                disabled={loading}
-                                            />
-                                        </div>
-                                    </div>
+                                    {formData.cobertura !== "PARTICULAR" && (
+                                        <>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="numeroAfiliado">Número de Afiliado *</Label>
+                                                    <Input
+                                                        id="numeroAfiliado"
+                                                        required
+                                                        placeholder="Sin espacios entre los números"
+                                                        value={formData.numeroAfiliado}
+                                                        onChange={handleChange}
+                                                        disabled={loading}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="plan">Plan *</Label>
+                                                    <Input
+                                                        id="plan"
+                                                        required
+                                                        value={formData.plan}
+                                                        onChange={handleChange}
+                                                        disabled={loading}
+                                                    />
+                                                </div>
+                                            </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="token">Token (OMINT y SWISS) *</Label>
-                                            <Input
-                                                id="token"
-                                                placeholder="Si tiene credencial digital"
-                                                value={formData.token}
-                                                onChange={handleChange}
-                                                disabled={loading}
-                                                maxLength={10}
-                                            />
-                                        </div>
-                                        <div className="flex items-center h-10">
-                                            <Label 
-                                                htmlFor="noToken" 
-                                                className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 h-full cursor-pointer hover:bg-slate-100 transition-colors w-full"
-                                            >
-                                                <Checkbox 
-                                                    id="noToken" 
-                                                    checked={noToken}
-                                                    onCheckedChange={(checked) => {
-                                                        const isChecked = !!checked;
-                                                        setNoToken(isChecked);
-                                                        if (isChecked) {
-                                                            setFormData(prev => ({ ...prev, token: "" }));
-                                                        }
-                                                    }}
-                                                />
-                                                <span className="text-sm font-medium leading-none selection:none">
-                                                    No tengo token
-                                                </span>
-                                            </Label>
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-slate-500 mt-1">
-                                        Para OSDE y Galeno se solicitará por WhatsApp.
-                                    </p>
+                                            {["Swiss Medical", "Omint"].includes(formData.cobertura) && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="token">Token (OMINT y SWISS) *</Label>
+                                                        <Input
+                                                            id="token"
+                                                            placeholder="Si tiene credencial digital"
+                                                            value={formData.token}
+                                                            onChange={handleChange}
+                                                            disabled={loading}
+                                                            maxLength={10}
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center h-10">
+                                                        <Label 
+                                                            htmlFor="noToken" 
+                                                            className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 h-full cursor-pointer hover:bg-slate-100 transition-colors w-full"
+                                                        >
+                                                            <Checkbox 
+                                                                id="noToken" 
+                                                                checked={noToken}
+                                                                onCheckedChange={(checked) => {
+                                                                    const isChecked = !!checked;
+                                                                    setNoToken(isChecked);
+                                                                    if (isChecked) {
+                                                                        setFormData(prev => ({ ...prev, token: "" }));
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <span className="text-sm font-medium leading-none selection:none">
+                                                                No tengo token
+                                                            </span>
+                                                        </Label>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
 
                                     <div className="border-t pt-4" />
 
