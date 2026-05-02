@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { adminService } from "@/services/adminService";
+import { useRealtimeAppointments } from "@/hooks/useRealtimeAppointments";
 import { appointmentService } from "@/services/appointments";
 import { doctorService } from "@/services/doctorService";
 import { availabilityService } from "@/services/availabilityService";
@@ -147,13 +147,14 @@ export default function AppointmentsPage() {
         fetchBusyAndBlockedDays();
     }, [doctor, currentMonth]);
 
-    // Fetch slots whenever selectedDate, doctor, or viewAllDoctors changes
-    const fetchData = useCallback(async () => {
+    // ── Real-time listener for appointments on the selected date ──
+    const { appointments: realtimeAppointments, loading: rtLoading } = useRealtimeAppointments(selectedDate ?? null);
+
+    // Process real-time appointments into display slots
+    const processSlots = useCallback(async (allAppointments: Appointment[]) => {
         if (!selectedDate || !doctor) return;
         setLoading(true);
         try {
-            const allAppointments = await adminService.getDailyAppointments(selectedDate);
-
             let finalSlots: MonthlySlot[] = [];
 
             if (viewAllDoctors) {
@@ -179,11 +180,12 @@ export default function AppointmentsPage() {
         }
     }, [selectedDate, doctor, viewAllDoctors]);
 
+    // Re-process slots every time real-time appointments change
     useEffect(() => {
-        if (doctor && selectedDate) {
-            fetchData();
+        if (doctor && selectedDate && !rtLoading) {
+            processSlots(realtimeAppointments);
         }
-    }, [fetchData, doctor, selectedDate, refreshTrigger]);
+    }, [realtimeAppointments, rtLoading, doctor, selectedDate, processSlots]);
 
 
 
@@ -240,8 +242,7 @@ export default function AppointmentsPage() {
                 toast.success(`Turno reservado para ${patient.firstName} ${patient.lastName}`);
             }
 
-            // Refresh
-            await fetchData();
+            // onSnapshot will automatically refresh
             setBookingSlot(null);
         } catch (error) {
             console.error(error);
@@ -275,8 +276,7 @@ export default function AppointmentsPage() {
                 notes: 'Bloqueado manualmente'
             } as any); // Type cast due to some missing fields like status that createAppointment overrides
 
-            // Refresh
-            await fetchData();
+            // onSnapshot will automatically refresh
             toast.success(`Horiario ${time} bloqueado.`);
         } catch (error) {
             console.error(error);
@@ -293,8 +293,7 @@ export default function AppointmentsPage() {
             setLoading(true);
             const dateString = format(selectedDate, 'yyyy-MM-dd');
             await exceptionService.deleteByDateAndDoctor(dateString, doctor.id);
-            // Refresh
-            await fetchData();
+            // onSnapshot will automatically refresh
             // Update blocked days in calendar
             setBlockedDays(prev => {
                 const next = new Set(prev);
@@ -320,8 +319,7 @@ export default function AppointmentsPage() {
                 doctorId: doctor.id,
                 reason: "Bloqueado desde Agenda"
             });
-            // Refresh
-            await fetchData();
+            // onSnapshot will automatically refresh
             // Update blocked days in calendar
             setBlockedDays(prev => {
                 const next = new Set(prev);
@@ -342,8 +340,7 @@ export default function AppointmentsPage() {
         try {
             setLoading(true);
             await appointmentService.cancelAppointment(appointmentId, reason);
-            // Refresh
-            await fetchData();
+            // onSnapshot will automatically refresh
             toast.success(reason ? "Turno cancelado y notificado" : "Horario desbloqueado.");
         } catch (error) {
             console.error(error);
@@ -405,8 +402,7 @@ export default function AppointmentsPage() {
             setIsSelectionMode(false);
             setSelectedSlots(new Set());
 
-            // Refresh
-            await fetchData();
+            // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al bloquear horarios seleccionados");

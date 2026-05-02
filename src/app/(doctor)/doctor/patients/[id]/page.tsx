@@ -13,6 +13,7 @@ import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { userService } from "@/services/user";
 import { toast } from "sonner";
+import { WhatsAppReviewButton } from "@/components/doctor/WhatsAppReviewButton";
 
 export default function PatientProfilePage() {
     const params = useParams();
@@ -108,6 +109,17 @@ export default function PatientProfilePage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Botón Solicitar Reseña por WhatsApp */}
+                        {patient.phone && (
+                            <div className="border-t pt-4">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">Reseña Google</span>
+                                <WhatsAppReviewButton
+                                    patientName={`${patient.firstName} ${patient.lastName}`}
+                                    patientPhone={patient.phone}
+                                />
+                            </div>
+                        )}
                         
                         {/* Manual Block Actions */}
                         {!patient.blockedUntil || (patient.blockedUntil as any).toDate?.() <= new Date() || new Date(patient.blockedUntil) <= new Date() ? (

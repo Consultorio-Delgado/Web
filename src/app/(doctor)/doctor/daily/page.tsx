@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from "@/context/AuthContext";
-import { adminService } from "@/services/adminService";
+import { useRealtimeAppointments } from "@/hooks/useRealtimeAppointments";
 import { availabilityService } from "@/services/availabilityService";
 import { appointmentService } from "@/services/appointments";
 import { userService } from "@/services/user";
@@ -46,6 +46,7 @@ import { PatientSearch } from "@/components/doctor/PatientSearch";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { WhatsAppReviewButton } from "@/components/doctor/WhatsAppReviewButton";
 
 // ... WaitingTimer component ...
 function WaitingTimer({ arrivedAt }: { arrivedAt: Date }) {
@@ -145,15 +146,17 @@ export default function DailyAgendaPage() {
         fetchDoctor();
     }, [user, profile]);
 
-    const fetchSlots = useCallback(async () => {
+    // ── Real-time listener for appointments on the selected date ──
+    const { appointments: realtimeAppointments, loading: rtLoading } = useRealtimeAppointments(date);
+
+    // Process real-time appointments into display slots whenever they change
+    const processSlots = useCallback(async (allAppointments: Appointment[]) => {
         if (!doctor) return;
         setLoading(true);
         try {
             const { doctorService } = await import("@/services/doctorService");
 
-            // 1. Get Appointments for the day (all of them, then filter needed)
-            const allAppointments = await adminService.getDailyAppointments(date);
-
+            // Cancelled appointments section
             let cancelledAppts: Appointment[] = [];
             if (viewAllDoctors) {
                  cancelledAppts = allAppointments.filter(a => a.status === 'cancelled');
@@ -186,23 +189,19 @@ export default function DailyAgendaPage() {
                 setBlockedData([]);
             }
 
+            // Build slots
             let finalSlots: DailySlot[] = [];
 
             if (viewAllDoctors) {
-                // Fetch ALL doctors
                 const allDoctors = await doctorService.getAllDoctors();
-
                 const promises = allDoctors.map(async (doc) => {
                     const docAppointments = allAppointments.filter(a => a.doctorId === doc.id);
                     const daySlots = await availabilityService.getAllDaySlots(doc, date, docAppointments);
                     return daySlots.map(s => ({ ...s, doctor: doc }));
                 });
-
                 const results = await Promise.all(promises);
                 finalSlots = results.flat().sort((a, b) => a.time.localeCompare(b.time));
-
             } else {
-                // Just ME
                 const myAppointments = allAppointments.filter(a => a.doctorId === doctor.id);
                 const daySlots = await availabilityService.getAllDaySlots(doctor, date, myAppointments);
                 finalSlots = daySlots.map(s => ({ ...s, doctor: doctor }));
@@ -217,11 +216,12 @@ export default function DailyAgendaPage() {
         }
     }, [date, doctor, viewAllDoctors]);
 
+    // Re-process slots every time real-time appointments change
     useEffect(() => {
-        if (doctor) {
-            fetchSlots();
+        if (doctor && !rtLoading) {
+            processSlots(realtimeAppointments);
         }
-    }, [fetchSlots, doctor]);
+    }, [realtimeAppointments, rtLoading, doctor, processSlots]);
 
     const handlePrevDay = () => setDate(addDays(date, -1));
     const handleNextDay = () => setDate(addDays(date, 1));
@@ -235,7 +235,7 @@ export default function DailyAgendaPage() {
                 arrivedAt: new Date()
             });
             toast.success("Paciente en sala de espera");
-            fetchSlots();
+            // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al marcar llegada");
@@ -280,7 +280,7 @@ export default function DailyAgendaPage() {
             }
 
             toast.success("Paciente marcado como ausente");
-            fetchSlots();
+            // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al marcar ausencia");
@@ -296,7 +296,7 @@ export default function DailyAgendaPage() {
                 status: 'completed'
             });
             toast.success("Consulta finalizada");
-            fetchSlots();
+            // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al finalizar consulta");
@@ -335,7 +335,7 @@ export default function DailyAgendaPage() {
             } as any);
 
             toast.success(`Turno reservado para ${patient.firstName} ${patient.lastName} con Dr. ${targetDoctor.lastName}`);
-            fetchSlots();
+            // onSnapshot will automatically refresh
             setBookingSlot(null);
         } catch (error) {
             console.error(error);
@@ -389,7 +389,7 @@ export default function DailyAgendaPage() {
             } as any);
 
             toast.success(`Horario ${time} bloqueado.`);
-            fetchSlots();
+            // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al bloquear horario");
@@ -411,7 +411,7 @@ export default function DailyAgendaPage() {
             setActionLoading(appointmentId);
             await appointmentService.cancelAppointment(appointmentId);
             toast.success("Horario desbloqueado");
-            fetchSlots();
+            // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al desbloquear horario");
@@ -476,7 +476,7 @@ export default function DailyAgendaPage() {
             toast.success(`${selectedSlots.size} horarios bloqueados.`);
             setIsSelectionMode(false);
             setSelectedSlots(new Set());
-            fetchSlots();
+            // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al bloquear horarios seleccionados");
@@ -500,7 +500,7 @@ export default function DailyAgendaPage() {
             toast.success(`${selectedSlots.size} horarios desbloqueados.`);
             setIsSelectionMode(false);
             setSelectedSlots(new Set());
-            fetchSlots();
+            // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al desbloquear horarios seleccionados");
@@ -865,7 +865,7 @@ export default function DailyAgendaPage() {
 
                                                                         await Promise.all(updatePromises);
                                                                         toast.success("Estado revertido a Confirmado");
-                                                                        fetchSlots();
+                                                                        // onSnapshot will automatically refresh
                                                                         } catch (error) {
                                                                             toast.error("Error al revertir estado");
                                                                         } finally {
@@ -879,42 +879,53 @@ export default function DailyAgendaPage() {
                                                             </>
                                                         )}
                                                         {(isCompleted || isAbsent) && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="text-slate-400 hover:text-slate-600 font-medium"
-                                                                onClick={async () => {
-                                                                    setActionLoading(appt.id);
-                                                                    try {
-                                                                        const { deleteField } = await import("firebase/firestore");
-                                                                        const updatePromises: Promise<any>[] = [
-                                                                            appointmentService.updateAppointment(appt.id, {
-                                                                                status: 'confirmed',
-                                                                                arrivedAt: null
-                                                                            } as any)
-                                                                        ];
-
-                                                                        if (appt.status === 'absent' && appt.patientId) {
-                                                                            updatePromises.push(
-                                                                                userService.updateUserProfile(appt.patientId, { 
-                                                                                    blockedUntil: deleteField() 
+                                                            <>
+                                                                {/* Botón de WhatsApp para solicitar reseña (solo en completados) */}
+                                                                {isCompleted && (
+                                                                    <WhatsAppReviewButton
+                                                                        patientName={appt.patientName}
+                                                                        patientPhone={appt.patientPhone}
+                                                                        patientId={appt.patientId}
+                                                                        variant="compact"
+                                                                    />
+                                                                )}
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="text-slate-400 hover:text-slate-600 font-medium"
+                                                                    onClick={async () => {
+                                                                        setActionLoading(appt.id);
+                                                                        try {
+                                                                            const { deleteField } = await import("firebase/firestore");
+                                                                            const updatePromises: Promise<any>[] = [
+                                                                                appointmentService.updateAppointment(appt.id, {
+                                                                                    status: 'confirmed',
+                                                                                    arrivedAt: null
                                                                                 } as any)
-                                                                            );
-                                                                        }
+                                                                            ];
 
-                                                                        await Promise.all(updatePromises);
-                                                                        toast.success("Estado revertido a Confirmado");
-                                                                        fetchSlots();
-                                                                    } catch (error) {
-                                                                        toast.error("Error al revertir estado");
-                                                                    } finally {
-                                                                        setActionLoading(null);
-                                                                    }
-                                                                }}
-                                                                disabled={actionLoading === appt.id}
-                                                            >
-                                                                Deshacer
-                                                            </Button>
+                                                                            if (appt.status === 'absent' && appt.patientId) {
+                                                                                updatePromises.push(
+                                                                                    userService.updateUserProfile(appt.patientId, { 
+                                                                                        blockedUntil: deleteField() 
+                                                                                    } as any)
+                                                                                );
+                                                                            }
+
+                                                                            await Promise.all(updatePromises);
+                                                                            toast.success("Estado revertido a Confirmado");
+                                                                            // onSnapshot will automatically refresh
+                                                                        } catch (error) {
+                                                                            toast.error("Error al revertir estado");
+                                                                        } finally {
+                                                                            setActionLoading(null);
+                                                                        }
+                                                                    }}
+                                                                    disabled={actionLoading === appt.id}
+                                                                >
+                                                                    Deshacer
+                                                                </Button>
+                                                            </>
                                                         )}
                                                     </>
                                                 )}
