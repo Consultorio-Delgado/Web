@@ -8,7 +8,7 @@ import AbsenceEmail from '@/components/emails/AbsenceEmail';
 import SobreturnoConfirmationEmail from '@/components/emails/SobreturnoConfirmationEmail';
 import VerificationEmail from '@/components/emails/VerificationEmail';
 import PasswordResetEmail from '@/components/emails/PasswordResetEmail';
-import { auth as adminAuth } from '@/lib/firebaseAdmin';
+import { auth as adminAuth, isAuthUserNotFound } from '@/lib/firebaseAdmin';
 
 // Initialize Resend with API Key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -589,10 +589,24 @@ export const emailService = {
 
     async sendPasswordReset(data: { to: string; patientName?: string }) {
         try {
+            const email = data.to?.trim();
+            if (!email) {
+                return { success: false, error: 'INVALID_EMAIL' };
+            }
+
             const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://consultoriodelgado.com';
 
+            try {
+                await adminAuth.getUserByEmail(email);
+            } catch (lookupError) {
+                if (isAuthUserNotFound(lookupError)) {
+                    return { success: false, error: 'USER_NOT_FOUND' };
+                }
+                throw lookupError;
+            }
+
             // Generate password reset link via Firebase Admin SDK
-            const resetLink = await adminAuth.generatePasswordResetLink(data.to, {
+            const resetLink = await adminAuth.generatePasswordResetLink(email, {
                 url: `${APP_URL}/login`,
             });
 
@@ -603,13 +617,16 @@ export const emailService = {
 
             await resend.emails.send({
                 from: FROM_EMAIL,
-                to: data.to,
+                to: email,
                 subject: 'Restablecer Contraseña - Consultorio Delgado (NO RESPONDER MAIL)',
                 html: html
             });
             return { success: true };
-        } catch (error) {
+        } catch (error: any) {
             console.error('[EmailService] PasswordReset Error:', error);
+            if (isAuthUserNotFound(error)) {
+                return { success: false, error: 'USER_NOT_FOUND' };
+            }
             return { success: false, error };
         }
     }

@@ -149,6 +149,11 @@ export default function PrescriptionsPage() {
     };
 
     const handleSelectChange = (field: string, value: string) => {
+        if (field === "cobertura" && value !== "Swiss Medical") {
+            setNoToken(false);
+            setFormData(prev => ({ ...prev, [field]: value, token: "" }));
+            return;
+        }
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -166,7 +171,7 @@ export default function PrescriptionsPage() {
         }
 
         const isParticular = formData.cobertura === "PARTICULAR";
-        const isTokenRequiredInsurance = ["Swiss Medical", "Omint"].includes(formData.cobertura);
+        const isTokenRequiredInsurance = formData.cobertura === "Swiss Medical";
 
         // Required fields for non-particular
         if (!isParticular) {
@@ -299,7 +304,7 @@ export default function PrescriptionsPage() {
                         Solicitar Recetas y Estudios Médicos
                     </CardTitle>
                     <CardDescription>
-                        Complete el formulario para solicitar una receta médica a su profesional.
+                        Complete el formulario para solicitar una receta médica o estudios a su profesional.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -503,10 +508,10 @@ export default function PrescriptionsPage() {
                                                 </div>
                                             </div>
 
-                                            {["Swiss Medical", "Omint"].includes(formData.cobertura) && (
+                                            {formData.cobertura === "Swiss Medical" && (
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="token">Token (OMINT y SWISS) *</Label>
+                                                        <Label htmlFor="token">Token (swiss)*</Label>
                                                         <Input
                                                             id="token"
                                                             placeholder="Si tiene credencial digital"

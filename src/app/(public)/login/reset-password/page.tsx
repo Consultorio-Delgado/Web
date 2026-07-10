@@ -13,12 +13,14 @@ export default function ResetPasswordPage() {
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isSent, setIsSent] = useState(false);
+    const [emailNotFound, setEmailNotFound] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email) return;
 
         setIsLoading(true);
+        setEmailNotFound(false);
         try {
             const res = await fetch('/api/emails', {
                 method: 'POST',
@@ -32,6 +34,13 @@ export default function ResetPasswordPage() {
             if (res.ok) {
                 setIsSent(true);
                 toast.success("Correo de recuperación enviado.");
+            } else if (res.status === 404) {
+                const data = await res.json();
+                if (data.error === 'USER_NOT_FOUND') {
+                    setEmailNotFound(true);
+                } else {
+                    toast.error("Error al enviar el correo. Intente nuevamente.");
+                }
             } else {
                 toast.error("Error al enviar el correo. Intente nuevamente.");
             }
@@ -82,7 +91,10 @@ export default function ResetPasswordPage() {
                                     type="email"
                                     placeholder="nombre@ejemplo.com"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    onChange={(e) => {
+                                        setEmail(e.target.value);
+                                        setEmailNotFound(false);
+                                    }}
                                     required
                                 />
                             </div>
@@ -90,6 +102,25 @@ export default function ResetPasswordPage() {
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Enviar Enlace
                             </Button>
+                            {emailNotFound && (
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 space-y-2">
+                                    <p>
+                                        No encontramos una cuenta registrada con <strong>{email}</strong>.
+                                    </p>
+                                    <div className="flex flex-col gap-1 text-xs">
+                                        <Link href="/register" className="underline hover:text-primary w-fit">
+                                            Crear una cuenta con otro email
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            className="underline hover:text-primary text-left w-fit"
+                                            onClick={() => setEmailNotFound(false)}
+                                        >
+                                            Corregir el email si fue un error de tipeo
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </form>
                     )}
                 </CardContent>

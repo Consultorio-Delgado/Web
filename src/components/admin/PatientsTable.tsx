@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, FileText, Edit } from "lucide-react";
 import { EditPatientDialog } from "./EditPatientDialog";
+import { matchesSearchQuery } from "@/lib/utils";
 
 interface Props {
     data: UserProfile[];
@@ -27,12 +28,18 @@ export function PatientsTable({ data, onUpdate }: Props) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const filteredData = data.filter((patient) => {
-        const term = filter.toLowerCase();
-        const fullName = `${patient.firstName} ${patient.lastName}`.toLowerCase();
-        const dni = patient.dni ? patient.dni.toLowerCase() : "";
-        const email = patient.email.toLowerCase();
-
-        return fullName.includes(term) || dni.includes(term) || email.includes(term);
+        return matchesSearchQuery(
+            [
+                patient.firstName,
+                patient.lastName,
+                `${patient.firstName} ${patient.lastName}`,
+                `${patient.lastName} ${patient.firstName}`,
+                `${patient.lastName}, ${patient.firstName}`,
+                patient.dni || "",
+                patient.email,
+            ],
+            filter
+        );
     });
 
     const handleEdit = (patient: UserProfile) => {

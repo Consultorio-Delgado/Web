@@ -14,4 +14,23 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
+export function isAuthUserNotFound(error: unknown): boolean {
+    if (error === 'USER_NOT_FOUND') return true;
+    if (!error || typeof error !== 'object') return false;
+
+    const err = error as {
+        code?: string;
+        errorInfo?: { code?: string; message?: string };
+        message?: string;
+    };
+
+    const code = err.code || err.errorInfo?.code;
+    if (code === 'auth/user-not-found' || code === 'auth/email-not-found') {
+        return true;
+    }
+
+    const message = err.message || err.errorInfo?.message || '';
+    return /no user record|user not found|email not found/i.test(message);
+}
+
 export { db, auth };

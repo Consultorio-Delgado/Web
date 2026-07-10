@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { appointmentService } from "@/services/appointments";
-import { userService } from "@/services/user";
+import { adminService } from "@/services/adminService";
 import { doctorService } from "@/services/doctorService";
 import { Doctor, UserProfile } from "@/types";
+import { matchesSearchQuery } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -28,6 +29,8 @@ interface SobreturnoDialogProps {
 export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, defaultDoctorId }: SobreturnoDialogProps) {
     const [loading, setLoading] = useState(false);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
+    const [allPatients, setAllPatients] = useState<UserProfile[]>([]);
+    const [loadingPatients, setLoadingPatients] = useState(false);
 
     // Form State
     const [selectedDoctorId, setSelectedDoctorId] = useState<string>(defaultDoctorId || "");
@@ -38,7 +41,6 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
     const [selectedPatient, setSelectedPatient] = useState<UserProfile | null>(null);
-    const [isSearching, setIsSearching] = useState(false);
 
     // Manual Patient State
     const [manualPatientName, setManualPatientName] = useState("");
@@ -48,6 +50,14 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
     useEffect(() => {
         if (isOpen) {
             doctorService.getAllDoctors().then(setDoctors);
+            setLoadingPatients(true);
+            adminService.getAllPatients()
+                .then(setAllPatients)
+                .catch((error) => {
+                    console.error(error);
+                    toast.error("Error al cargar pacientes");
+                })
+                .finally(() => setLoadingPatients(false));
             // Reset form
             setSelectedDoctorId(defaultDoctorId || "");
             setTime("");
@@ -58,29 +68,31 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
             setManualPatientEmail("");
             setIsManualPatient(false);
         }
-    }, [isOpen]);
+    }, [isOpen, defaultDoctorId]);
 
-    // Handle Search
+    const getPatientSearchFields = (patient: UserProfile) => [
+        patient.firstName,
+        patient.lastName,
+        `${patient.firstName} ${patient.lastName}`,
+        `${patient.lastName} ${patient.firstName}`,
+        `${patient.lastName}, ${patient.firstName}`,
+        patient.dni || "",
+        patient.email,
+    ];
+
+    // Handle Search (client-side, same logic as patient directory)
     useEffect(() => {
-        if (!searchQuery || searchQuery.length < 3 || isManualPatient) {
+        if (!searchQuery || searchQuery.length < 2 || isManualPatient || selectedPatient) {
             setSearchResults([]);
             return;
         }
 
-        const delayDebounceFn = setTimeout(async () => {
-            setIsSearching(true);
-            try {
-                const results = await userService.searchPatients(searchQuery);
-                setSearchResults(results);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setIsSearching(false);
-            }
-        }, 500);
+        const results = allPatients
+            .filter((patient) => matchesSearchQuery(getPatientSearchFields(patient), searchQuery))
+            .slice(0, 20);
 
-        return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery, isManualPatient]);
+        setSearchResults(results);
+    }, [searchQuery, isManualPatient, allPatients, selectedPatient]);
 
     const handleConfirm = async () => {
         if (!selectedDoctorId) {
@@ -282,7 +294,7 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
                             </div>
                         ) : (
                             <div className="space-y-2">
-                                <Label>Buscar Paciente (DNI o Apellido)</Label>
+                                <Label>Buscar Paciente (nombre, DNI o email)</Label>
                                 <div className="relative">
                                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -291,7 +303,7 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="pl-8"
                                     />
-                                    {isSearching && (
+                                    {loadingPatients && (
                                         <div className="absolute right-2 top-2.5">
                                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                         </div>

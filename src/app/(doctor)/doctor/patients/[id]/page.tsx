@@ -8,6 +8,7 @@ import { UserProfile, Appointment } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, Calendar, Mail, Phone, User, FileText, Ban, ShieldOff } from "lucide-react";
+import { formatBirthDate } from "@/lib/utils";
 import { format, differenceInYears } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -97,7 +98,7 @@ export default function PatientProfilePage() {
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <span>{patient.birthDate ? format(new Date(patient.birthDate), 'dd/MM/yyyy') : 'Sin fecha de nac.'}</span>
+                                <span>{patient.birthDate ? formatBirthDate(patient.birthDate) : 'Sin fecha de nac.'}</span>
                             </div>
                             <div className="flex flex-col gap-1 mt-3">
                                 <div className="flex items-center gap-2 text-sm">

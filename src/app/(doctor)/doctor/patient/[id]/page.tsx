@@ -6,6 +6,7 @@ import { Appointment, UserProfile } from "@/types";
 import { historyService } from "@/services/historyService";
 import { format, differenceInYears } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatBirthDate, parseBirthDate } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Calendar, FileText, Phone, Activity, Image as ImageIcon } from "lucide-react";
@@ -85,7 +86,7 @@ export default function PatientHistoryPage() {
                         </div>
                         <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            {patient.birthDate ? `${format(new Date(patient.birthDate), 'dd/MM/yyyy')} (${differenceInYears(new Date(), new Date(patient.birthDate))} años)` : 'Fecha nac. desconocida'}
+                            {patient.birthDate ? `${formatBirthDate(patient.birthDate)} (${differenceInYears(new Date(), parseBirthDate(patient.birthDate))} años)` : 'Fecha nac. desconocida'}
                         </div>
                     </div>
                 </div>

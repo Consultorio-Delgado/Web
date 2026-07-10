@@ -1,4 +1,5 @@
 import { emailService } from '@/lib/email';
+import { isAuthUserNotFound } from '@/lib/firebaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -41,7 +42,10 @@ export async function POST(request: Request) {
 
         if (!result.success) {
             console.error('[API/Emails] Service Error:', result.error);
-            return NextResponse.json({ error: result.error }, { status: 500 });
+            if (isAuthUserNotFound(result.error)) {
+                return NextResponse.json({ error: 'USER_NOT_FOUND' }, { status: 404 });
+            }
+            return NextResponse.json({ error: 'EMAIL_SEND_FAILED' }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });

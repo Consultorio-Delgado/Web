@@ -148,6 +148,11 @@ export default function StudiesPage() {
     };
 
     const handleSelectChange = (field: string, value: string) => {
+        if (field === "cobertura" && value !== "Swiss Medical") {
+            setNoToken(false);
+            setFormData(prev => ({ ...prev, [field]: value, token: "" }));
+            return;
+        }
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -165,7 +170,7 @@ export default function StudiesPage() {
         }
 
         const isParticular = formData.cobertura === "PARTICULAR";
-        const isTokenRequiredInsurance = ["Swiss Medical", "Omint"].includes(formData.cobertura);
+        const isTokenRequiredInsurance = formData.cobertura === "Swiss Medical";
 
         // Required fields for non-particular
         if (!isParticular) {
@@ -251,7 +256,7 @@ export default function StudiesPage() {
             }));
             setNoToken(false);
             
-            toast.success("¡Solicitud enviada! La orden llegará dentro de los 7 días hábiles.");
+            toast.success("¡Solicitud enviada! La evaluación de los estudios llegará en 7 días hábiles.");
         } catch (error: any) {
             console.error("Error en el envío:", error);
             toast.error("Error al enviar la solicitud. Por favor verifica tu conexión e intenta nuevamente.");
@@ -277,9 +282,9 @@ export default function StudiesPage() {
                             <CheckCircle className="h-8 w-8 text-purple-600" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Solicitud Enviada!</h2>
-                        <p className="text-slate-600 mb-2">Tu pedido de estudios fue enviado correctamente.</p>
+                        <p className="text-slate-600 mb-2">Tus estudios fueron enviados correctamente.</p>
                         <p className="text-sm text-slate-500 mb-6">
-                            La orden llegará dentro de los <strong>7 días hábiles</strong>.
+                            La evaluación de los estudios llegará en <strong>7 días hábiles</strong>.
                         </p>
                         <Button onClick={() => setSuccess(false)} className="bg-purple-600 hover:bg-purple-700">
                             Solicitar Otro Estudio
@@ -486,10 +491,10 @@ export default function StudiesPage() {
                                                 </div>
                                             </div>
 
-                                            {["Swiss Medical", "Omint"].includes(formData.cobertura) && (
+                                            {formData.cobertura === "Swiss Medical" && (
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="token">Token (OMINT y SWISS) *</Label>
+                                                        <Label htmlFor="token">Token (swiss)*</Label>
                                                         <Input
                                                             id="token"
                                                             placeholder="Si tiene credencial digital"
