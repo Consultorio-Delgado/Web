@@ -6,6 +6,9 @@ import ReminderEmail from '@/components/emails/ReminderEmail';
 import ActionReminderEmail from '@/components/emails/ActionReminderEmail';
 import AbsenceEmail from '@/components/emails/AbsenceEmail';
 import SobreturnoConfirmationEmail from '@/components/emails/SobreturnoConfirmationEmail';
+import VerificationEmail from '@/components/emails/VerificationEmail';
+import PasswordResetEmail from '@/components/emails/PasswordResetEmail';
+import { auth as adminAuth } from '@/lib/firebaseAdmin';
 
 // Initialize Resend with API Key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -553,6 +556,60 @@ export const emailService = {
             return { success: true };
         } catch (error) {
             console.error('[EmailService] BugReport Error:', error);
+            return { success: false, error };
+        }
+    },
+
+    async sendVerificationEmail(data: { to: string; patientName: string }) {
+        try {
+            const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://consultoriodelgado.com';
+
+            // Generate verification link via Firebase Admin SDK
+            const verificationLink = await adminAuth.generateEmailVerificationLink(data.to, {
+                url: `${APP_URL}/portal?verified=true`,
+            });
+
+            const html = await render(VerificationEmail({
+                patientName: data.patientName,
+                verificationLink: verificationLink,
+            }));
+
+            await resend.emails.send({
+                from: FROM_EMAIL,
+                to: data.to,
+                subject: 'Verificá tu Email - Consultorio Delgado (NO RESPONDER MAIL)',
+                html: html
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[EmailService] Verification Error:', error);
+            return { success: false, error };
+        }
+    },
+
+    async sendPasswordReset(data: { to: string; patientName?: string }) {
+        try {
+            const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://consultoriodelgado.com';
+
+            // Generate password reset link via Firebase Admin SDK
+            const resetLink = await adminAuth.generatePasswordResetLink(data.to, {
+                url: `${APP_URL}/login`,
+            });
+
+            const html = await render(PasswordResetEmail({
+                patientName: data.patientName,
+                resetLink: resetLink,
+            }));
+
+            await resend.emails.send({
+                from: FROM_EMAIL,
+                to: data.to,
+                subject: 'Restablecer Contraseña - Consultorio Delgado (NO RESPONDER MAIL)',
+                html: html
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[EmailService] PasswordReset Error:', error);
             return { success: false, error };
         }
     }

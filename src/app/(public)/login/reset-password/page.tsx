@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { sendPasswordResetEmail } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,16 +20,24 @@ export default function ResetPasswordPage() {
 
         setIsLoading(true);
         try {
-            await sendPasswordResetEmail(auth, email);
-            setIsSent(true);
-            toast.success("Correo de recuperación enviado.");
-        } catch (error: any) {
-            console.error(error);
-            if (error.code === 'auth/user-not-found') {
-                toast.error("No existe un usuario con ese email.");
+            const res = await fetch('/api/emails', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'password_reset',
+                    data: { to: email }
+                })
+            });
+
+            if (res.ok) {
+                setIsSent(true);
+                toast.success("Correo de recuperación enviado.");
             } else {
                 toast.error("Error al enviar el correo. Intente nuevamente.");
             }
+        } catch (error: any) {
+            console.error(error);
+            toast.error("Error al enviar el correo. Intente nuevamente.");
         } finally {
             setIsLoading(false);
         }

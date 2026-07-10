@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, RefreshCw, LogOut, Loader2 } from "lucide-react";
-import { sendEmailVerification, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -47,17 +47,27 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
     const handleResend = async () => {
         setSending(true);
         try {
-            if (auth.currentUser) {
-                await sendEmailVerification(auth.currentUser);
-                toast.success("Email de verificación reenviado. Revisá tu bandeja de entrada (y spam).");
+            if (auth.currentUser?.email) {
+                const res = await fetch('/api/emails', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'verification',
+                        data: {
+                            to: auth.currentUser.email,
+                            patientName: user.displayName || auth.currentUser.email,
+                        }
+                    })
+                });
+                if (res.ok) {
+                    toast.success("Email de verificación reenviado. Revisá tu bandeja de entrada (y spam).");
+                } else {
+                    toast.error("Error al enviar el email. Intentá nuevamente.");
+                }
             }
         } catch (error: any) {
             console.error(error);
-            if (error.code === 'auth/too-many-requests') {
-                toast.error("Demasiados intentos. Esperá unos minutos.");
-            } else {
-                toast.error("Error al enviar el email.");
-            }
+            toast.error("Error al enviar el email.");
         } finally {
             setSending(false);
         }
@@ -110,8 +120,18 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
             // 2. Reload the user to pick up the new email from Auth
             await auth.currentUser.reload();
 
-            // 3. Send verification email to the new address
-            await sendEmailVerification(auth.currentUser);
+            // 3. Send verification email to the new address via Resend
+            await fetch('/api/emails', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'verification',
+                    data: {
+                        to: newEmail,
+                        patientName: user.displayName || newEmail,
+                    }
+                })
+            });
 
             // 4. Refresh profile in AuthContext
             await refreshProfile();

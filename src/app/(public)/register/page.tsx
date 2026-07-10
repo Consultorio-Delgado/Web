@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { userService } from "@/services/user";
@@ -91,9 +91,18 @@ export default function RegisterPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
             const user = userCredential.user;
 
-            // 1b. Send Verification Email
-            await sendEmailVerification(user);
-            // toast.success("Cuenta creada. Enviamos un email de verificación."); // We don't have toast imported here yet? Let's check imports.
+            // 1b. Send Verification Email via Resend (better deliverability than Firebase SMTP)
+            fetch('/api/emails', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'verification',
+                    data: {
+                        to: formData.email,
+                        patientName: formData.firstName,
+                    }
+                })
+            }).catch(err => console.error("Failed to send verification email:", err));
 
             // 2. Create Firestore Profile
             await userService.createUserProfile(user.uid, {
