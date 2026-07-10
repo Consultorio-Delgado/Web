@@ -51,7 +51,22 @@ export interface Doctor {
     schedulingMode?: 'standard' | 'custom_bimonthly'; // Booking logic
 }
 
-export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived' | 'absent';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'arrived' | 'in_consultation' | 'absent';
+
+// Snapshot fijo de DURACIONES, guardado únicamente al finalizar el turno.
+export interface AppointmentTiming {
+    arrivalDeltaSeconds: number; // arrivedAt - horario del turno (negativo = llegó temprano)
+    waitingSeconds: number;      // tiempo total en sala de espera
+    consultationSeconds: number; // tiempo total en consultorio
+    completedAt: Date;
+}
+
+// Horas reales de reloj, consolidadas al finalizar el turno.
+export interface AppointmentTimes {
+    arrivedAt?: Date;             // hora real de llegada (sala de espera)
+    consultationStartedAt?: Date; // hora real de inicio de atención
+    completedAt: Date;            // hora real de finalización
+}
 
 export interface DayOff {
     id: string;
@@ -78,7 +93,16 @@ export interface Appointment {
     insurance?: string; // e.g. "OSDE"
     createdAt: Date;
     updatedAt?: Date;
-    arrivedAt?: Date; // Time patient arrived in waiting room
+    arrivedAt?: Date; // Time patient arrived in waiting room (durante el flujo)
+    // ── Seguimiento de tiempos (espera / atención) ──
+    arrivalDeltaSeconds?: number;          // arrivedAt - horario del turno (fijo al llegar)
+    waitingAccumulatedSeconds?: number;    // espera ya cerrada en segmentos previos
+    consultationAccumulatedSeconds?: number; // atención ya cerrada en segmentos previos
+    waitingSegmentStartedAt?: Date;        // inicio del segmento vivo de espera
+    consultationSegmentStartedAt?: Date;   // inicio del segmento vivo de atención
+    consultationStartedAt?: Date;          // hora real del primer inicio de atención (durante el flujo)
+    times?: AppointmentTimes;              // horas reales consolidadas al finalizar
+    timing?: AppointmentTiming;            // snapshot de duraciones congelado al finalizar
     isFirstVisit?: boolean; // Is this the patient's first visit with this doctor?
     consultationType?: string | null; // For specialties like Ginecología: consulta-ginecologica, pap-colpo, prueba-hpv
     patientDni?: string; // DNI from user profile, used for DrApp matching

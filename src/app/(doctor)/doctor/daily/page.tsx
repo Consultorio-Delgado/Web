@@ -36,6 +36,13 @@ import {
     UserX
 } from "lucide-react";
 import { Appointment } from "@/types";
+import {
+    formatDuration,
+    formatPunctuality,
+    computeWaitingSeconds,
+    computeConsultationSeconds,
+    getArrivalDelta,
+} from "@/lib/appointmentTiming";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -48,28 +55,78 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { WhatsAppReviewButton } from "@/components/doctor/WhatsAppReviewButton";
 
-// ... WaitingTimer component ...
-function WaitingTimer({ arrivedAt }: { arrivedAt: Date }) {
-    const [elapsed, setElapsed] = useState("");
+// Muestra los tres indicadores de tiempo del turno: puntualidad (fijo),
+// espera (vivo si está en sala) y atención (vivo si está en consultorio).
+// Al finalizar quedan congelados desde `appt.timing`.
+function TimingBadges({ appt }: { appt: Appointment }) {
+    const [, setTick] = useState(0);
+    const isLive = appt.status === 'arrived' || appt.status === 'in_consultation';
 
     useEffect(() => {
-        const updateTimer = () => {
-            const now = new Date();
-            const totalSeconds = differenceInSeconds(now, arrivedAt);
-            const mins = Math.floor(totalSeconds / 60);
-            const secs = totalSeconds % 60;
-            setElapsed(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
-        };
-
-        updateTimer();
-        const interval = setInterval(updateTimer, 1000);
+        if (!isLive) return;
+        const interval = setInterval(() => setTick((t) => t + 1), 1000);
         return () => clearInterval(interval);
-    }, [arrivedAt]);
+    }, [isLive]);
+
+    const showTimings =
+        appt.status === 'arrived' ||
+        appt.status === 'in_consultation' ||
+        appt.status === 'completed';
+    if (!showTimings) return null;
+
+    const now = new Date();
+    const delta = getArrivalDelta(appt);
+    const waiting = computeWaitingSeconds(appt, now);
+    const consultation = computeConsultationSeconds(appt, now);
+    const punctuality =
+        delta !== undefined && delta !== null ? formatPunctuality(delta) : null;
+    const showConsultation =
+        appt.status === 'in_consultation' || appt.status === 'completed';
 
     return (
-        <div className="flex items-center gap-1 text-amber-600 font-mono text-sm bg-amber-50 px-2 py-1 rounded">
-            <Timer className="h-3 w-3" />
-            <span>{elapsed}</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+            {punctuality && (
+                <div
+                    className={cn(
+                        "flex items-center gap-1 font-mono text-xs px-2 py-1 rounded border",
+                        punctuality.onTime
+                            ? "text-slate-600 bg-slate-50 border-slate-200"
+                            : punctuality.early
+                                ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                                : "text-orange-700 bg-orange-50 border-orange-200"
+                    )}
+                    title="Puntualidad: llegada vs. horario del turno"
+                >
+                    <MapPin className="h-3 w-3" />
+                    <span>{punctuality.label}</span>
+                </div>
+            )}
+            <div
+                className={cn(
+                    "flex items-center gap-1 font-mono text-sm px-2 py-1 rounded",
+                    appt.status === 'arrived'
+                        ? "text-amber-600 bg-amber-50"
+                        : "text-amber-700 bg-amber-100/60"
+                )}
+                title="Tiempo en sala de espera"
+            >
+                <Timer className="h-3 w-3" />
+                <span>{formatDuration(waiting)}</span>
+            </div>
+            {showConsultation && (
+                <div
+                    className={cn(
+                        "flex items-center gap-1 font-mono text-sm px-2 py-1 rounded",
+                        appt.status === 'in_consultation'
+                            ? "text-blue-600 bg-blue-50"
+                            : "text-blue-700 bg-blue-100/60"
+                    )}
+                    title="Tiempo de atención en consultorio"
+                >
+                    <Stethoscope className="h-3 w-3" />
+                    <span>{formatDuration(consultation)}</span>
+                </div>
+            )}
         </div>
     );
 }
@@ -227,18 +284,55 @@ export default function DailyAgendaPage() {
     const handleNextDay = () => setDate(addDays(date, 1));
 
     // Action Handlers
-    const handleMarkArrived = async (appointmentId: string) => {
-        setActionLoading(appointmentId);
+    const handleMarkArrived = async (appt: Appointment) => {
+        setActionLoading(appt.id);
         try {
-            await appointmentService.updateAppointment(appointmentId, {
+            const now = new Date();
+            // Puntualidad: llegada vs horario del turno (negativo = llegó temprano)
+            const arrivalDeltaSeconds = appt.date
+                ? differenceInSeconds(now, appt.date)
+                : 0;
+            await appointmentService.updateAppointment(appt.id, {
                 status: 'arrived',
-                arrivedAt: new Date()
-            });
+                arrivedAt: now,
+                arrivalDeltaSeconds,
+                waitingAccumulatedSeconds: 0,
+                consultationAccumulatedSeconds: 0,
+                waitingSegmentStartedAt: now,
+                consultationSegmentStartedAt: null,
+            } as any);
             toast.success("Paciente en sala de espera");
             // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al marcar llegada");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    // arrived -> in_consultation: cierra el segmento de espera y abre el de atención
+    const handleStartConsultation = async (appt: Appointment) => {
+        setActionLoading(appt.id);
+        try {
+            const now = new Date();
+            const segmentStart = appt.waitingSegmentStartedAt ?? appt.arrivedAt;
+            const waitingLive = segmentStart
+                ? Math.max(0, differenceInSeconds(now, segmentStart))
+                : 0;
+            const waitingAccumulated = (appt.waitingAccumulatedSeconds || 0) + waitingLive;
+            await appointmentService.updateAppointment(appt.id, {
+                status: 'in_consultation',
+                waitingAccumulatedSeconds: waitingAccumulated,
+                waitingSegmentStartedAt: null,
+                consultationSegmentStartedAt: now,
+                // Hora real del primer inicio de atención (no se pisa en reingresos)
+                consultationStartedAt: appt.consultationStartedAt ?? now,
+            } as any);
+            toast.success("Paciente en atención");
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al pasar a atención");
         } finally {
             setActionLoading(null);
         }
@@ -289,17 +383,136 @@ export default function DailyAgendaPage() {
         }
     };
 
-    const handleMarkCompleted = async (appointmentId: string) => {
-        setActionLoading(appointmentId);
+    // in_consultation -> completed: congela los tres tiempos en `timing`
+    // y limpia los campos de trabajo (se conserva arrivedAt como dato histórico)
+    const handleMarkCompleted = async (appt: Appointment) => {
+        setActionLoading(appt.id);
         try {
-            await appointmentService.updateAppointment(appointmentId, {
-                status: 'completed'
-            });
+            const { deleteField } = await import("firebase/firestore");
+            const now = new Date();
+            const consultationLive = appt.consultationSegmentStartedAt
+                ? Math.max(0, differenceInSeconds(now, appt.consultationSegmentStartedAt))
+                : 0;
+            const consultationSeconds = (appt.consultationAccumulatedSeconds || 0) + consultationLive;
+            const waitingSeconds = appt.waitingAccumulatedSeconds || 0;
+            const arrivalDeltaSeconds = appt.arrivalDeltaSeconds || 0;
+            // Horas reales consolidadas (sin claves undefined para no romper Firestore)
+            const times: any = { completedAt: now };
+            if (appt.arrivedAt) times.arrivedAt = appt.arrivedAt;
+            if (appt.consultationStartedAt) times.consultationStartedAt = appt.consultationStartedAt;
+            await appointmentService.updateAppointment(appt.id, {
+                status: 'completed',
+                times,
+                timing: {
+                    arrivalDeltaSeconds,
+                    waitingSeconds,
+                    consultationSeconds,
+                    completedAt: now,
+                },
+                arrivedAt: deleteField(),
+                consultationStartedAt: deleteField(),
+                arrivalDeltaSeconds: deleteField(),
+                waitingAccumulatedSeconds: deleteField(),
+                consultationAccumulatedSeconds: deleteField(),
+                waitingSegmentStartedAt: deleteField(),
+                consultationSegmentStartedAt: deleteField(),
+            } as any);
             toast.success("Consulta finalizada");
             // onSnapshot will automatically refresh
         } catch (error) {
             console.error(error);
             toast.error("Error al finalizar consulta");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    // Deshacer: in_consultation -> arrived (acumula atención, retoma espera)
+    const handleUndoToWaiting = async (appt: Appointment) => {
+        setActionLoading(appt.id);
+        try {
+            const now = new Date();
+            const consultationLive = appt.consultationSegmentStartedAt
+                ? Math.max(0, differenceInSeconds(now, appt.consultationSegmentStartedAt))
+                : 0;
+            const consultationAccumulated = (appt.consultationAccumulatedSeconds || 0) + consultationLive;
+            await appointmentService.updateAppointment(appt.id, {
+                status: 'arrived',
+                consultationAccumulatedSeconds: consultationAccumulated,
+                consultationSegmentStartedAt: null,
+                waitingSegmentStartedAt: now,
+            } as any);
+            toast.success("Vuelto a sala de espera");
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al revertir a espera");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    // Deshacer: completed -> in_consultation (reabre atención, borra snapshot)
+    // Restaura los campos de trabajo desde `timing` para seguir acumulando.
+    const handleUndoToConsultation = async (appt: Appointment) => {
+        setActionLoading(appt.id);
+        try {
+            const { deleteField } = await import("firebase/firestore");
+            const now = new Date();
+            const t = appt.timing;
+            const tm = appt.times;
+            await appointmentService.updateAppointment(appt.id, {
+                status: 'in_consultation',
+                timing: deleteField(),
+                times: deleteField(),
+                // Restaurar horas reales al flujo en vivo
+                arrivedAt: tm?.arrivedAt ?? null,
+                consultationStartedAt: tm?.consultationStartedAt ?? null,
+                arrivalDeltaSeconds: t?.arrivalDeltaSeconds ?? 0,
+                waitingAccumulatedSeconds: t?.waitingSeconds ?? 0,
+                consultationAccumulatedSeconds: t?.consultationSeconds ?? 0,
+                waitingSegmentStartedAt: null,
+                consultationSegmentStartedAt: now,
+            } as any);
+            toast.success("Reabierto en atención");
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al reabrir atención");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    // Deshacer: arrived/absent -> confirmed (limpia tiempos y bloqueo si aplica)
+    const handleUndoToConfirmed = async (appt: Appointment) => {
+        setActionLoading(appt.id);
+        try {
+            const { deleteField } = await import("firebase/firestore");
+            const updatePromises: Promise<any>[] = [
+                appointmentService.updateAppointment(appt.id, {
+                    status: 'confirmed',
+                    arrivedAt: deleteField(),
+                    consultationStartedAt: deleteField(),
+                    arrivalDeltaSeconds: deleteField(),
+                    waitingAccumulatedSeconds: deleteField(),
+                    consultationAccumulatedSeconds: deleteField(),
+                    waitingSegmentStartedAt: deleteField(),
+                    consultationSegmentStartedAt: deleteField(),
+                    times: deleteField(),
+                    timing: deleteField(),
+                } as any),
+            ];
+            if (appt.status === 'absent' && appt.patientId) {
+                updatePromises.push(
+                    userService.updateUserProfile(appt.patientId, {
+                        blockedUntil: deleteField(),
+                    } as any)
+                );
+            }
+            await Promise.all(updatePromises);
+            toast.success("Estado revertido a Confirmado");
+        } catch (error) {
+            console.error(error);
+            toast.error("Error al revertir estado");
         } finally {
             setActionLoading(null);
         }
@@ -611,6 +824,7 @@ export default function DailyAgendaPage() {
                     {slots.map((slot, index) => {
                         const appt = slot.appointment;
                         const isArrived = appt?.status === 'arrived';
+                        const isInConsultation = appt?.status === 'in_consultation';
                         const isCompleted = appt?.status === 'completed';
                         const isAbsent = appt?.status === 'absent';
                         const isCancelled = appt?.status === 'cancelled';
@@ -633,6 +847,7 @@ export default function DailyAgendaPage() {
                                     "transition-colors",
                                     isPending ? "border-orange-400 bg-orange-50/50 ring-2 ring-orange-300 animate-pulse" :
                                         isArrived ? "border-amber-300 bg-amber-50/50 ring-2 ring-amber-300" :
+                                            isInConsultation ? "border-blue-400 bg-blue-50/50 ring-2 ring-blue-300" :
                                             isCompleted ? "border-green-300 bg-green-50/50" :
                                                 isAbsent || isCancelled ? "border-red-200 bg-red-50/30 opacity-60" :
                                                     slot.status === 'occupied' ? "border-blue-200 bg-blue-50/50" :
@@ -700,9 +915,8 @@ export default function DailyAgendaPage() {
                                                             </a>
                                                         ) : null;
                                                     })()}
-                                                    {isArrived && appt.arrivedAt && (
-                                                        <WaitingTimer arrivedAt={appt.arrivedAt} />
-                                                    )}
+                                                    <TimingBadges appt={appt} />
+
                                                 </div>
                                                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
                                                     {/* Show intake info instead of phone */}
@@ -811,7 +1025,7 @@ export default function DailyAgendaPage() {
                                                                     variant="outline"
                                                                     size="sm"
                                                                     className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                                                                    onClick={() => handleMarkArrived(appt.id)}
+                                                                    onClick={() => handleMarkArrived(appt)}
                                                                     disabled={actionLoading === appt.id}
                                                                 >
                                                                     {actionLoading === appt.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserCheck className="h-3 w-3 mr-1" />}
@@ -833,8 +1047,31 @@ export default function DailyAgendaPage() {
                                                                 <Button
                                                                     variant="default"
                                                                     size="sm"
+                                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                                    onClick={() => handleStartConsultation(appt)}
+                                                                    disabled={actionLoading === appt.id}
+                                                                >
+                                                                    {actionLoading === appt.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Stethoscope className="h-3 w-3 mr-1" />}
+                                                                    En atención
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="text-slate-400 hover:text-slate-600"
+                                                                    onClick={() => handleUndoToConfirmed(appt)}
+                                                                    disabled={actionLoading === appt.id}
+                                                                >
+                                                                    Deshacer
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                        {isInConsultation && (
+                                                            <>
+                                                                <Button
+                                                                    variant="default"
+                                                                    size="sm"
                                                                     className="bg-green-600 hover:bg-green-700"
-                                                                    onClick={() => handleMarkCompleted(appt.id)}
+                                                                    onClick={() => handleMarkCompleted(appt)}
                                                                     disabled={actionLoading === appt.id}
                                                                 >
                                                                     {actionLoading === appt.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3 mr-1" />}
@@ -844,88 +1081,42 @@ export default function DailyAgendaPage() {
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     className="text-slate-400 hover:text-slate-600"
-                                                                    onClick={async () => {
-                                                                        setActionLoading(appt.id);
-                                                                        try {
-                                                                            const { deleteField } = await import("firebase/firestore");
-                                                                        const updatePromises: Promise<any>[] = [
-                                                                            appointmentService.updateAppointment(appt.id, {
-                                                                                status: 'confirmed',
-                                                                                arrivedAt: null
-                                                                            } as any)
-                                                                        ];
-
-                                                                        if (appt.status === 'absent' && appt.patientId) {
-                                                                            updatePromises.push(
-                                                                                userService.updateUserProfile(appt.patientId, { 
-                                                                                    blockedUntil: deleteField() 
-                                                                                } as any)
-                                                                            );
-                                                                        }
-
-                                                                        await Promise.all(updatePromises);
-                                                                        toast.success("Estado revertido a Confirmado");
-                                                                        // onSnapshot will automatically refresh
-                                                                        } catch (error) {
-                                                                            toast.error("Error al revertir estado");
-                                                                        } finally {
-                                                                            setActionLoading(null);
-                                                                        }
-                                                                    }}
+                                                                    onClick={() => handleUndoToWaiting(appt)}
                                                                     disabled={actionLoading === appt.id}
                                                                 >
                                                                     Deshacer
                                                                 </Button>
                                                             </>
                                                         )}
-                                                        {(isCompleted || isAbsent) && (
+                                                        {isCompleted && (
                                                             <>
-                                                                {/* Botón de WhatsApp para solicitar reseña (solo en completados) */}
-                                                                {isCompleted && (
-                                                                    <WhatsAppReviewButton
-                                                                        patientName={appt.patientName}
-                                                                        patientPhone={appt.patientPhone}
-                                                                        patientId={appt.patientId}
-                                                                        variant="compact"
-                                                                    />
-                                                                )}
+                                                                <WhatsAppReviewButton
+                                                                    patientName={appt.patientName}
+                                                                    patientPhone={appt.patientPhone}
+                                                                    patientId={appt.patientId}
+                                                                    variant="compact"
+                                                                />
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
                                                                     className="text-slate-400 hover:text-slate-600 font-medium"
-                                                                    onClick={async () => {
-                                                                        setActionLoading(appt.id);
-                                                                        try {
-                                                                            const { deleteField } = await import("firebase/firestore");
-                                                                            const updatePromises: Promise<any>[] = [
-                                                                                appointmentService.updateAppointment(appt.id, {
-                                                                                    status: 'confirmed',
-                                                                                    arrivedAt: null
-                                                                                } as any)
-                                                                            ];
-
-                                                                            if (appt.status === 'absent' && appt.patientId) {
-                                                                                updatePromises.push(
-                                                                                    userService.updateUserProfile(appt.patientId, { 
-                                                                                        blockedUntil: deleteField() 
-                                                                                    } as any)
-                                                                                );
-                                                                            }
-
-                                                                            await Promise.all(updatePromises);
-                                                                            toast.success("Estado revertido a Confirmado");
-                                                                            // onSnapshot will automatically refresh
-                                                                        } catch (error) {
-                                                                            toast.error("Error al revertir estado");
-                                                                        } finally {
-                                                                            setActionLoading(null);
-                                                                        }
-                                                                    }}
+                                                                    onClick={() => handleUndoToConsultation(appt)}
                                                                     disabled={actionLoading === appt.id}
                                                                 >
                                                                     Deshacer
                                                                 </Button>
                                                             </>
+                                                        )}
+                                                        {isAbsent && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-slate-400 hover:text-slate-600 font-medium"
+                                                                onClick={() => handleUndoToConfirmed(appt)}
+                                                                disabled={actionLoading === appt.id}
+                                                            >
+                                                                Deshacer
+                                                            </Button>
                                                         )}
                                                     </>
                                                 )}
@@ -1073,6 +1264,7 @@ export default function DailyAgendaPage() {
 
 function StatusBadge({ status, appointmentStatus }: { status: string; appointmentStatus?: string }) {
     if (appointmentStatus === 'arrived') return <Badge className="bg-amber-500 hover:bg-amber-600">En Espera</Badge>;
+    if (appointmentStatus === 'in_consultation') return <Badge className="bg-blue-600 hover:bg-blue-700">En Atención</Badge>;
     if (appointmentStatus === 'completed') return <Badge className="bg-green-600 hover:bg-green-700">Finalizado</Badge>;
     if (appointmentStatus === 'absent') return <Badge variant="destructive">Ausente</Badge>;
     if (appointmentStatus === 'cancelled') return <Badge variant="secondary" className="line-through">Cancelado</Badge>;

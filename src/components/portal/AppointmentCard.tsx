@@ -97,6 +97,9 @@ export function AppointmentCard({ appointment, onStatusChange, doctorSpecialty }
             case 'confirmed': return <Badge className="bg-green-500 hover:bg-green-600">Confirmado</Badge>;
             case 'pending': return <Badge className="bg-yellow-500 hover:bg-yellow-600">Pendiente</Badge>;
             case 'cancelled': return <Badge variant="destructive">Cancelado</Badge>;
+            // Estados operativos internos: el paciente los ve como "Confirmado"
+            case 'arrived':
+            case 'in_consultation': return <Badge className="bg-green-500 hover:bg-green-600">Confirmado</Badge>;
             case 'completed': return <Badge className="bg-blue-600 hover:bg-blue-700">Asistió</Badge>;
             case 'absent': return <Badge variant="destructive">Ausente</Badge>;
             default: return <Badge variant="outline">{status}</Badge>;
@@ -180,7 +183,12 @@ export function AppointmentCard({ appointment, onStatusChange, doctorSpecialty }
     };
 
     const isUpcoming = new Date(appointment.date) >= new Date();
-    const canManage = isUpcoming && appointment.status !== 'cancelled' && appointment.status !== 'completed';
+    // El paciente no puede gestionar el turno una vez que ya llegó / está en atención
+    const canManage = isUpcoming &&
+        appointment.status !== 'cancelled' &&
+        appointment.status !== 'completed' &&
+        appointment.status !== 'arrived' &&
+        appointment.status !== 'in_consultation';
 
     return (
         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">

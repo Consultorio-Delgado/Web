@@ -120,7 +120,7 @@ export default function AppointmentsPage() {
 
                 const snapshot = await getDocs(q);
                 const days = new Set<string>();
-                const validStatuses = ["confirmed", "pending", "arrived", "completed"];
+                const validStatuses = ["confirmed", "pending", "arrived", "in_consultation", "completed"];
                 snapshot.docs.forEach(doc => {
                     const data = doc.data();
                     const date = data.date?.toDate();
@@ -619,20 +619,21 @@ export default function AppointmentsPage() {
                                 </Button>
                             )}
 
-                            {/* Block Button (if NO slots are blocked by exception) */}
-                            {/* Block Button: Show if there are any free slots to block */}
-                            {!isSelectionMode && daySlots.some(s => s.status === 'free') && (
-                                <Button variant="secondary" onClick={handleBlockDay} disabled={loading}>
-                                    <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear Día
-                                </Button>
-                            )}
-
-                            {/* Unlock Button: Show if any slot is blocked by Exception (no appointment object implies exception) */}
-                            {!isSelectionMode && daySlots.some(s => s.status === 'blocked' && !s.appointment) && (
-                                <Button variant="destructive" onClick={handleUnlock} disabled={loading}>
-                                    <Unlock className="mr-2 h-4 w-4" /> Desbloquear Día
-                                </Button>
-                            )}
+                            {/* Block / Unlock Day: based on exception, even if all slots are occupied */}
+                            {(() => {
+                                const dateKey = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
+                                const isDayExceptionBlocked = !!(dateKey && blockedDays.has(dateKey));
+                                if (isSelectionMode || daySlots.length === 0) return null;
+                                return isDayExceptionBlocked ? (
+                                    <Button variant="destructive" onClick={handleUnlock} disabled={loading}>
+                                        <Unlock className="mr-2 h-4 w-4" /> Desbloquear Día
+                                    </Button>
+                                ) : (
+                                    <Button variant="secondary" onClick={handleBlockDay} disabled={loading}>
+                                        <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear Día
+                                    </Button>
+                                );
+                            })()}
                         </div>
                     </div>
 

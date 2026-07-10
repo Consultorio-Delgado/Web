@@ -112,6 +112,18 @@ export function useRealtimeAppointments(date: Date | null) {
                 createdAt: data.createdAt?.toDate?.() ?? new Date(),
                 arrivedAt: data.arrivedAt?.toDate?.() ?? undefined,
                 updatedAt: data.updatedAt?.toDate?.() ?? undefined,
+                waitingSegmentStartedAt: data.waitingSegmentStartedAt?.toDate?.() ?? undefined,
+                consultationSegmentStartedAt: data.consultationSegmentStartedAt?.toDate?.() ?? undefined,
+                consultationStartedAt: data.consultationStartedAt?.toDate?.() ?? undefined,
+                times: data.times ? {
+                    arrivedAt: data.times.arrivedAt?.toDate?.() ?? undefined,
+                    consultationStartedAt: data.times.consultationStartedAt?.toDate?.() ?? undefined,
+                    completedAt: data.times.completedAt?.toDate?.() ?? undefined,
+                } : undefined,
+                timing: data.timing ? {
+                    ...data.timing,
+                    completedAt: data.timing.completedAt?.toDate?.() ?? undefined,
+                } : undefined,
             } as Appointment;
         },
         []

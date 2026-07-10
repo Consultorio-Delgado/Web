@@ -19,7 +19,7 @@ export const appointmentService = {
 
             const querySnapshot = await getDocs(q);
             // Filter out cancelled/absent/completed appointments client-side
-            const activeStatuses = ['pending', 'confirmed', 'arrived'];
+            const activeStatuses = ['pending', 'confirmed', 'arrived', 'in_consultation'];
             const activeAppointments = querySnapshot.docs.filter(doc => {
                 const data = doc.data();
                 const isActive = activeStatuses.includes(data.status);
@@ -86,7 +86,7 @@ export const appointmentService = {
                 const conflictSnapshot = await getDocs(conflictQuery);
 
                 // Check if any appointment has the same time and is active
-                const activeStatuses = ['pending', 'confirmed', 'arrived'];
+                const activeStatuses = ['pending', 'confirmed', 'arrived', 'in_consultation'];
                 const hasConflict = conflictSnapshot.docs.some(doc => {
                     const data = doc.data();
                     return data.time === appointmentData.time &&
@@ -179,7 +179,19 @@ export const appointmentService = {
                     date: data.date.toDate(), // Convert Timestamp back to Date
                     createdAt: data.createdAt.toDate(),
                     arrivedAt: data.arrivedAt?.toDate(),
-                    updatedAt: data.updatedAt?.toDate()
+                    updatedAt: data.updatedAt?.toDate(),
+                    waitingSegmentStartedAt: data.waitingSegmentStartedAt?.toDate?.(),
+                    consultationSegmentStartedAt: data.consultationSegmentStartedAt?.toDate?.(),
+                    consultationStartedAt: data.consultationStartedAt?.toDate?.(),
+                    times: data.times ? {
+                        arrivedAt: data.times.arrivedAt?.toDate?.() ?? undefined,
+                        consultationStartedAt: data.times.consultationStartedAt?.toDate?.() ?? undefined,
+                        completedAt: data.times.completedAt?.toDate?.() ?? undefined,
+                    } : undefined,
+                    timing: data.timing ? {
+                        ...data.timing,
+                        completedAt: data.timing.completedAt?.toDate?.() ?? undefined,
+                    } : undefined,
                 } as Appointment;
             }).sort((a, b) => b.date.getTime() - a.date.getTime()); // Sort newest first
 
@@ -211,7 +223,19 @@ export const appointmentService = {
                     date: data.date.toDate(),
                     createdAt: data.createdAt?.toDate() || new Date(),
                     arrivedAt: data.arrivedAt?.toDate(),
-                    updatedAt: data.updatedAt?.toDate()
+                    updatedAt: data.updatedAt?.toDate(),
+                    waitingSegmentStartedAt: data.waitingSegmentStartedAt?.toDate?.(),
+                    consultationSegmentStartedAt: data.consultationSegmentStartedAt?.toDate?.(),
+                    consultationStartedAt: data.consultationStartedAt?.toDate?.(),
+                    times: data.times ? {
+                        arrivedAt: data.times.arrivedAt?.toDate?.() ?? undefined,
+                        consultationStartedAt: data.times.consultationStartedAt?.toDate?.() ?? undefined,
+                        completedAt: data.times.completedAt?.toDate?.() ?? undefined,
+                    } : undefined,
+                    timing: data.timing ? {
+                        ...data.timing,
+                        completedAt: data.timing.completedAt?.toDate?.() ?? undefined,
+                    } : undefined,
                 } as Appointment;
             });
         } catch (error) {
@@ -239,17 +263,39 @@ export const appointmentService = {
             // but for now we trust the caller (admin/doctor).
             // Convert Date objects to Timestamps if present in updates
             const dataToUpdate: any = { ...updates };
-            if (updates.date) {
+            // Convertir Dates a Timestamp SOLO cuando el valor es realmente una Date.
+            // Así los `null` y los sentinels `deleteField()` pasan sin tocarse.
+            if (updates.date instanceof Date) {
                 dataToUpdate.date = Timestamp.fromDate(updates.date);
             }
-            if (updates.arrivedAt) {
+            if (updates.arrivedAt instanceof Date) {
                 dataToUpdate.arrivedAt = Timestamp.fromDate(updates.arrivedAt);
             }
-            if (updates.updatedAt) {
-                dataToUpdate.updatedAt = Timestamp.now();
-            } else {
-                dataToUpdate.updatedAt = Timestamp.now();
+            if (updates.waitingSegmentStartedAt instanceof Date) {
+                dataToUpdate.waitingSegmentStartedAt = Timestamp.fromDate(updates.waitingSegmentStartedAt);
             }
+            if (updates.consultationSegmentStartedAt instanceof Date) {
+                dataToUpdate.consultationSegmentStartedAt = Timestamp.fromDate(updates.consultationSegmentStartedAt);
+            }
+            if (updates.consultationStartedAt instanceof Date) {
+                dataToUpdate.consultationStartedAt = Timestamp.fromDate(updates.consultationStartedAt);
+            }
+            if (updates.timing && (updates.timing as any).completedAt instanceof Date) {
+                dataToUpdate.timing = {
+                    ...updates.timing,
+                    completedAt: Timestamp.fromDate(updates.timing.completedAt),
+                };
+            }
+            // `times` con horas reales: convertir solo las Date presentes.
+            const tm = updates.times as any;
+            if (tm && (tm.completedAt instanceof Date || tm.arrivedAt instanceof Date || tm.consultationStartedAt instanceof Date)) {
+                const conv: any = { ...tm };
+                if (tm.arrivedAt instanceof Date) conv.arrivedAt = Timestamp.fromDate(tm.arrivedAt);
+                if (tm.consultationStartedAt instanceof Date) conv.consultationStartedAt = Timestamp.fromDate(tm.consultationStartedAt);
+                if (tm.completedAt instanceof Date) conv.completedAt = Timestamp.fromDate(tm.completedAt);
+                dataToUpdate.times = conv;
+            }
+            dataToUpdate.updatedAt = Timestamp.now();
 
             await updateDoc(docRef, dataToUpdate);
         } catch (error) {
@@ -358,7 +404,7 @@ export const appointmentService = {
                 collection(db, "appointments"),
                 where("doctorId", "==", doctorId),
                 where("date", ">=", Timestamp.fromDate(today)),
-                where("status", "in", ['confirmed', 'arrived'])
+                where("status", "in", ['confirmed', 'arrived', 'in_consultation'])
             );
 
             const snapshot = await getDocs(q);
