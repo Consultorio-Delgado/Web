@@ -3,12 +3,12 @@
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Mail, RefreshCw, LogOut, Loader2 } from "lucide-react";
-import { signOut } from "firebase/auth";
+import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 
 interface EmailVerificationGuardProps {
     children: React.ReactNode;
@@ -20,8 +20,8 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
     const [refreshing, setRefreshing] = useState(false);
     const [isEditingEmail, setIsEditingEmail] = useState(false);
     const [newEmail, setNewEmail] = useState("");
+    const [currentPassword, setCurrentPassword] = useState("");
     const [updatingEmail, setUpdatingEmail] = useState(false);
-    const router = useRouter();
 
     // 1. Loading State
     if (loading) {
@@ -97,50 +97,58 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
             return;
         }
 
+        if (!currentPassword) {
+            toast.error("Ingresá tu contraseña actual.");
+            return;
+        }
+
         setUpdatingEmail(true);
         try {
-            if (!auth.currentUser) return;
+            const currentUser = auth.currentUser;
+            if (!currentUser?.email) return;
 
-            // 1. Call server-side API to update email in Auth + Firestore via Admin SDK
+            // Step-up: refreshes auth_time so the API accepts the change
+            const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+            await reauthenticateWithCredential(currentUser, credential);
+
+            const idToken = await currentUser.getIdToken(true);
             const response = await fetch('/api/auth/update-email', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${idToken}`,
+                },
                 body: JSON.stringify({
-                    uid: auth.currentUser.uid,
+                    uid: currentUser.uid,
                     newEmail: newEmail,
                 }),
             });
 
+            const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                const data = await response.json();
                 toast.error(data.error || "Error al actualizar el email.");
                 return;
             }
 
-            // 2. Reload the user to pick up the new email from Auth
-            await auth.currentUser.reload();
-
-            // 3. Send verification email to the new address via Resend
-            await fetch('/api/emails', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'verification',
-                    data: {
-                        to: newEmail,
-                        patientName: user.displayName || newEmail,
-                    }
-                })
-            });
-
-            // 4. Refresh profile in AuthContext
+            await currentUser.reload();
             await refreshProfile();
 
-            toast.success("Email actualizado. Se envió un link de verificación a " + newEmail + ".");
+            if (data.verificationSent === false) {
+                toast.warning(data.warning || "Email actualizado, pero no se pudo enviar la verificación.");
+            } else {
+                toast.success("Email actualizado. Se envió un link de verificación a " + newEmail + ".");
+            }
             setIsEditingEmail(false);
+            setCurrentPassword("");
         } catch (error: any) {
             console.error("Error updating email:", error);
-            toast.error("Error al actualizar el email. Intentá nuevamente.");
+            if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+                toast.error("La contraseña actual es incorrecta.");
+            } else if (error.code === "auth/too-many-requests") {
+                toast.error("Demasiados intentos. Probá más tarde.");
+            } else {
+                toast.error("Error al actualizar el email. Intentá nuevamente.");
+            }
         } finally {
             setUpdatingEmail(false);
         }
@@ -177,6 +185,13 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
                                 onChange={(e) => setNewEmail(e.target.value)}
                                 autoFocus
                             />
+                            <PasswordInput
+                                placeholder="Contraseña actual"
+                                autoComplete="current-password"
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                disabled={updatingEmail}
+                            />
                             <div className="flex gap-2">
                                 <Button
                                     className="flex-1"
@@ -187,7 +202,10 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    onClick={() => setIsEditingEmail(false)}
+                                    onClick={() => {
+                                        setIsEditingEmail(false);
+                                        setCurrentPassword("");
+                                    }}
                                     disabled={updatingEmail}
                                 >
                                     Cancelar

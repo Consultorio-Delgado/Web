@@ -63,10 +63,20 @@ export default async function LandingPage() {
             <p className="text-base md:text-lg font-light text-slate-100 max-w-2xl mx-auto opacity-90">
               Especialistas en Ginecología y Clínica Médica dedicados a su bienestar integral.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center pt-8">
               <Link href="/portal/new-appointment">
                 <Button size="lg" className="h-14 px-10 rounded-full bg-primary hover:bg-primary/90 text-white font-medium text-lg shadow-lg border-2 border-transparent transition-all hover:scale-105">
                   Reservar Turno
+                </Button>
+              </Link>
+              <Link href="/portal/prescriptions">
+                <Button size="lg" className="h-14 px-10 rounded-full bg-primary hover:bg-primary/90 text-white font-medium text-lg shadow-lg border-2 border-transparent transition-all hover:scale-105">
+                  Solicitar Recetas
+                </Button>
+              </Link>
+              <Link href="/portal/prescriptions">
+                <Button size="lg" className="h-14 px-10 rounded-full bg-primary hover:bg-primary/90 text-white font-medium text-lg shadow-lg border-2 border-transparent transition-all hover:scale-105">
+                  Solicitar Estudios
                 </Button>
               </Link>
               <Link href="#staff">
@@ -199,13 +209,13 @@ export default async function LandingPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="hidden sm:flex flex-col items-end gap-3 justify-center">
-                    <div className="text-sm text-slate-600 font-medium text-right bg-slate-100 px-3 py-1.5 rounded-lg">
+                  <div className="flex flex-col items-start sm:items-end gap-3 justify-center w-full sm:w-auto pl-[88px] sm:pl-0">
+                    <div className="text-sm text-slate-600 font-medium text-left sm:text-right bg-slate-100 px-3 py-1.5 rounded-lg">
                       <p>Martes 14-18hs</p>
                       <p>Miércoles 14-18hs</p>
                     </div>
                     <Link href="/portal/new-appointment">
-                      <Button variant="ghost" className="group-hover:translate-x-2 transition-transform">
+                      <Button variant="ghost" className="group-hover:translate-x-2 transition-transform px-0 sm:px-4">
                         Sacar turno <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </Link>

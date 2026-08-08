@@ -367,6 +367,57 @@ export const appointmentService = {
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
     },
 
+    /** Turnos completados con snapshot `timing` para un doctor, opcionalmente en un rango de fechas. */
+    async getTimedAppointments(
+        doctorId: string,
+        startDate: Date | null,
+        endDate: Date = new Date()
+    ): Promise<Appointment[]> {
+        try {
+            const constraints: any[] = [where("doctorId", "==", doctorId)];
+            if (startDate) {
+                constraints.push(where("date", ">=", Timestamp.fromDate(startOfDay(startDate))));
+            }
+            constraints.push(where("date", "<=", Timestamp.fromDate(endOfDay(endDate))));
+
+            const q = query(collection(db, "appointments"), ...constraints);
+            const querySnapshot = await getDocs(q);
+
+            return querySnapshot.docs
+                .map((docSnap) => {
+                    const data = docSnap.data();
+                    return {
+                        id: docSnap.id,
+                        ...data,
+                        date: data.date?.toDate?.() ?? new Date(),
+                        createdAt: data.createdAt?.toDate?.() || new Date(),
+                        arrivedAt: data.arrivedAt?.toDate?.(),
+                        updatedAt: data.updatedAt?.toDate?.(),
+                        waitingSegmentStartedAt: data.waitingSegmentStartedAt?.toDate?.(),
+                        consultationSegmentStartedAt: data.consultationSegmentStartedAt?.toDate?.(),
+                        consultationStartedAt: data.consultationStartedAt?.toDate?.(),
+                        times: data.times
+                            ? {
+                                  arrivedAt: data.times.arrivedAt?.toDate?.() ?? undefined,
+                                  consultationStartedAt: data.times.consultationStartedAt?.toDate?.() ?? undefined,
+                                  completedAt: data.times.completedAt?.toDate?.() ?? undefined,
+                              }
+                            : undefined,
+                        timing: data.timing
+                            ? {
+                                  ...data.timing,
+                                  completedAt: data.timing.completedAt?.toDate?.() ?? undefined,
+                              }
+                            : undefined,
+                    } as Appointment;
+                })
+                .filter((a) => a.status === "completed" && a.timing);
+        } catch (error) {
+            console.error("Error fetching timed appointments:", error);
+            return [];
+        }
+    },
+
     async addAttachment(appointmentId: string, attachment: { name: string; url: string; type: string }): Promise<void> {
         try {
             const docRef = doc(db, "appointments", appointmentId);

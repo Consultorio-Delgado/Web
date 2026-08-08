@@ -13,12 +13,11 @@ export function formatDuration(totalSeconds: number): string {
 }
 
 // Texto de puntualidad a partir del delta (negativo = llegó temprano).
+// Sin margen: 0 = en horario, <0 = antes, >0 = tarde.
 export function formatPunctuality(deltaSeconds: number): { label: string; early: boolean; onTime: boolean } {
-    const early = deltaSeconds < -30; // margen de 30s se considera "en horario"
-    const late = deltaSeconds > 30;
-    const onTime = !early && !late;
+    if (deltaSeconds === 0) return { label: "En horario", early: false, onTime: true };
+    const early = deltaSeconds < 0;
     const abs = Math.abs(deltaSeconds);
-    if (onTime) return { label: "En horario", early: false, onTime: true };
     return {
         label: `${formatDuration(abs)} ${early ? "antes" : "tarde"}`,
         early,

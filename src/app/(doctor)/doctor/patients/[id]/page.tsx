@@ -52,7 +52,7 @@ export default function PatientProfilePage() {
             const w = secToParts(t.waitingSeconds);
             const c = secToParts(t.consultationSeconds);
             const p = secToParts(t.arrivalDeltaSeconds);
-            const dir = t.arrivalDeltaSeconds < -30 ? "early" : t.arrivalDeltaSeconds > 30 ? "late" : "ontime";
+            const dir = t.arrivalDeltaSeconds < 0 ? "early" : t.arrivalDeltaSeconds > 0 ? "late" : "ontime";
             setForm({
                 waitMin: w.min, waitSec: w.sec,
                 consMin: c.min, consSec: c.sec,

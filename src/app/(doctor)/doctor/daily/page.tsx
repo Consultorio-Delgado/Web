@@ -136,6 +136,7 @@ interface DailySlot {
     status: 'free' | 'occupied' | 'blocked' | 'past';
     appointment?: Appointment;
     doctor: any; // Added doctor info to slot to identify owner
+    isCollision?: boolean;
 }
 
 interface CancelledAppointmentData {
@@ -837,7 +838,7 @@ export default function DailyAgendaPage() {
                         const isSelectable = isSelectionMode && isMySlot && (slot.status === 'free' || slot.status === 'blocked');
 
                         return (
-                            <Card key={`${index}-${slot.time}-${slot.doctor.id}`}
+                            <Card key={`${slot.time}-${slot.doctor.id}-${appt?.id ?? `free-${index}`}`}
                                 onClick={() => {
                                     if (isSelectable) {
                                         toggleSlotSelection(slot.time);
@@ -845,6 +846,7 @@ export default function DailyAgendaPage() {
                                 }}
                                 className={cn(
                                     "transition-colors",
+                                    slot.isCollision ? "border-amber-500 bg-amber-50/70 ring-2 ring-amber-400" :
                                     isPending ? "border-orange-400 bg-orange-50/50 ring-2 ring-orange-300 animate-pulse" :
                                         isArrived ? "border-amber-300 bg-amber-50/50 ring-2 ring-amber-300" :
                                             isInConsultation ? "border-blue-400 bg-blue-50/50 ring-2 ring-blue-300" :
@@ -896,6 +898,12 @@ export default function DailyAgendaPage() {
                                                     <Link href={`/doctor/patients/${appt.patientId}`} className="font-bold text-lg text-blue-700 hover:underline">
                                                         {appt.patientName}
                                                     </Link>
+                                                    {slot.isCollision && (
+                                                        <Badge variant="outline" className="text-amber-800 border-amber-400 bg-amber-100 text-xs gap-1">
+                                                            <AlertCircle className="h-3 w-3" />
+                                                            Doble reserva
+                                                        </Badge>
+                                                    )}
                                                     {!isMySlot && (
                                                         <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 text-xs">
                                                             {slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {slot.doctor.lastName}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { userService } from "@/services/user";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,9 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, KeyRound, User as UserIcon, Save } from "lucide-react";
+import { Loader2, KeyRound, Mail, User as UserIcon, Save } from "lucide-react";
 import { toast } from "sonner";
-import { updatePassword, User } from "firebase/auth";
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, User } from "firebase/auth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { INSURANCE_PROVIDERS } from "@/constants";
 import { useForm } from "react-hook-form";
@@ -40,6 +41,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
     const { user, profile, refreshProfile, loading: authLoading } = useAuth();
+    const [activeTab, setActiveTab] = useState("info");
 
     // Initials helper
     const getInitials = (first?: string, last?: string) => {
@@ -63,7 +65,7 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="info" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="info">Información Personal</TabsTrigger>
                     <TabsTrigger value="security">Seguridad</TabsTrigger>
@@ -74,10 +76,12 @@ export default function ProfilePage() {
                         user={user}
                         profile={profile}
                         refreshProfile={refreshProfile}
+                        onChangeEmail={() => setActiveTab("security")}
                     />
                 </TabsContent>
 
-                <TabsContent value="security">
+                <TabsContent value="security" className="space-y-6">
+                    <ChangeEmailForm user={user} profile={profile} />
                     <ChangePasswordForm user={user} />
                 </TabsContent>
             </Tabs>
@@ -85,7 +89,17 @@ export default function ProfilePage() {
     );
 }
 
-function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null, profile: any, refreshProfile: () => Promise<void> }) {
+function PersonalInfoForm({
+    user,
+    profile,
+    refreshProfile,
+    onChangeEmail,
+}: {
+    user: User | null;
+    profile: any;
+    refreshProfile: () => Promise<void>;
+    onChangeEmail: () => void;
+}) {
     const [isSaving, setIsSaving] = useState(false);
 
     const form = useForm<ProfileFormValues>({
@@ -154,7 +168,16 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
                             <div className="space-y-1">
                                 <Label className="text-xs text-slate-500">Email</Label>
-                                <div className="font-medium text-sm text-slate-700">{profile?.email}</div>
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                    <span className="font-medium text-sm text-slate-700">{profile?.email}</span>
+                                    <button
+                                        type="button"
+                                        onClick={onChangeEmail}
+                                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                    >
+                                        cambiar email
+                                    </button>
+                                </div>
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs text-slate-500">DNI</Label>
@@ -265,14 +288,180 @@ function PersonalInfoForm({ user, profile, refreshProfile }: { user: User | null
     );
 }
 
+function ChangeEmailForm({
+    user,
+    profile,
+}: {
+    user: User | null;
+    profile: any;
+}) {
+    const { logout } = useAuth();
+    const router = useRouter();
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newEmail, setNewEmail] = useState("");
+    const [confirmEmail, setConfirmEmail] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+
+    const currentEmail = profile?.email || user?.email || "";
+
+    const handleEmailChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !user.email) return;
+
+        const normalized = newEmail.trim().toLowerCase();
+        const normalizedConfirm = confirmEmail.trim().toLowerCase();
+
+        if (!currentPassword) {
+            toast.error("Ingresá tu contraseña actual.");
+            return;
+        }
+
+        if (!normalized.includes("@") || !normalized.includes(".")) {
+            toast.error("Ingresá un email válido.");
+            return;
+        }
+
+        if (normalized !== normalizedConfirm) {
+            toast.error("Los emails no coinciden.");
+            return;
+        }
+
+        if (normalized === currentEmail.trim().toLowerCase()) {
+            toast.error("El nuevo email es igual al actual.");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // Reauth: sin esto, una sesión robada/abierta podría cambiar el email
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+
+            const idToken = await user.getIdToken(true);
+            const response = await fetch("/api/auth/update-email", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({
+                    uid: user.uid,
+                    newEmail: normalized,
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                toast.error(data.error || "Error al actualizar el email.");
+                return;
+            }
+
+            // After Auth email change the client session often breaks (blank portal).
+            // Verification is sent by the API; log out and send user to login.
+            if (data.verificationSent === false) {
+                toast.warning(
+                    data.warning ||
+                        `Email actualizado a ${normalized}, pero no se envió la verificación.`
+                );
+            } else {
+                toast.success(
+                    `Email actualizado. Te enviamos la verificación a ${normalized}. Iniciá sesión con el mail nuevo cuando lo confirmes.`
+                );
+            }
+
+            await logout();
+            router.replace("/login");
+        } catch (error: any) {
+            console.error(error);
+            if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+                toast.error("La contraseña actual es incorrecta.");
+            } else if (error.code === "auth/too-many-requests") {
+                toast.error("Demasiados intentos. Probá más tarde.");
+            } else {
+                toast.error("Error al actualizar el email.");
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Mail className="h-5 w-5" />
+                    Cambiar Email
+                </CardTitle>
+                <CardDescription>
+                    Vas a tener que verificar el nuevo correo. Los recordatorios de turnos pendientes usarán esa dirección.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleEmailChange} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Email actual</Label>
+                        <Input value={currentEmail} disabled />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="email-current-password">Contraseña actual</Label>
+                        <PasswordInput
+                            id="email-current-password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            autoComplete="current-password"
+                            required
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="new-email">Nuevo Email</Label>
+                        <Input
+                            id="new-email"
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            placeholder="nuevo@email.com"
+                            required
+                            autoComplete="email"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="confirm-email">Confirmar Email</Label>
+                        <Input
+                            id="confirm-email"
+                            type="email"
+                            value={confirmEmail}
+                            onChange={(e) => setConfirmEmail(e.target.value)}
+                            placeholder="nuevo@email.com"
+                            required
+                            autoComplete="email"
+                        />
+                    </div>
+                    <div className="pt-4">
+                        <Button type="submit" disabled={isLoading}>
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Actualizar Email
+                        </Button>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
+    );
+}
+
 function ChangePasswordForm({ user }: { user: User | null }) {
+    const [currentPassword, setCurrentPassword] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
     const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user) return;
+        if (!user || !user.email) return;
+
+        if (!currentPassword) {
+            toast.error("Ingresá tu contraseña actual.");
+            return;
+        }
 
         if (password.length < 6) {
             toast.error("La contraseña debe tener al menos 6 caracteres.");
@@ -286,14 +475,23 @@ function ChangePasswordForm({ user }: { user: User | null }) {
 
         setIsLoading(true);
         try {
+            // Firebase exige login reciente; reauth con la actual evita requires-recent-login
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
             await updatePassword(user, password);
+
             toast.success("Contraseña actualizada correctamente.");
+            setCurrentPassword("");
             setPassword("");
             setConfirmPassword("");
         } catch (error: any) {
             console.error(error);
-            if (error.code === 'auth/requires-recent-login') {
-                toast.error("Por seguridad, debe volver a iniciar sesión para cambiar su contraseña.");
+            if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+                toast.error("La contraseña actual es incorrecta.");
+            } else if (error.code === "auth/requires-recent-login") {
+                toast.error("Por seguridad, volvé a iniciar sesión para cambiar la contraseña.");
+            } else if (error.code === "auth/too-many-requests") {
+                toast.error("Demasiados intentos. Probá más tarde.");
             } else {
                 toast.error("Error al actualizar la contraseña.");
             }
@@ -305,19 +503,33 @@ function ChangePasswordForm({ user }: { user: User | null }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Cambiar Contraseña</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                    <KeyRound className="h-5 w-5" />
+                    Cambiar Contraseña
+                </CardTitle>
                 <CardDescription>
-                    Ingrese su nueva contraseña para mantener su cuenta segura.
+                    Ingresá tu contraseña actual y la nueva para mantener tu cuenta segura.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="current-password">Contraseña actual</Label>
+                        <PasswordInput
+                            id="current-password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            autoComplete="current-password"
+                            required
+                        />
+                    </div>
                     <div className="space-y-2">
                         <Label htmlFor="new-password">Nueva Contraseña</Label>
                         <PasswordInput
                             id="new-password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            autoComplete="new-password"
                             required
                         />
                     </div>
@@ -327,6 +539,7 @@ function ChangePasswordForm({ user }: { user: User | null }) {
                             id="confirm-password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
+                            autoComplete="new-password"
                             required
                         />
                     </div>

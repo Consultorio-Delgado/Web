@@ -1,15 +1,37 @@
 import { Doctor, Appointment } from "@/types";
 import { addMinutes, format, isSameDay, isAfter, parse, startOfDay, isBefore } from "date-fns";
 
+export type DaySlot = {
+    time: string;
+    status: 'free' | 'occupied' | 'blocked' | 'past';
+    appointment?: Appointment;
+    /** True when more than one non-cancelled patient appointment shares this time. */
+    isCollision?: boolean;
+};
+
+function appointmentCreatedAtMs(appt?: Appointment): number {
+    const raw = appt?.createdAt as Date | { toDate?: () => Date } | undefined;
+    if (!raw) return 0;
+    if (raw instanceof Date) return raw.getTime();
+    if (typeof raw.toDate === 'function') return raw.toDate().getTime();
+    return 0;
+}
+
+function isBlockedAppointment(appt: Appointment): boolean {
+    return appt.type === 'Bloqueado' || appt.patientId === 'blocked';
+}
+
 export const availabilityService = {
     async getAvailableSlots(doctor: Doctor, date: Date, existingAppointments: Appointment[]): Promise<string[]> {
         const fullSlots = await this.getAllDaySlots(doctor, date, existingAppointments);
-        return fullSlots
-            .filter(s => s.status === 'free')
-            .map(s => s.time);
+        // A time is free only if no slot row for that time is occupied/blocked
+        const busyTimes = new Set(
+            fullSlots.filter(s => s.status === 'occupied' || s.status === 'blocked').map(s => s.time)
+        );
+        return [...new Set(fullSlots.filter(s => s.status === 'free' && !busyTimes.has(s.time)).map(s => s.time))];
     },
 
-    async getAllDaySlots(doctor: Doctor, date: Date, existingAppointments: Appointment[]): Promise<{ time: string, status: 'free' | 'occupied' | 'blocked' | 'past', appointment?: Appointment }[]> {
+    async getAllDaySlots(doctor: Doctor, date: Date, existingAppointments: Appointment[]): Promise<DaySlot[]> {
         const { startHour, endHour, workDays } = doctor.schedule;
         const slotDuration = doctor.slotDuration;
         const dateString = format(date, 'yyyy-MM-dd');
@@ -109,56 +131,57 @@ export const availabilityService = {
         // Sort slots
         slotTimes.sort();
 
-        // 4. Build Result
+        // 4. Build Result — one UI row per patient appointment (show collisions instead of hiding them)
         const now = new Date();
         const isToday = isSameDay(date, now);
-        const slots: { time: string, status: 'free' | 'occupied' | 'blocked' | 'past', appointment?: Appointment }[] = [];
+        const slots: DaySlot[] = [];
 
         for (const timeString of slotTimes) {
-            let status: 'free' | 'occupied' | 'blocked' | 'past' = 'free';
-            let appointment: Appointment | undefined = undefined;
-
             const [h, m] = timeString.split(':').map(Number);
             const slotDate = new Date(date);
             slotDate.setHours(h, m, 0, 0);
 
-            // Check Past
-            if (isToday && isBefore(slotDate, now)) {
-                status = 'past';
-            }
-
-            // Check Occupied — prefer Sobreturno/real patient over Bloqueado when both exist
             const allApptAtTime = existingAppointments.filter(appt =>
                 appt.status !== 'cancelled' &&
                 appt.time === timeString &&
                 appt.doctorId === doctor.id
             );
 
-            // Pick real patient appointment first; fall back to blocked only if nothing else
-            const foundAppt = allApptAtTime.find(a => a.type !== 'Bloqueado' && a.patientId !== 'blocked')
-                ?? allApptAtTime[0];
+            const patientAppts = allApptAtTime
+                .filter(a => !isBlockedAppointment(a))
+                .sort((a, b) => appointmentCreatedAtMs(a) - appointmentCreatedAtMs(b));
+            const blockedAppt = allApptAtTime.find(isBlockedAppointment);
 
-            if (foundAppt) {
-                if (foundAppt.type === 'Bloqueado' || foundAppt.patientId === 'blocked') {
-                    status = 'blocked';
-                } else {
-                    status = 'occupied';
+            if (patientAppts.length > 0) {
+                const isCollision = patientAppts.length > 1;
+                for (const appt of patientAppts) {
+                    slots.push({
+                        time: timeString,
+                        status: 'occupied',
+                        appointment: appt,
+                        isCollision,
+                    });
                 }
-                appointment = foundAppt;
+                continue;
             }
 
-            // Check Blocked (Exception/Vacation)
-            // If the day is blocked, everything is blocked.
-            if ((isBlockedGlobal || isBlockedDoctor) && status === 'free') {
+            if (blockedAppt) {
+                slots.push({
+                    time: timeString,
+                    status: 'blocked',
+                    appointment: blockedAppt,
+                });
+                continue;
+            }
+
+            let status: DaySlot['status'] = 'free';
+            if ((isBlockedGlobal || isBlockedDoctor)) {
                 status = 'blocked';
-            }
-
-            // Mark past as past regardless of block, but occupied stays occupied
-            if (isToday && isBefore(slotDate, now) && status === 'free') {
+            } else if (isToday && isBefore(slotDate, now)) {
                 status = 'past';
             }
 
-            slots.push({ time: timeString, status, appointment });
+            slots.push({ time: timeString, status });
         }
 
         // 4.1 Inject Sobreturnos (or any appointment not in grid)
@@ -169,32 +192,45 @@ export const availabilityService = {
             !slottedTimes.has(appt.time)
         );
 
-        extraAppointments.forEach(appt => {
-            let status: 'occupied' | 'blocked' | 'past' = 'occupied';
-            if (appt.type === 'Bloqueado' || appt.patientId === 'blocked') {
-                status = 'blocked';
+        // Group extras by time so simultaneous sobreturnos all appear
+        const extrasByTime = new Map<string, Appointment[]>();
+        for (const appt of extraAppointments) {
+            const list = extrasByTime.get(appt.time) || [];
+            list.push(appt);
+            extrasByTime.set(appt.time, list);
+        }
+
+        for (const [time, apptsAtTime] of extrasByTime) {
+            const patientAppts = apptsAtTime
+                .filter(a => !isBlockedAppointment(a))
+                .sort((a, b) => appointmentCreatedAtMs(a) - appointmentCreatedAtMs(b));
+            const blockedAppt = apptsAtTime.find(isBlockedAppointment);
+
+            if (patientAppts.length > 0) {
+                const isCollision = patientAppts.length > 1;
+                for (const appt of patientAppts) {
+                    slots.push({
+                        time,
+                        status: 'occupied',
+                        appointment: appt,
+                        isCollision,
+                    });
+                }
+            } else if (blockedAppt) {
+                slots.push({
+                    time,
+                    status: 'blocked',
+                    appointment: blockedAppt,
+                });
             }
+        }
 
-            const [h, m] = appt.time.split(':').map(Number);
-            const slotDate = new Date(date);
-            slotDate.setHours(h, m, 0, 0);
-
-            if (isToday && isBefore(slotDate, now) && status !== 'blocked') {
-                // If past and occupied, it remains occupied/past contextually
-                // but for UI consistency we often treat past occupied as occupied.
-                // However, "past" status usually implies "missed" or "free in the past".
-                // Let's keep it 'occupied' so it shows the patient name.
-            }
-
-            slots.push({
-                time: appt.time,
-                status: status,
-                appointment: appt
-            });
+        // 5. Final Sort (stable: time, then creation order already applied within collisions)
+        slots.sort((a, b) => {
+            const byTime = a.time.localeCompare(b.time);
+            if (byTime !== 0) return byTime;
+            return appointmentCreatedAtMs(a.appointment) - appointmentCreatedAtMs(b.appointment);
         });
-
-        // 5. Final Sort
-        slots.sort((a, b) => a.time.localeCompare(b.time));
 
         return slots;
     }

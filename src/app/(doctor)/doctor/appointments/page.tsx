@@ -20,7 +20,7 @@ import { doctorService } from "@/services/doctorService";
 import { availabilityService } from "@/services/availabilityService";
 import { exceptionService } from "@/services/exceptionService";
 import { Appointment, Doctor } from "@/types";
-import { Loader2, Unlock, ShieldAlert, User, Trash2, Stethoscope, Users } from "lucide-react";
+import { Loader2, Unlock, ShieldAlert, User, Trash2, Stethoscope, Users, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,7 @@ interface MonthlySlot {
     status: string;
     appointment?: Appointment;
     doctor: Doctor;
+    isCollision?: boolean;
 }
 
 export default function AppointmentsPage() {
@@ -646,7 +647,7 @@ export default function AppointmentsPage() {
                             ) : (
                                 daySlots.map((slot, index) => (
                                     <div
-                                        key={index}
+                                        key={`${slot.time}-${slot.doctor?.id}-${slot.appointment?.id ?? `free-${index}`}`}
                                         onClick={() => {
                                             if (isSelectionMode && slot.status === 'free') {
                                                 toggleSlotSelection(slot.time);
@@ -654,6 +655,7 @@ export default function AppointmentsPage() {
                                         }}
                                         className={cn(
                                             "flex items-center justify-between p-4 rounded-lg border transition-colors cursor-default",
+                                            slot.isCollision ? "border-amber-500 bg-amber-50 ring-2 ring-amber-400" :
                                             slot.status === 'free' ? "border-slate-200 bg-white" :
                                                 slot.status === 'blocked' ? "border-red-200 bg-red-50" :
                                                     "border-blue-200 bg-blue-50",
@@ -701,6 +703,12 @@ export default function AppointmentsPage() {
                                                                 {slot.appointment?.type || "Consulta"}
                                                             </span>
                                                         </div>
+                                                        {slot.isCollision && (
+                                                            <Badge variant="outline" className="text-amber-800 border-amber-400 bg-amber-100 text-xs gap-1">
+                                                                <AlertCircle className="h-3 w-3" />
+                                                                Doble reserva
+                                                            </Badge>
+                                                        )}
                                                         {viewAllDoctors && (slot as MonthlySlot).doctor && doctor && (slot as MonthlySlot).doctor.id !== doctor.id && (
                                                             <Badge variant="outline" className="text-xs text-orange-600 border-orange-200 bg-orange-50">
                                                                 {(slot as MonthlySlot).doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {(slot as MonthlySlot).doctor.lastName}
