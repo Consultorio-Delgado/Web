@@ -71,7 +71,7 @@ export default async function LandingPage() {
               </a>
               <a href="/portal/prescriptions">
                 <Button size="lg" className="h-14 px-10 rounded-full bg-primary hover:bg-primary/90 text-white font-medium text-lg shadow-lg border-2 border-transparent transition-all hover:scale-105">
-                  Recetas
+                  Solicitar recetas
                 </Button>
               </a>
               <a href="/portal/studies">

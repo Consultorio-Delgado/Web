@@ -1,8 +1,80 @@
 import { db, auth } from "@/lib/firebase";
 import { auditService } from "./auditService";
 import { Appointment, UserProfile } from "@/types";
-import { collection, query, where, getDocs, Timestamp, orderBy, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp, orderBy, updateDoc, doc, getDoc } from "firebase/firestore";
 import { startOfDay, endOfDay, startOfToday, endOfToday } from "date-fns";
+import { computeAttendanceFromAppointments, type RawAppointmentLike } from "@/lib/attendanceStats";
+
+function normalizeInsuranceLabel(insurance?: string | null): string {
+    if (!insurance || insurance.trim() === "") return "Particular";
+    if (insurance.toUpperCase() === "PARTICULAR") return "Particular";
+    return insurance.trim();
+}
+
+function isInMonth(date: Date, year: number, month: number): boolean {
+    return date.getFullYear() === year && date.getMonth() === month;
+}
+
+async function countDrappUnmatchedFromTodayDocs(
+    todayDocs: Record<string, any>[]
+): Promise<number> {
+    const missingDniPatientIds: string[] = [];
+    for (const data of todayDocs) {
+        if (data.status === "cancelled") continue;
+        if (!data.patientId || data.patientId === "blocked" || data.patientId.startsWith("manual_")) {
+            continue;
+        }
+        if (data.patientDni) continue;
+        missingDniPatientIds.push(data.patientId);
+    }
+
+    if (missingDniPatientIds.length === 0) return 0;
+
+    const dniByPatient = new Map<string, string>();
+    const unique = [...new Set(missingDniPatientIds)];
+    await Promise.all(
+        unique.map(async (uid) => {
+            try {
+                const userSnap = await getDoc(doc(db, "users", uid));
+                if (userSnap.exists() && userSnap.data().dni) {
+                    dniByPatient.set(uid, userSnap.data().dni);
+                }
+            } catch {
+                // ignore
+            }
+        })
+    );
+
+    let unmatched = 0;
+    for (const data of todayDocs) {
+        if (data.status === "cancelled") continue;
+        if (!data.patientId || data.patientId === "blocked" || data.patientId.startsWith("manual_")) {
+            continue;
+        }
+        if (data.patientDni || dniByPatient.has(data.patientId)) continue;
+        unmatched++;
+    }
+    return unmatched;
+}
+
+async function fetchInsuranceByPatientIds(patientIds: string[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    const unique = [...new Set(patientIds.filter((id) => id && id !== "blocked" && !id.startsWith("manual_")))];
+    await Promise.all(
+        unique.map(async (uid) => {
+            try {
+                const snap = await getDoc(doc(db, "users", uid));
+                if (snap.exists()) {
+                    const insurance = snap.data().insurance as string | undefined;
+                    if (insurance) map.set(uid, insurance);
+                }
+            } catch {
+                // ignore per-patient failures
+            }
+        })
+    );
+    return map;
+}
 
 export const adminService = {
     async getAppointmentsByRange(startDate: Date, endDate: Date, doctorId?: string): Promise<Appointment[]> {
@@ -119,7 +191,183 @@ export const adminService = {
         }
     },
 
-    async getExtendedStats() {
+    /** Stats ligeros para el tablero: 1 query de turnos (6 meses) + perfiles solo si faltan OS. */
+    async getDashboardStats(doctorId?: string) {
+        try {
+            const now = new Date();
+            const startMonth = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+            const endMonth = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+            const sixMonthsStart = startOfDay(new Date(now.getFullYear(), now.getMonth() - 5, 1));
+
+            const constraints: any[] = [
+                where("date", ">=", Timestamp.fromDate(sixMonthsStart)),
+                where("date", "<=", Timestamp.fromDate(endMonth)),
+            ];
+            if (doctorId) {
+                constraints.push(where("doctorId", "==", doctorId));
+            }
+            const snap = await getDocs(query(collection(db, "appointments"), ...constraints));
+            const allDocs = snap.docs.map(
+                (d) => ({ id: d.id, ...d.data() } as Record<string, any> & { id: string })
+            );
+
+            const curY = now.getFullYear();
+            const curM = now.getMonth();
+            const lastM = curM === 0 ? 11 : curM - 1;
+            const lastY = curM === 0 ? curY - 1 : curY;
+
+            const currentDocs = allDocs.filter((d) => isInMonth(d.date.toDate(), curY, curM));
+            const lastMonthDocs = allDocs.filter((d) => isInMonth(d.date.toDate(), lastY, lastM));
+
+            const currentTotal = currentDocs.length;
+            const lastTotal = lastMonthDocs.length;
+            const growth =
+                lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : currentTotal > 0 ? 100 : 0;
+
+            const idsNeedingInsurance = currentDocs
+                .filter((d) => !d.insurance && d.patientId && d.patientId !== "blocked")
+                .map((d) => d.patientId as string);
+            const insuranceByPatient = await fetchInsuranceByPatientIds(idsNeedingInsurance);
+
+            const insuranceMap: Record<string, number> = {};
+            const consultationTypeMap: Record<string, number> = {};
+
+            currentDocs.forEach((data) => {
+                if (data.patientId === "blocked") return;
+                const insurance = normalizeInsuranceLabel(
+                    data.insurance || insuranceByPatient.get(data.patientId)
+                );
+                insuranceMap[insurance] = (insuranceMap[insurance] || 0) + 1;
+                if (data.consultationType) {
+                    consultationTypeMap[data.consultationType] =
+                        (consultationTypeMap[data.consultationType] || 0) + 1;
+                }
+            });
+
+            const insuranceSorted = Object.entries(insuranceMap)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value);
+            const insuranceData =
+                insuranceSorted.length <= 6
+                    ? insuranceSorted
+                    : [
+                          ...insuranceSorted.slice(0, 5),
+                          {
+                              name: "Otros",
+                              value: insuranceSorted.slice(5).reduce((sum, item) => sum + item.value, 0),
+                          },
+                      ].filter((item) => item.value > 0);
+
+            const monthLabels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+            const areaData: { name: string; total: number }[] = [];
+            for (let i = 5; i >= 0; i--) {
+                const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const count = allDocs.filter((d) =>
+                    isInMonth(d.date.toDate(), monthDate.getFullYear(), monthDate.getMonth())
+                ).length;
+                areaData.push({
+                    name: `${monthLabels[monthDate.getMonth()]} ${monthDate.getFullYear()}`,
+                    total: count,
+                });
+            }
+
+            const attendance = computeAttendanceFromAppointments(
+                currentDocs as RawAppointmentLike[],
+                { doctorId }
+            );
+
+            const todayStart = startOfDay(now);
+            const todayEnd = endOfDay(now);
+            const todayDocs = allDocs.filter((d) => {
+                const dt = d.date.toDate();
+                return dt >= todayStart && dt <= todayEnd;
+            });
+            const drappUnmatchedToday = await countDrappUnmatchedFromTodayDocs(todayDocs);
+
+            return {
+                kpi: {
+                    totalAppointments: currentTotal,
+                    growth: Math.round(growth),
+                    absent: attendance.absent,
+                    firstVisits: currentDocs.filter((d) => d.isFirstVisit === true).length,
+                },
+                charts: {
+                    insurance: insuranceData,
+                    area: areaData,
+                    consultationType: Object.keys(consultationTypeMap).map((key) => ({
+                        name: key.replace(/-/g, " "),
+                        value: consultationTypeMap[key],
+                    })),
+                },
+                rawCurrentMonth: currentDocs,
+                rawLastMonth: lastMonthDocs,
+                drappUnmatchedToday,
+            };
+        } catch (error) {
+            console.error("Error calculating dashboard stats:", error);
+            return null;
+        }
+    },
+
+    /** Solo para banner DRAPP: turnos de hoy sin DNI (máx. 1 lectura de perfil por paciente). */
+    async countDrappUnmatchedToday(doctorId?: string): Promise<number> {
+        try {
+            const now = new Date();
+            const constraints: any[] = [
+                where("date", ">=", Timestamp.fromDate(startOfDay(now))),
+                where("date", "<=", Timestamp.fromDate(endOfDay(now))),
+            ];
+            if (doctorId) {
+                constraints.push(where("doctorId", "==", doctorId));
+            }
+            const snap = await getDocs(query(collection(db, "appointments"), ...constraints));
+
+            const missingDniPatientIds: string[] = [];
+            for (const docSnap of snap.docs) {
+                const data = docSnap.data();
+                if (data.status === "cancelled") continue;
+                if (!data.patientId || data.patientId === "blocked" || data.patientId.startsWith("manual_")) {
+                    continue;
+                }
+                if (data.patientDni) continue;
+                missingDniPatientIds.push(data.patientId);
+            }
+
+            if (missingDniPatientIds.length === 0) return 0;
+
+            const dniByPatient = new Map<string, string>();
+            const unique = [...new Set(missingDniPatientIds)];
+            await Promise.all(
+                unique.map(async (uid) => {
+                    try {
+                        const userSnap = await getDoc(doc(db, "users", uid));
+                        if (userSnap.exists() && userSnap.data().dni) {
+                            dniByPatient.set(uid, userSnap.data().dni);
+                        }
+                    } catch {
+                        // ignore
+                    }
+                })
+            );
+
+            let unmatched = 0;
+            for (const docSnap of snap.docs) {
+                const data = docSnap.data();
+                if (data.status === "cancelled") continue;
+                if (!data.patientId || data.patientId === "blocked" || data.patientId.startsWith("manual_")) {
+                    continue;
+                }
+                if (data.patientDni || dniByPatient.has(data.patientId)) continue;
+                unmatched++;
+            }
+            return unmatched;
+        } catch (error) {
+            console.error("Error counting DRAPP unmatched:", error);
+            return 0;
+        }
+    },
+
+    async getExtendedStats(doctorId?: string) {
         try {
             const now = new Date();
             const startMonth = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -127,110 +375,160 @@ export const adminService = {
             const startLastMonth = startOfDay(new Date(now.getFullYear(), now.getMonth() - 1, 1));
             const endLastMonth = endOfDay(new Date(now.getFullYear(), now.getMonth(), 0));
 
-            // 1. Current Month Appointments
-            const qCurrent = query(
-                collection(db, "appointments"),
-                where("date", ">=", Timestamp.fromDate(startMonth)),
-                where("date", "<=", Timestamp.fromDate(endMonth))
+            const sixMonthsStart = startOfDay(new Date(now.getFullYear(), now.getMonth() - 5, 1));
+
+            const fetchRange = async (start: Date, end: Date) => {
+                const constraints: any[] = [
+                    where("date", ">=", Timestamp.fromDate(start)),
+                    where("date", "<=", Timestamp.fromDate(end)),
+                ];
+                if (doctorId) {
+                    constraints.push(where("doctorId", "==", doctorId));
+                }
+                const q = query(collection(db, "appointments"), ...constraints);
+                const snap = await getDocs(q);
+                return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, any> & { id: string }));
+            };
+
+            const [currentDocs, lastDocs, sixMonthDocs, allPatients] = await Promise.all([
+                fetchRange(startMonth, endMonth),
+                fetchRange(startLastMonth, endLastMonth),
+                fetchRange(sixMonthsStart, endMonth),
+                this.getAllPatients(),
+            ]);
+
+            const insuranceByPatient = new Map(
+                allPatients.map((p) => [p.uid, p.insurance])
             );
-            const currentSnap = await getDocs(qCurrent);
-            const currentTotal = currentSnap.size;
 
-            // 2. Last Month Appointments (for growth)
-            const qLast = query(
-                collection(db, "appointments"),
-                where("date", ">=", Timestamp.fromDate(startLastMonth)),
-                where("date", "<=", Timestamp.fromDate(endLastMonth))
+            const currentTotal = currentDocs.length;
+            const lastTotal = lastDocs.length;
+            const growth = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : currentTotal > 0 ? 100 : 0;
+
+            const attendance = computeAttendanceFromAppointments(
+                currentDocs as RawAppointmentLike[],
+                { doctorId }
             );
-            const lastSnap = await getDocs(qLast);
-            const lastTotal = lastSnap.size;
 
-            const growth = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : 100;
+            const uniquePatients = new Set(
+                currentDocs.filter((d) => d.patientId && d.patientId !== "blocked").map((d) => d.patientId)
+            ).size;
 
-            // 3. Attendance Rate (Global or Monthly? Let's do Monthly to be responsive)
-            const completed = currentSnap.docs.filter(d => ['completed', 'arrived'].includes(d.data().status)).length;
-            const cancelled = currentSnap.docs.filter(d => ['cancelled', 'absent'].includes(d.data().status)).length;
-            const totalForRate = completed + cancelled;
-            const attendanceRate = totalForRate > 0 ? (completed / totalForRate) * 100 : 100;
-
-            // 4. Unique Patients (Monthly)
-            const uniquePatients = new Set(currentSnap.docs.map(d => d.data().patientId)).size;
-
-            // 5. Next 48hs
             const startNext = new Date();
             const endNext = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-            const qNext = query(
-                collection(db, "appointments"),
-                where("date", ">=", Timestamp.fromDate(startNext)),
-                where("date", "<=", Timestamp.fromDate(endNext)),
-                orderBy("date", "asc")
-            );
-            const nextSnap = await getDocs(qNext);
-            const nextAppointments = nextSnap.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                date: doc.data().date.toDate()
-            }));
+            let nextAppointments: any[] = [];
+            try {
+                const nextConstraints: any[] = [
+                    where("date", ">=", Timestamp.fromDate(startNext)),
+                    where("date", "<=", Timestamp.fromDate(endNext)),
+                    orderBy("date", "asc"),
+                ];
+                if (doctorId) {
+                    nextConstraints.push(where("doctorId", "==", doctorId));
+                }
+                const qNext = query(collection(db, "appointments"), ...nextConstraints);
+                const nextSnap = await getDocs(qNext);
+                nextAppointments = nextSnap.docs.map((docSnap) => ({
+                    id: docSnap.id,
+                    ...docSnap.data(),
+                    date: docSnap.data().date.toDate(),
+                }));
+            } catch {
+                const allNext = await fetchRange(startNext, endNext);
+                nextAppointments = allNext
+                    .filter((d) => !doctorId || d.doctorId === doctorId)
+                    .sort((a, b) => a.date.toDate().getTime() - b.date.toDate().getTime())
+                    .map((d) => ({ ...d, date: d.date.toDate() }));
+            }
 
-            // 6. Chart Data: Appointments by Day of Week (Current Month)
-            // Initialize count per day
-            const daysMap: Record<string, number> = { 'Lun': 0, 'Mar': 0, 'Mie': 0, 'Jue': 0, 'Vie': 0, 'Sab': 0 };
-            const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
-
-            // 7. Insurance Distribution (Mocked or Real if field exists)
-            // We'll aggregate by 'insurance' field if it exists, or 'type' as fallback
+            const daysMap: Record<string, number> = { Lun: 0, Mar: 0, Mie: 0, Jue: 0, Vie: 0, Sab: 0 };
+            const dayNames = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
             const insuranceMap: Record<string, number> = {};
+            const consultationTypeMap: Record<string, number> = {};
 
-            currentSnap.docs.forEach(doc => {
-                const data = doc.data();
+            currentDocs.forEach((data) => {
+                if (data.patientId === "blocked") return;
+
                 const day = dayNames[data.date.toDate().getDay()];
                 if (daysMap[day] !== undefined) daysMap[day]++;
 
-                const insurance = data.insurance || 'Particular'; // Default to Particular
+                const insurance = normalizeInsuranceLabel(
+                    data.insurance || insuranceByPatient.get(data.patientId)
+                );
                 insuranceMap[insurance] = (insuranceMap[insurance] || 0) + 1;
+
+                if (data.consultationType) {
+                    consultationTypeMap[data.consultationType] = (consultationTypeMap[data.consultationType] || 0) + 1;
+                }
             });
 
-            // Format for Recharts
-            const weeklyData = Object.keys(daysMap).map(key => ({ name: key, value: daysMap[key] }));
-            const insuranceData = Object.keys(insuranceMap).map(key => ({ name: key, value: insuranceMap[key] }));
+            const insuranceSorted = Object.entries(insuranceMap)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value);
 
-            // 8. Monthly Evolution (Last 6 months) - simplified to just 2 for now or mock the rest for UI demo
-            const areaData = [
-                { name: 'Mes Pasado', total: lastTotal },
-                { name: 'Este Mes', total: currentTotal }
-            ];
+            const insuranceData =
+                insuranceSorted.length <= 6
+                    ? insuranceSorted
+                    : [
+                          ...insuranceSorted.slice(0, 5),
+                          {
+                              name: "Otros",
+                              value: insuranceSorted.slice(5).reduce((sum, item) => sum + item.value, 0),
+                          },
+                      ].filter((item) => item.value > 0);
+
+            const monthLabels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+            const areaData: { name: string; total: number }[] = [];
+            for (let i = 5; i >= 0; i--) {
+                const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = `${monthDate.getFullYear()}-${monthDate.getMonth()}`;
+                const count = sixMonthDocs.filter((d) => {
+                    const dt = d.date.toDate();
+                    return dt.getFullYear() === monthDate.getFullYear() && dt.getMonth() === monthDate.getMonth();
+                }).length;
+                areaData.push({ name: `${monthLabels[monthDate.getMonth()]} ${monthDate.getFullYear()}`, total: count });
+            }
 
             return {
                 kpi: {
                     totalAppointments: currentTotal,
                     growth: Math.round(growth),
-                    attendanceRate: Math.round(attendanceRate),
+                    attendanceRate: attendance.attendanceRate,
                     uniquePatients,
-                    pending: currentSnap.docs.filter(d => d.data().status === 'pending').length
+                    pending: currentDocs.filter((d) => d.status === "pending").length,
+                    absent: attendance.absent,
+                    cancelled: currentDocs.filter((d) => d.status === "cancelled").length,
+                    firstVisits: currentDocs.filter((d) => d.isFirstVisit === true).length,
+                    occupancyRate: 0,
                 },
                 nextAppointments,
                 charts: {
-                    weekly: weeklyData,
+                    weekly: Object.keys(daysMap).map((key) => ({ name: key, value: daysMap[key] })),
                     insurance: insuranceData,
-                    area: areaData
-                }
+                    area: areaData,
+                    consultationType: Object.keys(consultationTypeMap).map((key) => ({
+                        name: key.replace(/-/g, " "),
+                        value: consultationTypeMap[key],
+                    })),
+                },
+                rawCurrentMonth: currentDocs,
             };
-
         } catch (error) {
             console.error("Error calculating extended stats:", error);
             return null;
         }
     },
 
-    async getDashboardStats() {
-        // Deprecated, mapped to new logic loosely to prevent crash if old component is still used
-        const stats = await this.getExtendedStats();
-        if (!stats) return { todayAppointments: 0, activeDoctors: 2, newPatients: 0, pendingConfirmations: 0 };
+    async getDashboardStatsLegacy() {
+        const stats = await this.getDashboardStats();
+        if (!stats) {
+            return { todayAppointments: 0, activeDoctors: 2, newPatients: 0, pendingConfirmations: 0 };
+        }
         return {
-            todayAppointments: stats.kpi.totalAppointments, // This implies month, but OK for now
+            todayAppointments: stats.kpi.totalAppointments,
             activeDoctors: 2,
-            newPatients: stats.kpi.uniquePatients,
-            pendingConfirmations: stats.kpi.pending
+            newPatients: stats.kpi.firstVisits,
+            pendingConfirmations: 0,
         };
     },
     async getAllPatients(): Promise<UserProfile[]> {

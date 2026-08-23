@@ -152,12 +152,68 @@ export function useRealtimeAppointments(date: Date | null) {
             q,
             async (snapshot) => {
                 try {
-                    const enriched = await Promise.all(
-                        snapshot.docs.map((d) =>
-                            enrichAppointment(d.id, d.data())
-                        )
-                    );
-                    setAppointments(enriched);
+                    // Primera carga o resync completo: enriquecer todos los docs.
+                    if (isFirstSnapshot.current) {
+                        const enriched = await Promise.all(
+                            snapshot.docs.map((d) =>
+                                enrichAppointment(d.id, d.data())
+                            )
+                        );
+                        setAppointments(enriched);
+                    } else {
+                        const changes = snapshot.docChanges();
+                        if (changes.length === 0) return;
+
+                        // Resync tras reconexión: muchos "added" → recarga completa.
+                        if (
+                            changes.length === snapshot.size &&
+                            changes.every((c) => c.type === "added")
+                        ) {
+                            const enriched = await Promise.all(
+                                snapshot.docs.map((d) =>
+                                    enrichAppointment(d.id, d.data())
+                                )
+                            );
+                            setAppointments(enriched);
+                            return;
+                        }
+
+                        const enrichedChanges = await Promise.all(
+                            changes.map(async (change) => ({
+                                type: change.type,
+                                appointment:
+                                    change.type === "removed"
+                                        ? ({ id: change.doc.id } as Appointment)
+                                        : await enrichAppointment(
+                                              change.doc.id,
+                                              change.doc.data()
+                                          ),
+                            }))
+                        );
+
+                        setAppointments((prev) => {
+                            let next = [...prev];
+                            for (const { type, appointment } of enrichedChanges) {
+                                if (type === "removed") {
+                                    next = next.filter((a) => a.id !== appointment.id);
+                                } else if (type === "added") {
+                                    next.push(appointment);
+                                } else {
+                                    const idx = next.findIndex(
+                                        (a) => a.id === appointment.id
+                                    );
+                                    if (idx >= 0) next[idx] = appointment;
+                                    else next.push(appointment);
+                                }
+                            }
+                            next.sort((a, b) => {
+                                const ta = a.time ?? "";
+                                const tb = b.time ?? "";
+                                return ta.localeCompare(tb);
+                            });
+                            return next;
+                        });
+                    }
                 } catch (e) {
                     console.error(
                         "Error enriching real-time appointments:",

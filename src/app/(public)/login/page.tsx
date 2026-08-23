@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { getSafeRedirectPath } from "@/lib/authRedirect";
+import { getRoleAllowedRedirectPath } from "@/lib/authRedirect";
 
 function LoginForm() {
     const [email, setEmail] = useState("");
@@ -23,26 +23,23 @@ function LoginForm() {
     const searchParams = useSearchParams();
     const redirectParam = searchParams.get("redirect");
 
-    const { user, profile, loading: authLoading } = useAuth();
-    // Redirect logic based on role
+    const { user, profile, loading: authLoading, profileChecked } = useAuth();
+
     useEffect(() => {
-        // Wait for profile to load before making decisions
-        if (authLoading) return;
+        if (authLoading || !user || !profileChecked) return;
 
-        if (user) {
-            const safeRedirect = getSafeRedirectPath(redirectParam);
-            if (safeRedirect) {
-                router.push(safeRedirect);
-                return;
-            }
-
-            if (profile?.role === 'admin' || profile?.role === 'doctor') {
-                router.push("/doctor/daily");
-            } else {
-                router.push("/portal");
-            }
+        const allowedRedirect = getRoleAllowedRedirectPath(redirectParam, profile?.role);
+        if (allowedRedirect) {
+            router.push(allowedRedirect);
+            return;
         }
-    }, [user, profile, authLoading, router, redirectParam]);
+
+        if (profile?.role === "admin" || profile?.role === "doctor") {
+            router.push("/doctor/daily");
+        } else {
+            router.push("/portal");
+        }
+    }, [user, profile, authLoading, profileChecked, router, redirectParam]);
 
     const handleEmailLogin = async (e: React.FormEvent) => {
         e.preventDefault();

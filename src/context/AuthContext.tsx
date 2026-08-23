@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error(err);
             setError("Error al cargar el perfil de usuario.");
             setProfile(null);
-            setProfileChecked(false);
+            setProfileChecked(true);
         }
     };
 

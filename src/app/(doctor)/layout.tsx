@@ -48,7 +48,7 @@ export default function DoctorLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { profile, loading, user, logout } = useAuth();
+    const { profile, loading, user, logout, profileChecked } = useAuth();
     const pathname = usePathname();
     const router = useRouter();
     const [devMode, setDevMode] = useState(false);
@@ -81,13 +81,15 @@ export default function DoctorLayout({
         if (!loading) {
             if (!user) {
                 router.push(buildLoginUrl(pathname));
+            } else if (profileChecked && !profile) {
+                router.push("/portal");
             } else if (profile && profile.role !== "doctor" && profile.role !== "admin") {
                 router.push("/portal");
             }
         }
-    }, [user, profile, loading, router, pathname]);
+    }, [user, profile, loading, profileChecked, router, pathname]);
 
-    if (loading || !profile) {
+    if (loading || (user && !profileChecked) || (user && profileChecked && !profile)) {
         return (
             <div className="h-screen flex items-center justify-center bg-slate-100">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

@@ -1,159 +1,198 @@
 "use client";
 
-import { adminService } from "@/services/adminService";
-import { auditService } from "@/services/auditService";
+import { useAuth } from "@/context/AuthContext";
+import { doctorService } from "@/services/doctorService";
+import { dashboardService } from "@/services/dashboardService";
+import {
+    getCachedDashboardOverview,
+    setCachedDashboardOverview,
+} from "@/lib/dashboardCache";
+import { DashboardOverview, DashboardScope } from "@/types/dashboard";
 import { DashboardCharts } from "@/components/admin/DashboardCharts";
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, Calendar, Activity, Eye, EyeOff, TrendingUp, CheckCircle } from "lucide-react";
+import { DashboardScopeToggle } from "@/components/doctor/dashboard/DashboardScopeToggle";
+import { KpiGrid } from "@/components/doctor/dashboard/KpiGrid";
+import { ContextualBanner } from "@/components/doctor/dashboard/ContextualBanner";
+import { DoctorComparison } from "@/components/doctor/dashboard/DoctorComparison";
+import { NewPatientsList } from "@/components/doctor/dashboard/NewPatientsList";
+import { RecentActivityPanel } from "@/components/doctor/dashboard/RecentActivityPanel";
+import { DashboardSkeleton } from "@/components/doctor/dashboard/DashboardSkeleton";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
-    const [stats, setStats] = useState<any>(null);
-    const [logs, setLogs] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [privacyMode, setPrivacyMode] = useState(false);
+    const { user } = useAuth();
+    const [scope, setScope] = useState<DashboardScope>("self");
+    const [doctorId, setDoctorId] = useState<string | undefined>();
+    const [overviewByScope, setOverviewByScope] = useState<
+        Partial<Record<DashboardScope, DashboardOverview>>
+    >({});
+    const [loadingScope, setLoadingScope] = useState<DashboardScope | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const fetchGen = useRef(0);
 
     useEffect(() => {
-        async function loadDashboard() {
-            try {
-                const [statsData, logsData] = await Promise.all([
-                    adminService.getExtendedStats(),
-                    auditService.getRecentLogs(5)
-                ]);
-                setStats(statsData);
-                setLogs(logsData);
-            } catch (error) {
-                console.error("Error loading dashboard:", error);
-            } finally {
-                setLoading(false);
-            }
+        async function resolveDoctor() {
+            if (!user) return;
+            const doc = await doctorService.getDoctorById(user.uid);
+            setDoctorId(doc?.id ?? user.uid);
         }
-        loadDashboard();
-    }, []);
+        resolveDoctor();
+    }, [user]);
 
-    if (loading || !stats) return <div className="flex min-h-screen items-center justify-center">Cargando tablero...</div>;
+    const loadScope = useCallback(
+        async (targetScope: DashboardScope, docId?: string, options?: { silent?: boolean }) => {
+            const cached = getCachedDashboardOverview(targetScope, docId);
+            if (cached) {
+                setOverviewByScope((prev) => ({ ...prev, [targetScope]: cached }));
+                setError(null);
+                return;
+            }
 
-    const { kpi, charts, nextAppointments } = stats;
+            const gen = ++fetchGen.current;
+            if (!options?.silent) {
+                setLoadingScope(targetScope);
+            }
+            setError(null);
+
+            try {
+                const data = await dashboardService.getOverview(targetScope, docId);
+                if (gen !== fetchGen.current) return;
+
+                if (!data) {
+                    setError("No se pudo cargar el tablero.");
+                    return;
+                }
+
+                setCachedDashboardOverview(targetScope, docId, data);
+                setOverviewByScope((prev) => ({ ...prev, [targetScope]: data }));
+            } catch (e) {
+                if (gen !== fetchGen.current) return;
+                console.error("Error loading dashboard:", e);
+                setError("No se pudo cargar el tablero.");
+            } finally {
+                if (gen === fetchGen.current) {
+                    setLoadingScope(null);
+                }
+            }
+        },
+        []
+    );
+
+    // Hidratar desde caché al resolver doctorId (volver de Stats, toggle, etc.)
+    useEffect(() => {
+        if (!doctorId) return;
+        setOverviewByScope((prev) => {
+            const next = { ...prev };
+            const cachedSelf = getCachedDashboardOverview("self", doctorId);
+            if (cachedSelf) next.self = cachedSelf;
+            const cachedClinic = getCachedDashboardOverview("clinic");
+            if (cachedClinic) next.clinic = cachedClinic;
+            return next;
+        });
+    }, [doctorId]);
+
+    const cachedForScope = useMemo(() => {
+        if (scope === "clinic") return getCachedDashboardOverview("clinic");
+        if (!doctorId) return null;
+        return getCachedDashboardOverview("self", doctorId);
+    }, [doctorId, scope]);
+
+    const handleScopeChange = (newScope: DashboardScope) => {
+        setScope(newScope);
+        if (newScope === "clinic") {
+            loadScope("clinic", undefined);
+        } else if (doctorId) {
+            loadScope("self", doctorId);
+        }
+    };
+
+    // Siempre arranca en Yo: solo fetch propio cuando hay doctorId
+    useEffect(() => {
+        if (!user || !doctorId) return;
+        loadScope("self", doctorId);
+    }, [user, doctorId, loadScope]);
+
+    const overview = overviewByScope[scope] ?? cachedForScope ?? undefined;
+    const isWaitingDoctor = !!user && !doctorId;
+    const isInitialLoad = isWaitingDoctor || (!overview && loadingScope === scope);
+    const isPendingFetch = !overview && !loadingScope && !!doctorId;
+
+    const isRefreshing = !!overview && loadingScope === scope;
+
+    if (isInitialLoad || isPendingFetch) {
+        return <DashboardSkeleton />;
+    }
+
+    if (!overview) {
+        return (
+            <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-muted-foreground">
+                <p>{error ?? "No se pudo cargar el tablero."}</p>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                        scope === "self"
+                            ? doctorId && loadScope("self", doctorId)
+                            : loadScope("clinic")
+                    }
+                >
+                    Reintentar
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 p-1">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Tablero Principal</h1>
-                    <p className="text-muted-foreground">Resumen estratégico de su consultorio.</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                        Tablero Principal
+                    </h1>
+                    <p className="text-muted-foreground">
+                        {scope === "self"
+                            ? "Su consulta y operación del día"
+                            : "Vista del consultorio completo"}
+                    </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setPrivacyMode(!privacyMode)}>
-                    {privacyMode ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-                    {privacyMode ? "Modo Privado: ON" : "Modo Privado: OFF"}
-                </Button>
+                <div className="flex items-center gap-2">
+                    {isRefreshing && (
+                        <Badge variant="secondary" className="gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Actualizando
+                        </Badge>
+                    )}
+                    <DashboardScopeToggle scope={scope} onChange={handleScopeChange} />
+                </div>
             </div>
 
-            {/* KPI Pulse Row */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="shadow-sm border-l-4 border-l-blue-500">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Turnos Mensuales</CardTitle>
-                        <Calendar className="h-4 w-4 text-blue-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{kpi.totalAppointments}</div>
-                        <p className={cn("text-xs", kpi.growth >= 0 ? "text-green-600" : "text-red-600")}>
-                            {kpi.growth >= 0 ? "+" : ""}{kpi.growth}% vs mes pasado
-                        </p>
-                    </CardContent>
-                </Card>
+            <ContextualBanner context={overview.context} />
 
-                <Card className="shadow-sm border-l-4 border-l-purple-500">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pacientes Únicos</CardTitle>
-                        <Users className="h-4 w-4 text-purple-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{kpi.uniquePatients}</div>
-                        <p className="text-xs text-muted-foreground">
-                            Atendidos este mes
-                        </p>
-                    </CardContent>
-                </Card>
+            {overview.drappUnmatchedToday > 0 && (
+                <div className="flex items-center justify-between rounded-lg border border-dashed p-3">
+                    <p className="text-sm text-muted-foreground">
+                        {overview.drappUnmatchedToday} paciente(s) de hoy sin match DRAPP
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href="/doctor/drapp-patients">Revisar DRAPP</Link>
+                    </Button>
+                </div>
+            )}
 
-                <Card className="shadow-sm border-l-4 border-l-green-500">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tasa de Asistencia</CardTitle>
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{kpi.attendanceRate}%</div>
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 dark:bg-slate-800">
-                            <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${kpi.attendanceRate}%` }}></div>
-                        </div>
-                    </CardContent>
-                </Card>
+            <KpiGrid kpi={overview.kpi} timing={overview.timing} />
 
-                <Card className="shadow-sm border-l-4 border-l-amber-500">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-                        <Activity className="h-4 w-4 text-amber-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{kpi.pending}</div>
-                        <p className="text-xs text-muted-foreground">
-                            Requieren confirmación
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
+            <DashboardCharts data={overview.charts} />
 
-            {/* Deep Analysis Charts */}
-            <DashboardCharts data={charts} nextAppointments={nextAppointments} privacyMode={privacyMode} />
+            {scope === "clinic" && overview.doctorComparison.length > 0 && (
+                <DoctorComparison data={overview.doctorComparison} />
+            )}
 
-            {/* Recent Activity Sidebar (Merged into main view for now as requested UI blocks) */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-3 lg:col-span-3">
-                    <CardHeader>
-                        <CardTitle>Actividad Reciente</CardTitle>
-                        <CardDescription>Últimos movimientos del sistema.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-6">
-                            {logs.map((log) => (
-                                <div key={log.id} className="flex items-start gap-4">
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarFallback className={cn(
-                                            "font-bold text-xs",
-                                            log.action.includes('CANCELLED') ? "bg-red-100 text-red-600" :
-                                                log.action.includes('CONFIRMED') ? "bg-blue-100 text-blue-600" :
-                                                    "bg-slate-100 text-slate-600"
-                                        )}>
-                                            {log.action.substring(0, 2)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="grid gap-1">
-                                        <p className="text-sm font-medium leading-none">
-                                            {log.action === 'APPOINTMENT_CREATED' ? 'Turno Reservado' :
-                                                log.action === 'APPOINTMENT_CANCELLED' ? 'Turno Cancelado' :
-                                                    log.action === 'MEDICAL_NOTE_ADDED' ? 'Evolución Médica' :
-                                                        log.action === 'PATIENT_FILE_UPLOADED' ? 'Archivo Adjunto' :
-                                                            log.action.replace(/_/g, ' ')}
-                                        </p>
-                                        <div className="flex flex-col gap-1">
-                                            <p className={cn("text-xs text-muted-foreground", privacyMode && "blur-sm")}>
-                                                {log.metadata?.patientName ? `Paciente: ${log.metadata.patientName}` : `ID: ${log.performedBy}`}
-                                            </p>
-                                            {log.metadata?.doctorName && (
-                                                <p className="text-xs text-muted-foreground">
-                                                    Dr: {log.metadata.doctorName}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                <NewPatientsList patients={overview.newPatients} />
+                <RecentActivityPanel logs={overview.recentActivity} />
             </div>
         </div>
     );
