@@ -579,7 +579,7 @@ export function BookingWizard() {
     const SECONDI_CONSULTATION_TYPES = [
         { id: 'consulta-ginecologica', label: 'Consulta Ginecológica' },
         { id: 'pap-colpo', label: 'Consulta Ginecológica + Pap y Colpo' },
-        { id: 'prueba-hpv', label: 'Consulta Ginecológica + Prueba de HPV' },
+        { id: 'prueba-hpv', label: 'Consulta Ginecológica + Prueba de HPV', extraCharge: true },
     ];
 
     const isSecondi = selectedDoctor?.id === 'secondi' || selectedDoctor?.lastName?.toLowerCase().includes('secondi');
@@ -655,6 +655,9 @@ export function BookingWizard() {
                                         )}
                                     >
                                         {type.label}
+                                        {'extraCharge' in type && type.extraCharge && (
+                                            <span className="text-slate-400 font-normal"> (cargo extra)</span>
+                                        )}
                                     </button>
                                 ))}
                             </div>

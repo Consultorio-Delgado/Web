@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -12,13 +12,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { getSafeRedirectPath } from "@/lib/authRedirect";
 
-export default function LoginPage() {
+function LoginForm() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectParam = searchParams.get("redirect");
 
     const { user, profile, loading: authLoading } = useAuth();
     // Redirect logic based on role
@@ -27,13 +30,19 @@ export default function LoginPage() {
         if (authLoading) return;
 
         if (user) {
+            const safeRedirect = getSafeRedirectPath(redirectParam);
+            if (safeRedirect) {
+                router.push(safeRedirect);
+                return;
+            }
+
             if (profile?.role === 'admin' || profile?.role === 'doctor') {
-                router.push("/doctor/daily"); // Updated to point to Doctor Daily Agenda
+                router.push("/doctor/daily");
             } else {
                 router.push("/portal");
             }
         }
-    }, [user, profile, authLoading, router]);
+    }, [user, profile, authLoading, router, redirectParam]);
 
     const handleEmailLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -120,5 +129,19 @@ export default function LoginPage() {
                 </CardFooter>
             </Card>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex items-center justify-center min-h-[calc(100vh-4rem-4rem)] bg-slate-50">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            }
+        >
+            <LoginForm />
+        </Suspense>
     );
 }

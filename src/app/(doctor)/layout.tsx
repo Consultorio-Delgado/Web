@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { buildLoginUrl } from "@/lib/authRedirect";
 import {
     LayoutDashboard,
     Calendar,
@@ -79,12 +80,12 @@ export default function DoctorLayout({
     useEffect(() => {
         if (!loading) {
             if (!user) {
-                router.push("/login");
+                router.push(buildLoginUrl(pathname));
             } else if (profile && profile.role !== "doctor" && profile.role !== "admin") {
                 router.push("/portal");
             }
         }
-    }, [user, profile, loading, router]);
+    }, [user, profile, loading, router, pathname]);
 
     if (loading || !profile) {
         return (

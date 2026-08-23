@@ -64,21 +64,21 @@ export default async function LandingPage() {
               Especialistas en Ginecología y Clínica Médica dedicados a su bienestar integral.
             </p>
             <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center pt-8">
-              <Link href="/portal/new-appointment">
+              <a href="/portal/new-appointment">
                 <Button size="lg" className="h-14 px-10 rounded-full bg-primary hover:bg-primary/90 text-white font-medium text-lg shadow-lg border-2 border-transparent transition-all hover:scale-105">
                   Reservar Turno
                 </Button>
-              </Link>
-              <Link href="/portal/prescriptions">
+              </a>
+              <a href="/portal/prescriptions">
                 <Button size="lg" className="h-14 px-10 rounded-full bg-primary hover:bg-primary/90 text-white font-medium text-lg shadow-lg border-2 border-transparent transition-all hover:scale-105">
-                  Solicitar Recetas
+                  Recetas
                 </Button>
-              </Link>
-              <Link href="/portal/prescriptions">
+              </a>
+              <a href="/portal/studies">
                 <Button size="lg" className="h-14 px-10 rounded-full bg-primary hover:bg-primary/90 text-white font-medium text-lg shadow-lg border-2 border-transparent transition-all hover:scale-105">
-                  Solicitar Estudios
+                  Envío de Estudios
                 </Button>
-              </Link>
+              </a>
               <Link href="#staff">
                 <Button size="lg" variant="outline" className="h-14 px-10 rounded-full bg-transparent border-2 border-white text-white hover:bg-white hover:text-primary font-medium text-lg transition-all hover:scale-105">
                   Nuestros Servicios
@@ -214,11 +214,11 @@ export default async function LandingPage() {
                       <p>Martes 14-18hs</p>
                       <p>Miércoles 14-18hs</p>
                     </div>
-                    <Link href="/portal/new-appointment">
+                    <a href="/portal/new-appointment">
                       <Button variant="ghost" className="group-hover:translate-x-2 transition-transform px-0 sm:px-4">
                         Sacar turno <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
-                    </Link>
+                    </a>
                   </div>
                 </div>
               </div>

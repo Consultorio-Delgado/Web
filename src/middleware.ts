@@ -5,21 +5,24 @@ export function middleware(request: NextRequest) {
     const session = request.cookies.get('session')
     const { pathname } = request.nextUrl
 
+    const redirectToLogin = () => {
+        const loginUrl = new URL('/login', request.url);
+        loginUrl.searchParams.set('redirect', pathname);
+        console.log(`[Middleware] Redirecting ${pathname} to ${loginUrl.pathname}${loginUrl.search} (No Session)`);
+        return NextResponse.redirect(loginUrl);
+    };
+
     // 1. Protect Doctor Routes
     if (pathname.startsWith('/doctor') || pathname.startsWith('/admin')) {
         if (!session) {
-            console.log(`[Middleware] Redirecting ${pathname} to /login (No Session)`);
-            return NextResponse.redirect(new URL('/login', request.url))
+            return redirectToLogin();
         }
     }
 
     // 2. Protect Portal Routes (Patients)
     if (pathname.startsWith('/portal')) {
         if (!session) {
-            console.log(`[Middleware] Redirecting ${pathname} to /login (No Session)`);
-            return NextResponse.redirect(new URL('/login', request.url))
-        } else {
-            console.log(`[Middleware] Allowing ${pathname} (Session Exists)`);
+            return redirectToLogin();
         }
     }
 

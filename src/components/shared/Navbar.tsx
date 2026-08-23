@@ -160,18 +160,18 @@ function NavItems({ mobile = false, onClick }: { mobile?: boolean; onClick?: () 
             <Link href="/#staff" className={className} onClick={onClick}>
                 Especialistas
             </Link>
-            <Link href="/portal/new-appointment" className={className} onClick={onClick}>
+            <a href="/portal/new-appointment" className={className} onClick={onClick}>
                 Reservar Turno
-            </Link>
-            <Link href="/portal/prescriptions" className={className} onClick={onClick}>
+            </a>
+            <a href="/portal/prescriptions" className={className} onClick={onClick}>
                 Recetas
-            </Link>
-            <Link href="/portal/studies" className={className} onClick={onClick}>
+            </a>
+            <a href="/portal/studies" className={className} onClick={onClick}>
                 Estudios
-            </Link>
-            <Link href="/portal/virtual-consultation" className={className} onClick={onClick}>
+            </a>
+            <a href="/portal/virtual-consultation" className={className} onClick={onClick}>
                 Consulta Virtual
-            </Link>
+            </a>
         </>
     );
 }

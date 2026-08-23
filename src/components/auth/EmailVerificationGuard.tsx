@@ -7,8 +7,10 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Mail, RefreshCw, LogOut, Loader2 } from "lucide-react";
 import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { buildLoginUrl } from "@/lib/authRedirect";
 
 interface EmailVerificationGuardProps {
     children: React.ReactNode;
@@ -16,12 +18,20 @@ interface EmailVerificationGuardProps {
 
 export function EmailVerificationGuard({ children }: EmailVerificationGuardProps) {
     const { user, loading, logout, refreshProfile } = useAuth();
+    const router = useRouter();
+    const pathname = usePathname();
     const [sending, setSending] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [isEditingEmail, setIsEditingEmail] = useState(false);
     const [newEmail, setNewEmail] = useState("");
     const [currentPassword, setCurrentPassword] = useState("");
     const [updatingEmail, setUpdatingEmail] = useState(false);
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.replace(buildLoginUrl(pathname));
+        }
+    }, [loading, user, pathname, router]);
 
     // 1. Loading State
     if (loading) {
@@ -32,10 +42,13 @@ export function EmailVerificationGuard({ children }: EmailVerificationGuardProps
         );
     }
 
-    // 2. No User -> Redirect to Login (handled by Middleware usually, but safe to have here)
+    // 2. No User -> redirecting to login
     if (!user) {
-        // middleware should handle this, but if we are here without user, render nothing or redirect
-        return null;
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
     }
 
     // 3. User Verified -> Render Children

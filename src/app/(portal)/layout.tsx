@@ -1,4 +1,5 @@
 import { EmailVerificationGuard } from "@/components/auth/EmailVerificationGuard";
+import { ProfileCompletionGuard } from "@/components/auth/ProfileCompletionGuard";
 
 export default function PortalLayout({
     children,
@@ -7,7 +8,9 @@ export default function PortalLayout({
 }) {
     return (
         <EmailVerificationGuard>
-            {children}
+            <ProfileCompletionGuard>
+                {children}
+            </ProfileCompletionGuard>
         </EmailVerificationGuard>
     );
 }
