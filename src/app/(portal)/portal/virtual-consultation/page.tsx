@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Video, Send, CheckCircle, AlertTriangle, Paperclip, XCircle, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { doctorService } from "@/services/doctorService";
@@ -38,6 +37,7 @@ export default function VirtualConsultationPage() {
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [files, setFiles] = useState<File[]>([]);
 
     const [formData, setFormData] = useState<VirtualConsultationFormData>({
@@ -121,17 +121,23 @@ export default function VirtualConsultationPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setSubmitError(null);
 
         if (!formData.doctorId) {
-            toast.error("Por favor seleccione un profesional");
+            const msg = "Por favor seleccione un profesional";
+            setSubmitError(msg);
+            toast.error(msg);
             return;
         }
 
         const selectedDoctor = doctors.find(d => d.id === formData.doctorId);
-        const isCapparelli = selectedDoctor?.lastName?.toLowerCase().includes('capparelli');
+        const lastName = selectedDoctor?.lastName?.toLowerCase() || "";
+        const isCapparelli = lastName.includes('capparelli');
 
         if (isCapparelli) {
-            toast.error("El Dr. Capparelli no está recibiendo consultas virtuales por el momento.");
+            const msg = "El Dr. Capparelli no está recibiendo consultas virtuales por el momento.";
+            setSubmitError(msg);
+            toast.error(msg);
             return;
         }
 
@@ -158,13 +164,14 @@ export default function VirtualConsultationPage() {
                 })
             );
 
+            const isSecondi = selectedDoctor?.id === 'secondi' || lastName.includes('secondi');
             const response = await fetch("/api/virtual-consultation", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...formData,
                     doctorName: selectedDoctor ? (
-                        (selectedDoctor.id === 'secondi' || selectedDoctor.lastName.toLowerCase().includes('secondi')) ? 'Dra. María Verónica Secondi' :
+                        isSecondi ? 'Dra. María Verónica Secondi' :
                             isCapparelli ? 'Dr. Germán Capparelli' :
                                 `${(selectedDoctor.gender === 'female' || selectedDoctor.specialty?.toLowerCase().includes('ginecología') || selectedDoctor.specialty?.includes('Mujer')) ? 'Dra.' : 'Dr.'} ${selectedDoctor.lastName}`
                     ) : "",
@@ -173,7 +180,8 @@ export default function VirtualConsultationPage() {
             });
 
             if (!response.ok) {
-                throw new Error("Error al enviar la solicitud");
+                const payload = await response.json().catch(() => null);
+                throw new Error(payload?.error || "Error al enviar la solicitud");
             }
 
             setSuccess(true);
@@ -181,13 +189,14 @@ export default function VirtualConsultationPage() {
             setFormData(prev => ({
                 ...prev,
                 doctorId: "",
-
                 consulta: ""
             }));
             toast.success("¡Solicitud enviada correctamente!");
         } catch (error: any) {
             console.error("Error en el envío:", error);
-            toast.error("Error al enviar la solicitud. Por favor verifica tu conexión e intenta nuevamente.");
+            const msg = error?.message || "Error al enviar la solicitud. Por favor verifica tu conexión e intenta nuevamente.";
+            setSubmitError(msg);
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
@@ -481,6 +490,13 @@ export default function VirtualConsultationPage() {
                                             </p>
                                         </div>
                                     </div>
+
+                                    {submitError && (
+                                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                                            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                            <p className="text-sm text-red-800 font-medium">{submitError}</p>
+                                        </div>
+                                    )}
 
                                     <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" size="lg" disabled={loading}>
                                         {loading ? (

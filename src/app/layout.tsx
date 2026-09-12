@@ -71,6 +71,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ContactButton } from "@/components/shared/ContactButton";
 import { AnnouncementPopup } from "@/components/shared/AnnouncementPopup";
 import { BugReporter } from "@/components/shared/BugReporter";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -93,6 +94,7 @@ export default function RootLayout({
           </div>
           <ContactButton />
           <BugReporter />
+          <Toaster richColors position="top-center" />
         </AuthProvider>
         <Analytics />
         <SpeedInsights />

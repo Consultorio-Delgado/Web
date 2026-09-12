@@ -328,7 +328,7 @@ export const emailService = {
         fechaNacimiento: string;
         telefono: string;
         email: string;
-        tipoConsulta: string;
+        tipoConsulta?: string;
         consulta: string;
         attachments?: { filename: string; content: string }[];
     }, doctorEmail: string) {
@@ -371,9 +371,11 @@ export const emailService = {
         </table>
 
         <h2 style="color: #1e293b;">Detalles de la Consulta</h2>
+        ${data.tipoConsulta ? `
         <div style="margin-bottom: 20px;">
             <p><strong>Tipo de Consulta:</strong> ${data.tipoConsulta}</p>
         </div>
+        ` : ''}
         
         <div style="padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h3 style="margin-top: 0;">Motivo:</h3>

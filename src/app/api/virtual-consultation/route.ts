@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
         const data = await request.json();
 
         // Validate required fields
-        const requiredFields = ['doctorId', 'nombre', 'apellido', 'dni', 'fechaNacimiento', 'telefono', 'email', 'tipoConsulta', 'consulta'];
+        const requiredFields = ['doctorId', 'nombre', 'apellido', 'dni', 'fechaNacimiento', 'telefono', 'email', 'consulta'];
         for (const field of requiredFields) {
             if (!data[field]) {
                 return NextResponse.json(
