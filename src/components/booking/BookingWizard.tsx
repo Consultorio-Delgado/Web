@@ -575,11 +575,12 @@ export function BookingWizard() {
         );
     };
 
-    // Consultation types for Dra. Secondi
-    const SECONDI_CONSULTATION_TYPES = [
+    // Consultation types for Dra. Secondi.
+    // `note` is display-only (gray suffix). `id` and `label` are what get stored and emailed.
+    const SECONDI_CONSULTATION_TYPES: { id: string; label: string; note?: string }[] = [
         { id: 'consulta-ginecologica', label: 'Consulta Ginecológica' },
-        { id: 'pap-colpo', label: 'Consulta Ginecológica + Pap y Colpo' },
-        { id: 'prueba-hpv', label: 'Consulta Ginecológica + Prueba de HPV', extraCharge: true },
+        { id: 'pap-colpo', label: 'Consulta Ginecológica + Pap y Colpo', note: '(No paciente 1ra vez)' },
+        { id: 'prueba-hpv', label: 'Consulta Ginecológica + Prueba de HPV', note: '(cargo extra)' },
     ];
 
     const isSecondi = selectedDoctor?.id === 'secondi' || selectedDoctor?.lastName?.toLowerCase().includes('secondi');
@@ -655,8 +656,8 @@ export function BookingWizard() {
                                         )}
                                     >
                                         {type.label}
-                                        {'extraCharge' in type && type.extraCharge && (
-                                            <span className="text-slate-400 font-normal"> (cargo extra)</span>
+                                        {type.note && (
+                                            <span className="text-slate-400 font-normal"> {type.note}</span>
                                         )}
                                     </button>
                                 ))}
