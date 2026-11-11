@@ -585,8 +585,15 @@ export function BookingWizard() {
 
     const isSecondi = selectedDoctor?.id === 'secondi' || selectedDoctor?.lastName?.toLowerCase().includes('secondi');
 
+    // Pap y Colpo is only for returning patients. First-visit patients see the other two options.
+    const visibleConsultationTypes = SECONDI_CONSULTATION_TYPES.filter(
+        (type) => !(isFirstVisit === true && type.id === 'pap-colpo')
+    );
+    const consultationTypeIsValid = consultationType !== null
+        && visibleConsultationTypes.some((type) => type.id === consultationType);
+
     // Validation for Step 2
-    const canProceedFromStep2 = isFirstVisit !== null && (!isSecondi || consultationType !== null);
+    const canProceedFromStep2 = isFirstVisit !== null && (!isSecondi || consultationTypeIsValid);
 
     const renderStep2_Intake = () => (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto">
@@ -610,7 +617,12 @@ export function BookingWizard() {
                     <CardContent>
                         <div className="grid grid-cols-2 gap-4">
                             <button
-                                onClick={() => setIsFirstVisit(true)}
+                                onClick={() => {
+                                    setIsFirstVisit(true);
+                                    if (consultationType === 'pap-colpo') {
+                                        setConsultationType(null);
+                                    }
+                                }}
                                 className={cn(
                                     "p-6 rounded-xl border-2 text-center transition-all duration-200 font-semibold text-lg",
                                     isFirstVisit === true
@@ -644,7 +656,7 @@ export function BookingWizard() {
                         </CardHeader>
                         <CardContent>
                             <div className="flex flex-col gap-3">
-                                {SECONDI_CONSULTATION_TYPES.map(type => (
+                                {visibleConsultationTypes.map(type => (
                                     <button
                                         key={type.id}
                                         onClick={() => setConsultationType(type.id)}
