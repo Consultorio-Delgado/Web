@@ -825,8 +825,13 @@ export default function DailyAgendaPage() {
                                     isSelectionMode && selectedSlots.has(slot.time) && "ring-2 ring-primary border-primary bg-primary/5",
                                     !paintAsOwn && !isSelectionMode && "opacity-90" // Slight dim for others
                                 )}>
-                                <CardContent className={cn("p-4 flex flex-col items-start justify-between gap-4", viewAllDoctors ? "items-stretch" : "sm:flex-row sm:items-center")}>
-                                    <div className="flex items-center gap-4 min-w-[140px]">
+                                <CardContent className={cn(
+                                    viewAllDoctors
+                                        ? "p-2.5 flex flex-col gap-1.5"
+                                        : "p-4 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center"
+                                )}>
+                                    <div className={cn(viewAllDoctors ? "flex w-full items-start gap-2.5 min-w-0" : "contents")}>
+                                    <div className={cn("flex items-center shrink-0", viewAllDoctors ? "gap-2" : "gap-4 min-w-[140px]")}>
                                         {isSelectable && (
                                             <Checkbox
                                                 checked={selectedSlots.has(slot.time)}
@@ -834,12 +839,14 @@ export default function DailyAgendaPage() {
                                             />
                                         )}
 
-                                        <div className={cn("border rounded-md p-2 flex flex-col items-center gap-1 shadow-sm w-[100px]",
+                                        <div className={cn(
+                                            "border rounded-md flex items-center shadow-sm",
+                                            viewAllDoctors ? "h-7 px-2 gap-1" : "p-2 flex-col gap-1 w-[100px]",
                                             !paintAsOwn ? "bg-orange-100/50 border-orange-200" : "bg-white"
                                         )}>
                                             <div className="flex items-center gap-1">
                                                 <Clock className="h-3 w-3 text-slate-500" />
-                                                <span className="font-bold text-lg leading-none">{slot.time}</span>
+                                                <span className={cn("font-bold leading-none", viewAllDoctors ? "text-sm" : "text-lg")}>{slot.time}</span>
                                             </div>
                                         </div>
                                         {!viewAllDoctors && (
@@ -849,11 +856,11 @@ export default function DailyAgendaPage() {
                                         )}
                                     </div>
 
-                                    <div className="flex-grow">
+                                    <div className={cn("flex-grow min-w-0", viewAllDoctors && "pt-0.5")}>
                                         {slot.status === 'occupied' && appt && (
-                                            <div className="space-y-2">
+                                            <div className={cn(viewAllDoctors ? "space-y-0.5" : "space-y-2")}>
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <Link href={`/doctor/patients/${appt.patientId}`} className="font-bold text-lg text-blue-700 hover:underline">
+                                                    <Link href={`/doctor/patients/${appt.patientId}`} className={cn("font-bold text-blue-700 hover:underline", viewAllDoctors ? "text-base leading-tight" : "text-lg")}>
                                                         {appt.patientName}
                                                     </Link>
                                                     {slot.isCollision && (
@@ -881,10 +888,10 @@ export default function DailyAgendaPage() {
                                                             </a>
                                                         ) : null;
                                                     })()}
-                                                    <TimingBadges appt={appt} />
+                                                    {!viewAllDoctors && <TimingBadges appt={appt} />}
 
                                                 </div>
-                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+                                                <div className={cn("flex flex-wrap text-slate-600", viewAllDoctors ? "gap-x-3 gap-y-0.5 text-xs" : "gap-x-4 gap-y-1 text-sm")}>
                                                     {/* Show intake info instead of phone */}
                                                     {appt.isFirstVisit && (
                                                         <span className="flex items-center gap-1 text-purple-600 font-medium">
@@ -908,6 +915,7 @@ export default function DailyAgendaPage() {
                                                         <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> {appt.insurance}</span>
                                                     )}
                                                 </div>
+                                                {viewAllDoctors && <TimingBadges appt={appt} />}
                                                 {appt.medicalNotes && (
                                                     <div className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded inline-block mt-1">
                                                         Nota: {appt.medicalNotes}
@@ -964,7 +972,13 @@ export default function DailyAgendaPage() {
                                         )}
                                     </div>
 
-                                    <div className={cn("items-center gap-2 flex-wrap justify-end", viewAllDoctors ? "flex w-full pt-2 border-t border-slate-200/70" : "hidden sm:flex")}>
+                                    </div>
+                                    <div className={cn(
+                                        "items-center flex-wrap justify-end",
+                                        viewAllDoctors
+                                            ? "flex w-full gap-1.5 [&_button]:h-7 [&_button]:px-2 [&_button]:text-xs"
+                                            : "hidden sm:flex gap-2"
+                                    )}>
                                         <StatusBadge status={slot.status} appointmentStatus={appt?.status} />
 
                                         {!isSelectionMode && slot.status === 'blocked' && appt && (
@@ -1129,7 +1143,7 @@ export default function DailyAgendaPage() {
                         )}
                     </div>
                 </header>
-                <div className="p-3 space-y-3 bg-slate-50/70">
+                <div className="p-2.5 space-y-2 bg-slate-50/70">
                     {columnSlots.length === 0 ? (
                         <p className="text-sm text-slate-500 text-center py-10">No hay horarios para este día.</p>
                     ) : (

@@ -45,6 +45,25 @@ interface MonthlySlot {
     isCollision?: boolean;
 }
 
+function isSecondiDoctor(doctor?: Doctor | null, doctorId?: string): boolean {
+    const id = doctor?.id || doctorId || "";
+    const lastName = doctor?.lastName?.toLowerCase() || "";
+    return id === "secondi" || lastName.includes("secondi");
+}
+
+/** Color de base del turno ocupado. Las excepciones (bloqueo, doble reserva) se pintan aparte y quedan por encima. */
+function occupiedSlotClass(slot: MonthlySlot): string {
+    return isSecondiDoctor(slot.doctor, slot.appointment?.doctorId)
+        ? "border-green-200 bg-green-50"
+        : "border-blue-200 bg-blue-50";
+}
+
+function doctorChipClass(doctor?: Doctor | null): string {
+    return isSecondiDoctor(doctor)
+        ? "text-xs text-green-800 border-orange-200 bg-orange-50"
+        : "text-xs text-orange-600 border-orange-200 bg-orange-50";
+}
+
 export default function AppointmentsPage() {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [daySlots, setDaySlots] = useState<MonthlySlot[]>([]);
@@ -721,7 +740,8 @@ export default function AppointmentsPage() {
                                             slot.isCollision ? "border-amber-500 bg-amber-50 ring-2 ring-amber-400" :
                                             slot.status === 'free' ? "border-slate-200 bg-white" :
                                                 slot.status === 'blocked' ? "border-red-200 bg-red-50" :
-                                                    "border-blue-200 bg-blue-50",
+                                                    slot.status === 'occupied' ? occupiedSlotClass(slot) :
+                                                        "border-blue-200 bg-blue-50",
                                             isSelectionMode && slot.status === 'free' && "cursor-pointer hover:bg-slate-50",
                                             isSelectionMode && selectedSlots.has(slot.time) && "ring-2 ring-primary border-primary bg-primary/5"
                                         )}
@@ -739,7 +759,7 @@ export default function AppointmentsPage() {
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-green-600 font-medium">Libre</span>
                                                         {viewAllDoctors && (slot as MonthlySlot).doctor && (
-                                                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-200 bg-orange-50">
+                                                            <Badge variant="outline" className={doctorChipClass((slot as MonthlySlot).doctor)}>
                                                                 {(slot as MonthlySlot).doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {(slot as MonthlySlot).doctor.lastName}
                                                             </Badge>
                                                         )}
@@ -751,7 +771,7 @@ export default function AppointmentsPage() {
                                                             <span className="text-sm text-red-600">No disponible</span>
                                                         </div>
                                                         {viewAllDoctors && (slot as MonthlySlot).doctor && (
-                                                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-200 bg-orange-50">
+                                                            <Badge variant="outline" className={doctorChipClass((slot as MonthlySlot).doctor)}>
                                                                 {(slot as MonthlySlot).doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {(slot as MonthlySlot).doctor.lastName}
                                                             </Badge>
                                                         )}
@@ -773,7 +793,7 @@ export default function AppointmentsPage() {
                                                             </Badge>
                                                         )}
                                                         {viewAllDoctors && (slot as MonthlySlot).doctor && doctor && (slot as MonthlySlot).doctor.id !== doctor.id && (
-                                                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-200 bg-orange-50">
+                                                            <Badge variant="outline" className={doctorChipClass((slot as MonthlySlot).doctor)}>
                                                                 {(slot as MonthlySlot).doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {(slot as MonthlySlot).doctor.lastName}
                                                             </Badge>
                                                         )}
