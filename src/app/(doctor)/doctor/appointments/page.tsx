@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { PatientSearch } from "@/components/doctor/PatientSearch";
 import { SobreturnoDialog } from "@/components/appointments/SobreturnoDialog";
+import { StaffDuplicateBookingPrompt, ExistingAppointmentNotice } from "@/components/appointments/ExistingAppointmentWarning";
+import { MoveAppointmentDialog } from "@/components/appointments/MoveAppointmentDialog";
 import { CancelAppointmentDialog } from "@/components/appointments/CancelAppointmentDialog";
 
 import { useState, useEffect, useCallback } from "react";
@@ -19,8 +21,8 @@ import { appointmentService } from "@/services/appointments";
 import { doctorService } from "@/services/doctorService";
 import { availabilityService } from "@/services/availabilityService";
 import { exceptionService } from "@/services/exceptionService";
-import { Appointment, Doctor } from "@/types";
-import { Loader2, Unlock, ShieldAlert, User, Trash2, Stethoscope, Users, AlertCircle } from "lucide-react";
+import { Appointment, Doctor, UserProfile } from "@/types";
+import { Loader2, Unlock, ShieldAlert, User, Trash2, Stethoscope, Users, AlertCircle, ArrowRightLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -146,7 +148,7 @@ export default function AppointmentsPage() {
             }
         };
         fetchBusyAndBlockedDays();
-    }, [doctor, currentMonth]);
+    }, [doctor, currentMonth, refreshTrigger]);
 
     // ── Real-time listener for appointments on the selected date ──
     const { appointments: realtimeAppointments, loading: rtLoading } = useRealtimeAppointments(selectedDate ?? null);
@@ -196,15 +198,26 @@ export default function AppointmentsPage() {
     // Cancel Reason Dialog State
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
     const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
+    const [appointmentToMove, setAppointmentToMove] = useState<Appointment | null>(null);
     const [cancellingInProgress, setCancellingInProgress] = useState(false);
 
     // Manual Patient Booking State
     const [isManualPatient, setIsManualPatient] = useState(false);
     const [manualPatientName, setManualPatientName] = useState("");
     const [manualPatientEmail, setManualPatientEmail] = useState("");
+    const [pendingPatient, setPendingPatient] = useState<UserProfile | null>(null);
+    const [existingForPending, setExistingForPending] = useState<ExistingAppointmentNotice[]>([]);
+    const [checkingPatient, setCheckingPatient] = useState(false);
+    const [reserving, setReserving] = useState(false);
+
+    useEffect(() => {
+        setPendingPatient(null);
+        setExistingForPending([]);
+    }, [bookingSlot]);
 
     const handleBooking = async (patient: any) => {
         if (!selectedDate || !doctor || !bookingSlot) return;
+        setReserving(true);
         try {
             setLoading(true);
             const date = new Date(selectedDate);
@@ -225,6 +238,30 @@ export default function AppointmentsPage() {
                     type: 'Consulta',
                     notes: 'Reservado sobre Bloqueo (Agenda)'
                 });
+                const blockDoctorName = existingBlock.doctorName || `${doctor.firstName} ${doctor.lastName}`;
+                if (patient.email && !String(patient.uid || "").startsWith("manual_")) {
+                    const specialty = existingBlock.doctorId === 'secondi' || blockDoctorName.toLowerCase().includes('secondi')
+                        ? 'Ginecología'
+                        : existingBlock.doctorId === 'capparelli' || blockDoctorName.toLowerCase().includes('capparelli')
+                            ? 'Clínica Médica'
+                            : undefined;
+                    fetch('/api/emails', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: 'confirmation',
+                            data: {
+                                to: patient.email,
+                                patientName: `${patient.firstName} ${patient.lastName}`.trim(),
+                                doctorName: blockDoctorName,
+                                date: date.toLocaleDateString(),
+                                time: bookingSlot,
+                                appointmentId: existingBlock.id,
+                                specialty,
+                            }
+                        })
+                    }).catch((err) => console.error("Failed to send email:", err));
+                }
                 toast.success(`Turno desbloqueado y reservado para ${patient.firstName} ${patient.lastName}`);
             } else {
                 // Create new appointment
@@ -245,11 +282,37 @@ export default function AppointmentsPage() {
 
             // onSnapshot will automatically refresh
             setBookingSlot(null);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Error al reservar turno");
+            if (error?.message?.includes("SLOT_TAKEN")) {
+                toast.error("Ese horario acaba de ser ocupado.");
+            } else {
+                toast.error("Error al reservar turno");
+            }
         } finally {
             setLoading(false);
+            setReserving(false);
+        }
+    };
+
+    const handlePatientChosen = async (patient: UserProfile) => {
+        if (!doctor || !bookingSlot || checkingPatient) return;
+        const existingBlock = daySlots.find(s => s.time === bookingSlot && s.status === 'blocked')?.appointment;
+        const doctorId = existingBlock?.doctorId || doctor.id;
+        setCheckingPatient(true);
+        try {
+            const existing = await appointmentService.getActiveAppointments(patient.uid, doctorId);
+            if (existing.length === 0) {
+                await handleBooking(patient);
+                return;
+            }
+            setPendingPatient(patient);
+            setExistingForPending(existing);
+        } catch (error) {
+            console.error(error);
+            toast.error("No se pudo verificar si el paciente ya tiene un turno. Intentá de nuevo.");
+        } finally {
+            setCheckingPatient(false);
         }
     };
 
@@ -765,6 +828,14 @@ export default function AppointmentsPage() {
                                                     }}>
                                                         Ver Detalles
                                                     </Button>
+                                                    {(slot.appointment?.status === 'pending' || slot.appointment?.status === 'confirmed') && (
+                                                        <Button size="sm" variant="ghost" onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (slot.appointment) setAppointmentToMove(slot.appointment);
+                                                        }}>
+                                                            <ArrowRightLeft className="h-4 w-4 mr-1" /> Mover
+                                                        </Button>
+                                                    )}
                                                     <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={async (e) => {
                                                         e.stopPropagation();
                                                         if (slot.appointment) {
@@ -894,7 +965,11 @@ export default function AppointmentsPage() {
                             <Checkbox
                                 id="manual-booking-mode"
                                 checked={isManualPatient}
-                                onCheckedChange={(checked) => setIsManualPatient(checked as boolean)}
+                                onCheckedChange={(checked) => {
+                                    setIsManualPatient(checked as boolean);
+                                    setPendingPatient(null);
+                                    setExistingForPending([]);
+                                }}
                             />
                             <Label htmlFor="manual-booking-mode" className="font-medium cursor-pointer">
                                 Paciente sin cuenta (Nombre y Email)
@@ -959,10 +1034,26 @@ export default function AppointmentsPage() {
                                     </Button>
                                 </div>
                             </div>
+                        ) : checkingPatient ? (
+                            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Verificando turnos del paciente...
+                            </div>
+                        ) : pendingPatient ? (
+                            <StaffDuplicateBookingPrompt
+                                patientName={`${pendingPatient.firstName} ${pendingPatient.lastName}`.trim()}
+                                appointments={existingForPending}
+                                confirming={reserving}
+                                onConfirm={() => handleBooking(pendingPatient)}
+                                onBack={() => {
+                                    setPendingPatient(null);
+                                    setExistingForPending([]);
+                                }}
+                            />
                         ) : (
                             <div className="space-y-3">
                                 <Label>Buscar Paciente</Label>
-                                <PatientSearch onSelect={handleBooking} />
+                                <PatientSearch onSelect={handlePatientChosen} />
                                 <div className="flex justify-end">
                                     <Button variant="outline" onClick={() => setBookingSlot(null)}>Cancelar</Button>
                                 </div>
@@ -982,6 +1073,14 @@ export default function AppointmentsPage() {
                     />
                 )
             }
+
+            <MoveAppointmentDialog
+                key={appointmentToMove?.id ?? "none"}
+                appointment={appointmentToMove}
+                open={!!appointmentToMove}
+                onClose={() => setAppointmentToMove(null)}
+                onMoved={() => setRefreshTrigger(prev => prev + 1)}
+            />
 
             <CancelAppointmentDialog
                 open={cancelDialogOpen}

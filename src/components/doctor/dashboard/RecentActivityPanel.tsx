@@ -16,6 +16,8 @@ function actionLabel(action: string): string {
     switch (action) {
         case "APPOINTMENT_CREATED":
             return "Turno reservado";
+        case "APPOINTMENT_MOVED":
+            return "Turno reprogramado";
         case "APPOINTMENT_CANCELLED":
             return "Turno cancelado";
         case "APPOINTMENT_CONFIRMED":

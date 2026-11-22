@@ -35,7 +35,7 @@ import {
     UserCheck,
     UserX
 } from "lucide-react";
-import { Appointment } from "@/types";
+import { Appointment, UserProfile } from "@/types";
 import {
     formatDuration,
     formatPunctuality,
@@ -54,6 +54,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { WhatsAppReviewButton } from "@/components/doctor/WhatsAppReviewButton";
+import { SobreturnoDialog } from "@/components/appointments/SobreturnoDialog";
+import { StaffDuplicateBookingPrompt, ExistingAppointmentNotice } from "@/components/appointments/ExistingAppointmentWarning";
 
 // Muestra los tres indicadores de tiempo del turno: puntualidad (fijo),
 // espera (vivo si está en sala) y atención (vivo si está en consultorio).
@@ -118,8 +120,8 @@ function TimingBadges({ appt }: { appt: Appointment }) {
                     className={cn(
                         "flex items-center gap-1 font-mono text-sm px-2 py-1 rounded",
                         appt.status === 'in_consultation'
-                            ? "text-blue-600 bg-blue-50"
-                            : "text-blue-700 bg-blue-100/60"
+                            ? "text-violet-700 bg-violet-100"
+                            : "text-violet-800 bg-violet-100"
                     )}
                     title="Tiempo de atención en consultorio"
                 >
@@ -146,6 +148,14 @@ interface CancelledAppointmentData {
     cancelledBy?: string;
 }
 
+
+function formatDoctorTitle(doc: { id?: string; firstName?: string; lastName?: string; gender?: "male" | "female" } | null | undefined) {
+    if (!doc) return "Profesional";
+    const prefix = doc.gender === "female" || doc.id === "secondi" ? "Dra." : "Dr.";
+    const name = [doc.firstName, doc.lastName].filter(Boolean).join(" ");
+    return name ? `${prefix} ${name}` : prefix;
+}
+
 export default function DailyAgendaPage() {
     const { user, profile } = useAuth();
     const [date, setDate] = useState<Date>(new Date());
@@ -162,6 +172,8 @@ export default function DailyAgendaPage() {
     // Multi-Select State
     const [isSelectionMode, setIsSelectionMode] = useState(false);
     const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
+
+    const [isSobreturnoOpen, setIsSobreturnoOpen] = useState(false);
 
     // DrApp patient map: normalized DNI -> DrApp patient ID
     const [drappMap, setDrappMap] = useState<Map<string, string>>(new Map());
@@ -521,6 +533,15 @@ export default function DailyAgendaPage() {
 
     // New Booking & Blocking Logic
     const [bookingSlot, setBookingSlot] = useState<{ time: string, doctorId: string } | null>(null);
+    const [pendingPatient, setPendingPatient] = useState<UserProfile | null>(null);
+    const [existingForPending, setExistingForPending] = useState<ExistingAppointmentNotice[]>([]);
+    const [checkingPatient, setCheckingPatient] = useState(false);
+    const bookingSlotKey = bookingSlot ? `${bookingSlot.time}|${bookingSlot.doctorId}` : "";
+
+    useEffect(() => {
+        setPendingPatient(null);
+        setExistingForPending([]);
+    }, [bookingSlotKey]);
 
     const handleBooking = async (patient: any) => {
         if (!bookingSlot) return; // doctorID is in bookingSlot now
@@ -551,11 +572,34 @@ export default function DailyAgendaPage() {
             toast.success(`Turno reservado para ${patient.firstName} ${patient.lastName} con Dr. ${targetDoctor.lastName}`);
             // onSnapshot will automatically refresh
             setBookingSlot(null);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Error al reservar turno");
+            if (error?.message?.includes("SLOT_TAKEN")) {
+                toast.error("Ese horario acaba de ser ocupado.");
+            } else {
+                toast.error("Error al reservar turno");
+            }
         } finally {
             setActionLoading(null);
+        }
+    };
+
+    const handlePatientChosen = async (patient: UserProfile) => {
+        if (!bookingSlot || checkingPatient) return;
+        setCheckingPatient(true);
+        try {
+            const existing = await appointmentService.getActiveAppointments(patient.uid, bookingSlot.doctorId);
+            if (existing.length === 0) {
+                await handleBooking(patient);
+                return;
+            }
+            setPendingPatient(patient);
+            setExistingForPending(existing);
+        } catch (error) {
+            console.error(error);
+            toast.error("No se pudo verificar si el paciente ya tiene un turno. Intentá de nuevo.");
+        } finally {
+            setCheckingPatient(false);
         }
     };
 
@@ -723,106 +767,24 @@ export default function DailyAgendaPage() {
         }
     };
 
-    if (!profile || profile.role !== 'doctor') return <div className="p-8">Acceso denegado</div>;
+    const mySlots = useMemo(
+        () => (doctor ? slots.filter((slot) => slot.doctor?.id === doctor.id) : []),
+        [slots, doctor]
+    );
 
-    return (
-        <div className="container mx-auto py-6 max-w-5xl">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold">Agenda Diaria</h1>
-                    <p className="text-muted-foreground">Vista detallada de turnos y disponibilidad.</p>
-                </div>
+    const otherColumns = useMemo(() => {
+        const groups = new Map<string, { doctor: any; slots: DailySlot[] }>();
+        for (const slot of slots) {
+            const id = slot.doctor?.id;
+            if (!id || (doctor && id === doctor.id)) continue;
+            const group = groups.get(id);
+            if (group) group.slots.push(slot);
+            else groups.set(id, { doctor: slot.doctor, slots: [slot] });
+        }
+        return Array.from(groups.values());
+    }, [slots, doctor]);
 
-                <div className="flex items-center gap-4">
-                    {/* Toggle View All */}
-                    <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-lg border">
-                        <UserIcon className={cn("h-4 w-4", !viewAllDoctors ? "text-primary font-bold" : "text-slate-400")} />
-                        <Switch
-                            checked={viewAllDoctors}
-                            onCheckedChange={(checked) => {
-                                setViewAllDoctors(checked);
-                                if (checked) setIsSelectionMode(false); // Disable multi-select when enabling all view
-                            }}
-                        />
-                        <Users className={cn("h-4 w-4", viewAllDoctors ? "text-primary font-bold" : "text-slate-400")} />
-                        <span className="text-xs font-medium text-slate-600 ml-1">
-                            {viewAllDoctors ? "Todos" : "Solo Yo"}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
-                        <Button variant="ghost" size="icon" onClick={handlePrevDay}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal", !date && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {date ? format(date, "EEEE d 'de' MMMM", { locale: es }) : <span>Seleccionar fecha</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="end">
-                                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
-                            </PopoverContent>
-                        </Popover>
-                        <Button variant="ghost" size="icon" onClick={handleNextDay}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Actions Bar */}
-            <div className="flex items-center justify-end gap-2 mb-4">
-                {/* Selection Mode Toggle - Only if NOT View All */}
-                {slots.length > 0 && !viewAllDoctors && (
-                    <Button
-                        variant={isSelectionMode ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                            setIsSelectionMode(!isSelectionMode);
-                            setSelectedSlots(new Set()); // Clear on toggle
-                        }}
-                    >
-                        {isSelectionMode ? "Cancelar Selección" : "Selección Múltiple"}
-                    </Button>
-                )}
-
-                {/* Bulk Actions */}
-                {isSelectionMode && selectedSlots.size > 0 && (
-                    <div className="flex gap-2">
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={handleBlockSelectedSlots}
-                            disabled={loading}
-                        >
-                            <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear ({selectedSlots.size})
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-green-600 border-green-300 hover:bg-green-50"
-                            onClick={handleUnblockSelectedSlots}
-                            disabled={loading}
-                        >
-                            <Unlock className="mr-2 h-4 w-4" /> Desbloquear ({selectedSlots.size})
-                        </Button>
-                    </div>
-                )}
-            </div>
-
-            {loading ? (
-                <div className="flex justify-center p-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            ) : slots.length === 0 ? (
-                <div className="text-center p-12 border rounded-lg bg-slate-50">
-                    <p className="text-muted-foreground">No hay horarios configurados o disponibles para este día.</p>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {slots.map((slot, index) => {
+    const renderSlotCard = (slot: DailySlot, index: number) => {
                         const appt = slot.appointment;
                         const isArrived = appt?.status === 'arrived';
                         const isInConsultation = appt?.status === 'in_consultation';
@@ -833,6 +795,7 @@ export default function DailyAgendaPage() {
                         const isConfirmed = appt?.status === 'confirmed';
 
                         const isMySlot = doctor && slot.doctor.id === doctor.id;
+                        const paintAsOwn = viewAllDoctors || isMySlot;
 
                         // Check if selectable
                         const isSelectable = isSelectionMode && isMySlot && (slot.status === 'free' || slot.status === 'blocked');
@@ -849,20 +812,20 @@ export default function DailyAgendaPage() {
                                     slot.isCollision ? "border-amber-500 bg-amber-50/70 ring-2 ring-amber-400" :
                                     isPending ? "border-orange-400 bg-orange-50/50 ring-2 ring-orange-300 animate-pulse" :
                                         isArrived ? "border-amber-300 bg-amber-50/50 ring-2 ring-amber-300" :
-                                            isInConsultation ? "border-blue-400 bg-blue-50/50 ring-2 ring-blue-300" :
-                                            isCompleted ? "border-green-300 bg-green-50/50" :
+                                            isInConsultation ? "border-violet-500 bg-violet-200 ring-2 ring-violet-400" :
+                                            isCompleted ? "border-green-500 bg-green-200" :
                                                 isAbsent || isCancelled ? "border-red-200 bg-red-50/30 opacity-60" :
                                                     slot.status === 'occupied' ? "border-blue-200 bg-blue-50/50" :
                                                         slot.status === 'blocked' ?
-                                                            (isMySlot ? "border-red-200 bg-red-50/50" : "border-red-100 bg-red-50/30") : // Softer blocked for others
+                                                            (paintAsOwn ? "border-red-200 bg-red-50/50" : "border-red-100 bg-red-50/30") : // Softer blocked for others
                                                             slot.status === 'free' ?
-                                                                (isMySlot ? "hover:border-green-300" : "bg-orange-50/50 border-orange-100") // Orange for others
+                                                                (paintAsOwn ? "hover:border-green-300" : "bg-orange-50/50 border-orange-100") // Orange for others
                                                                 : "opacity-60 bg-slate-50",
                                     isSelectable && "cursor-pointer hover:bg-slate-50",
                                     isSelectionMode && selectedSlots.has(slot.time) && "ring-2 ring-primary border-primary bg-primary/5",
-                                    !isMySlot && !isSelectionMode && "opacity-90" // Slight dim for others
+                                    !paintAsOwn && !isSelectionMode && "opacity-90" // Slight dim for others
                                 )}>
-                                <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <CardContent className={cn("p-4 flex flex-col items-start justify-between gap-4", viewAllDoctors ? "items-stretch" : "sm:flex-row sm:items-center")}>
                                     <div className="flex items-center gap-4 min-w-[140px]">
                                         {isSelectable && (
                                             <Checkbox
@@ -872,23 +835,18 @@ export default function DailyAgendaPage() {
                                         )}
 
                                         <div className={cn("border rounded-md p-2 flex flex-col items-center gap-1 shadow-sm w-[100px]",
-                                            !isMySlot ? "bg-orange-100/50 border-orange-200" : "bg-white"
+                                            !paintAsOwn ? "bg-orange-100/50 border-orange-200" : "bg-white"
                                         )}>
                                             <div className="flex items-center gap-1">
                                                 <Clock className="h-3 w-3 text-slate-500" />
                                                 <span className="font-bold text-lg leading-none">{slot.time}</span>
                                             </div>
-                                            {viewAllDoctors && (
-                                                <span className={cn("text-[10px] uppercase font-bold truncate w-full text-center",
-                                                    isMySlot ? "text-blue-600" : "text-orange-600"
-                                                )}>
-                                                    {slot.doctor.lastName}
-                                                </span>
-                                            )}
                                         </div>
-                                        <div className="sm:hidden">
-                                            <StatusBadge status={slot.status} appointmentStatus={appt?.status} />
-                                        </div>
+                                        {!viewAllDoctors && (
+                                            <div className="sm:hidden">
+                                                <StatusBadge status={slot.status} appointmentStatus={appt?.status} />
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex-grow">
@@ -904,7 +862,7 @@ export default function DailyAgendaPage() {
                                                             Doble reserva
                                                         </Badge>
                                                     )}
-                                                    {!isMySlot && (
+                                                    {!paintAsOwn && (
                                                         <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 text-xs">
                                                             {slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {slot.doctor.lastName}
                                                         </Badge>
@@ -964,7 +922,7 @@ export default function DailyAgendaPage() {
                                                     <span className="font-bold text-red-700 flex items-center gap-1">
                                                         <Lock className="h-3 w-3" /> BLOQUEADO
                                                     </span>
-                                                    {!isMySlot && (
+                                                    {!paintAsOwn && (
                                                         <span className="text-xs text-slate-500">
                                                             ({slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} {slot.doctor.lastName})
                                                         </span>
@@ -978,15 +936,15 @@ export default function DailyAgendaPage() {
                                         {slot.status === 'free' && !isSelectionMode && (
                                             <div className="flex items-center gap-2">
                                                 <span className="text-slate-500 italic mr-2 text-sm">
-                                                    Disponible {isMySlot ? "" : `(${slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} ${slot.doctor.lastName})`}
+                                                    Disponible {paintAsOwn ? "" : `(${slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} ${slot.doctor.lastName})`}
                                                 </span>
                                                 <Button
                                                     size="sm"
                                                     variant={isMySlot ? "outline" : "outline"} // Keep consistent or distinct?
-                                                    className={`h-8 gap-1 ${!isMySlot ? "border-orange-200 text-orange-700 hover:bg-orange-50" : ""}`}
+                                                    className={`h-8 gap-1 ${!paintAsOwn ? "border-orange-200 text-orange-700 hover:bg-orange-50" : ""}`}
                                                     onClick={() => setBookingSlot({ time: slot.time, doctorId: slot.doctor.id })}
                                                 >
-                                                    <CalendarPlus className="h-3 w-3" /> Reservar {!isMySlot && `${slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} ${slot.doctor.lastName}`}
+                                                    <CalendarPlus className="h-3 w-3" /> Reservar {!paintAsOwn && `${slot.doctor.id === 'secondi' ? 'Dra.' : 'Dr.'} ${slot.doctor.lastName}`}
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -1006,7 +964,7 @@ export default function DailyAgendaPage() {
                                         )}
                                     </div>
 
-                                    <div className="hidden sm:flex items-center gap-2 flex-wrap justify-end">
+                                    <div className={cn("items-center gap-2 flex-wrap justify-end", viewAllDoctors ? "flex w-full pt-2 border-t border-slate-200/70" : "hidden sm:flex")}>
                                         <StatusBadge status={slot.status} appointmentStatus={appt?.status} />
 
                                         {!isSelectionMode && slot.status === 'blocked' && appt && (
@@ -1055,7 +1013,7 @@ export default function DailyAgendaPage() {
                                                                 <Button
                                                                     variant="default"
                                                                     size="sm"
-                                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                                    className="bg-violet-600 hover:bg-violet-700"
                                                                     onClick={() => handleStartConsultation(appt)}
                                                                     disabled={actionLoading === appt.id}
                                                                 >
@@ -1134,7 +1092,173 @@ export default function DailyAgendaPage() {
                                 </CardContent>
                             </Card>
                         );
-                    })}
+    };
+
+    const renderAgendaColumn = (columnDoctor: any, columnSlots: DailySlot[], isMine: boolean) => {
+        const occupiedCount = columnSlots.filter((slot) => slot.status === "occupied").length;
+        const waitingCount = columnSlots.filter((slot) => slot.appointment?.status === "arrived").length;
+        const inConsultCount = columnSlots.filter((slot) => slot.appointment?.status === "in_consultation").length;
+
+        return (
+            <section className="min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm">
+                <header className="sticky top-0 z-10 px-4 py-3 border-b border-slate-200 bg-white/95 backdrop-blur-sm rounded-t-xl flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                        <div className={cn("mt-1 h-10 w-1.5 rounded-full shrink-0", isMine ? "bg-indigo-600" : "bg-teal-600")} />
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                {isMine ? "Tu agenda" : "Otro profesional"}
+                            </p>
+                            <h2 className="text-lg font-bold text-slate-900 truncate">
+                                {columnDoctor ? formatDoctorTitle(columnDoctor) : "Sin agenda de otro profesional"}
+                            </h2>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-1.5 shrink-0 max-w-[11rem]">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                            {occupiedCount} {occupiedCount === 1 ? "turno" : "turnos"}
+                        </span>
+                        {waitingCount > 0 && (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                {waitingCount} en espera
+                            </span>
+                        )}
+                        {inConsultCount > 0 && (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">
+                                {inConsultCount} en atención
+                            </span>
+                        )}
+                    </div>
+                </header>
+                <div className="p-3 space-y-3 bg-slate-50/70">
+                    {columnSlots.length === 0 ? (
+                        <p className="text-sm text-slate-500 text-center py-10">No hay horarios para este día.</p>
+                    ) : (
+                        columnSlots.map((slot, index) => renderSlotCard(slot, index))
+                    )}
+                </div>
+            </section>
+        );
+    };
+
+    if (!profile || profile.role !== 'doctor') return <div className="p-8">Acceso denegado</div>;
+
+    return (
+        <div className={cn("container mx-auto py-6", viewAllDoctors ? "max-w-[1500px]" : "max-w-5xl")}>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold">Agenda Diaria</h1>
+                    <p className="text-muted-foreground">
+                        {viewAllDoctors
+                            ? "Tu agenda a la izquierda y la del otro profesional a la derecha. El color de cada tarjeta indica el estado del turno."
+                            : "Vista detallada de turnos y disponibilidad."}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-4 flex-wrap justify-end">
+                    {/* Toggle View All */}
+                    <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-lg border">
+                        <UserIcon className={cn("h-4 w-4", !viewAllDoctors ? "text-primary font-bold" : "text-slate-400")} />
+                        <Switch
+                            checked={viewAllDoctors}
+                            onCheckedChange={(checked) => {
+                                setViewAllDoctors(checked);
+                                if (checked) setIsSelectionMode(false);
+                            }}
+                        />
+                        <Users className={cn("h-4 w-4", viewAllDoctors ? "text-primary font-bold" : "text-slate-400")} />
+                        <span className="text-xs font-medium text-slate-600 ml-1">
+                            {viewAllDoctors ? "Todos" : "Solo Yo"}
+                        </span>
+                    </div>
+
+                    <Button variant="outline" onClick={() => setIsSobreturnoOpen(true)}>
+                        Agregar Sobreturno
+                    </Button>
+
+                    <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
+                        <Button variant="ghost" size="icon" onClick={handlePrevDay}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className={cn("w-[240px] justify-start text-left font-normal", !date && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {date ? format(date, "EEEE d 'de' MMMM", { locale: es }) : <span>Seleccionar fecha</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+                            </PopoverContent>
+                        </Popover>
+                        <Button variant="ghost" size="icon" onClick={handleNextDay}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Actions Bar */}
+            <div className="flex items-center justify-end gap-2 mb-4">
+                {/* Selection Mode Toggle - Only if NOT View All */}
+                {slots.length > 0 && !viewAllDoctors && (
+                    <Button
+                        variant={isSelectionMode ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                            setIsSelectionMode(!isSelectionMode);
+                            setSelectedSlots(new Set()); // Clear on toggle
+                        }}
+                    >
+                        {isSelectionMode ? "Cancelar Selección" : "Selección Múltiple"}
+                    </Button>
+                )}
+
+                {/* Bulk Actions */}
+                {isSelectionMode && selectedSlots.size > 0 && (
+                    <div className="flex gap-2">
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBlockSelectedSlots}
+                            disabled={loading}
+                        >
+                            <ShieldAlert className="mr-2 h-4 w-4" /> Bloquear ({selectedSlots.size})
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-green-600 border-green-300 hover:bg-green-50"
+                            onClick={handleUnblockSelectedSlots}
+                            disabled={loading}
+                        >
+                            <Unlock className="mr-2 h-4 w-4" /> Desbloquear ({selectedSlots.size})
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            {loading ? (
+                <div className="flex justify-center p-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : slots.length === 0 ? (
+                <div className="text-center p-12 border rounded-lg bg-slate-50">
+                    <p className="text-muted-foreground">No hay horarios configurados o disponibles para este día.</p>
+                </div>
+            ) : viewAllDoctors && doctor ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+                    {renderAgendaColumn(doctor, mySlots, true)}
+                    <div className="space-y-5 min-w-0">
+                        {(otherColumns.length > 0 ? otherColumns : [{ doctor: null, slots: [] as DailySlot[] }]).map((group) => (
+                            <div key={group.doctor?.id ?? "other-empty"}>
+                                {renderAgendaColumn(group.doctor, group.slots, false)}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {slots.map((slot, index) => renderSlotCard(slot, index))}
                 </div>
             )}
 
@@ -1249,6 +1373,16 @@ export default function DailyAgendaPage() {
                 </div>
             )}
 
+            {doctor && (
+                <SobreturnoDialog
+                    isOpen={isSobreturnoOpen}
+                    onClose={() => setIsSobreturnoOpen(false)}
+                    selectedDate={date}
+                    defaultDoctorId={doctor.id}
+                    onSuccess={() => {}}
+                />
+            )}
+
             {/* Manual Booking Dialog */}
             <Dialog open={!!bookingSlot} onOpenChange={(open) => !open && setBookingSlot(null)}>
                 <DialogContent>
@@ -1257,11 +1391,31 @@ export default function DailyAgendaPage() {
                         <DialogDescription>Búsqueda y asignación de paciente para el turno.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <Label>Buscar Paciente</Label>
-                        <PatientSearch onSelect={handleBooking} />
-                        <div className="flex justify-end">
-                            <Button variant="outline" onClick={() => setBookingSlot(null)}>Cancelar</Button>
-                        </div>
+                        {checkingPatient ? (
+                            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Verificando turnos del paciente...
+                            </div>
+                        ) : pendingPatient ? (
+                            <StaffDuplicateBookingPrompt
+                                patientName={`${pendingPatient.firstName} ${pendingPatient.lastName}`.trim()}
+                                appointments={existingForPending}
+                                confirming={actionLoading === "booking"}
+                                onConfirm={() => handleBooking(pendingPatient)}
+                                onBack={() => {
+                                    setPendingPatient(null);
+                                    setExistingForPending([]);
+                                }}
+                            />
+                        ) : (
+                            <>
+                                <Label>Buscar Paciente</Label>
+                                <PatientSearch onSelect={handlePatientChosen} />
+                                <div className="flex justify-end">
+                                    <Button variant="outline" onClick={() => setBookingSlot(null)}>Cancelar</Button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
@@ -1272,7 +1426,7 @@ export default function DailyAgendaPage() {
 
 function StatusBadge({ status, appointmentStatus }: { status: string; appointmentStatus?: string }) {
     if (appointmentStatus === 'arrived') return <Badge className="bg-amber-500 hover:bg-amber-600">En Espera</Badge>;
-    if (appointmentStatus === 'in_consultation') return <Badge className="bg-blue-600 hover:bg-blue-700">En Atención</Badge>;
+    if (appointmentStatus === 'in_consultation') return <Badge className="bg-violet-600 hover:bg-violet-700">En Atención</Badge>;
     if (appointmentStatus === 'completed') return <Badge className="bg-green-600 hover:bg-green-700">Finalizado</Badge>;
     if (appointmentStatus === 'absent') return <Badge variant="destructive">Ausente</Badge>;
     if (appointmentStatus === 'cancelled') return <Badge variant="secondary" className="line-through">Cancelado</Badge>;

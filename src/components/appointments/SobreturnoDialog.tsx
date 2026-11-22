@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { appointmentService } from "@/services/appointments";
+import { ExistingAppointmentWarning, ExistingAppointmentNotice } from "@/components/appointments/ExistingAppointmentWarning";
 import { adminService } from "@/services/adminService";
 import { doctorService } from "@/services/doctorService";
 import { Doctor, UserProfile } from "@/types";
@@ -41,6 +42,10 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
     const [selectedPatient, setSelectedPatient] = useState<UserProfile | null>(null);
+    const [existingAppointments, setExistingAppointments] = useState<ExistingAppointmentNotice[]>([]);
+    const [checkingExisting, setCheckingExisting] = useState(false);
+    const [existingCheckFailed, setExistingCheckFailed] = useState(false);
+    const [verifyRetry, setVerifyRetry] = useState(0);
 
     // Manual Patient State
     const [manualPatientName, setManualPatientName] = useState("");
@@ -67,8 +72,44 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
             setManualPatientName("");
             setManualPatientEmail("");
             setIsManualPatient(false);
+            setExistingAppointments([]);
+            setCheckingExisting(false);
+            setExistingCheckFailed(false);
+            setVerifyRetry(0);
         }
     }, [isOpen, defaultDoctorId]);
+
+    useEffect(() => {
+        if (!isOpen || isManualPatient || !selectedPatient || !selectedDoctorId) {
+            setExistingAppointments([]);
+            setCheckingExisting(false);
+            setExistingCheckFailed(false);
+            return;
+        }
+
+        let cancelled = false;
+        setExistingAppointments([]);
+        setCheckingExisting(true);
+        setExistingCheckFailed(false);
+        appointmentService.getActiveAppointments(selectedPatient.uid, selectedDoctorId)
+            .then((appointments) => {
+                if (!cancelled) setExistingAppointments(appointments);
+            })
+            .catch((error) => {
+                console.error(error);
+                if (!cancelled) {
+                    setExistingAppointments([]);
+                    setExistingCheckFailed(true);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setCheckingExisting(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen, isManualPatient, selectedPatient, selectedDoctorId, verifyRetry]);
 
     const getPatientSearchFields = (patient: UserProfile) => [
         patient.firstName,
@@ -186,16 +227,6 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
             console.error(error);
             if (error.message?.includes("SLOT_TAKEN")) {
                 toast.error("El horario ya está ocupado por otro turno.");
-            } else if (error.message?.includes("LIMIT_EXCEEDED")) {
-                toast.warning("El paciente ya tiene un turno activo, pero al ser sobreturno se permite (contactar soporte si falla).");
-                // Actually createAppointment throws LIMIT_EXCEEDED before checking slot if strict. 
-                // However, for Manual Booking, maybe we want to bypass limit?
-                // The current createAppointment logic (viewed in 10205) skips limit check if patientId is 'blocked'.
-                // It does NOT skip for regular patients.
-                // IF we want to bypass limit for Sobreturno, we might need to modify createAppointment or add a flag.
-                // For now, let's assume limit applies OR we handle error.
-                // The User didn't explicitly say "bypass limit", but implied "Doctor gives turn". Usually overrides limits.
-                // I will update the service later if needed, but for now I'll catch and show error.
             } else {
                 toast.error("Error al generar el sobreturno");
             }
@@ -349,6 +380,22 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
                                         </Button>
                                     </div>
                                 )}
+
+                                {checkingExisting && (
+                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Verificando turnos del paciente...
+                                    </p>
+                                )}
+                                {existingCheckFailed && (
+                                    <div className="flex items-center justify-between gap-2 text-sm text-red-700">
+                                        <span>No se pudo verificar si ya tiene un turno.</span>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => setVerifyRetry((n) => n + 1)}>
+                                            Reintentar
+                                        </Button>
+                                    </div>
+                                )}
+                                <ExistingAppointmentWarning appointments={existingAppointments} />
                             </div>
                         )}
                     </div>
@@ -356,9 +403,13 @@ export function SobreturnoDialog({ isOpen, onClose, selectedDate, onSuccess, def
 
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancelar</Button>
-                    <Button onClick={handleConfirm} disabled={loading} className="bg-black text-white hover:bg-slate-800">
+                    <Button
+                        onClick={handleConfirm}
+                        disabled={loading || (!isManualPatient && (checkingExisting || existingCheckFailed))}
+                        className="bg-black text-white hover:bg-slate-800"
+                    >
                         {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        DAR SOBRETURNO
+                        {!isManualPatient && existingAppointments.length > 0 ? "Confirmar sobreturno igual" : "DAR SOBRETURNO"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

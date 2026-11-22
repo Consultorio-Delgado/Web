@@ -3,6 +3,7 @@ import { collection, addDoc, Timestamp } from "firebase/firestore";
 
 export type AuditAction =
     | 'APPOINTMENT_CREATED'
+    | 'APPOINTMENT_MOVED'
     | 'APPOINTMENT_CANCELLED'
     | 'APPOINTMENT_CONFIRMED'
     | 'APPOINTMENT_COMPLETED'

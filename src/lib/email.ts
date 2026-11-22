@@ -6,6 +6,7 @@ import ReminderEmail from '@/components/emails/ReminderEmail';
 import ActionReminderEmail from '@/components/emails/ActionReminderEmail';
 import AbsenceEmail from '@/components/emails/AbsenceEmail';
 import SobreturnoConfirmationEmail from '@/components/emails/SobreturnoConfirmationEmail';
+import RescheduleEmail from '@/components/emails/RescheduleEmail';
 import VerificationEmail from '@/components/emails/VerificationEmail';
 import PasswordResetEmail from '@/components/emails/PasswordResetEmail';
 import { auth as adminAuth, isAuthUserNotFound } from '@/lib/firebaseAdmin';
@@ -13,6 +14,14 @@ import { auth as adminAuth, isAuthUserNotFound } from '@/lib/firebaseAdmin';
 // Initialize Resend with API Key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Consultorio Delgado <onboarding@resend.dev>';
+
+function escapeHtml(value: unknown): string {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
 
 type EmailData = {
     to: string;
@@ -27,6 +36,13 @@ type EmailData = {
 
 type ActionReminderData = EmailData & {
     confirmUrl: string;
+};
+
+type RescheduleEmailData = EmailData & {
+    previousDate: string;
+    previousTime: string;
+    isSobreturno?: boolean;
+    showPortalLink?: boolean;
 };
 
 export const emailService = {
@@ -73,6 +89,33 @@ export const emailService = {
             return { success: true };
         } catch (error) {
             console.error('[EmailService] Sobreturno Confirmation Error:', error);
+            return { success: false, error };
+        }
+    },
+
+    async sendReschedule(data: RescheduleEmailData) {
+        try {
+            const html = await render(RescheduleEmail({
+                patientName: data.patientName,
+                doctorName: data.doctorName,
+                previousDate: data.previousDate,
+                previousTime: data.previousTime,
+                date: data.date,
+                time: data.time,
+                specialty: data.specialty,
+                isSobreturno: data.isSobreturno,
+                showPortalLink: data.showPortalLink,
+            }));
+
+            await resend.emails.send({
+                from: FROM_EMAIL,
+                to: data.to,
+                subject: 'Turno reprogramado - Consultorio Delgado (NO RESPONDER MAIL)',
+                html: html
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[EmailService] Reschedule Error:', error);
             return { success: false, error };
         }
     },
@@ -496,6 +539,101 @@ export const emailService = {
             return { success: true };
         } catch (error) {
             console.error('[EmailService] Study Request Error:', error);
+            return { success: false, error };
+        }
+    },
+    async sendGeneralConsultation(data: {
+        nombre: string;
+        apellido: string;
+        dni: string;
+        telefono: string;
+        email: string;
+        cobertura: string;
+        numeroAfiliado: string;
+        plan: string;
+        token?: string;
+        consulta: string;
+        attachments?: { filename: string; content: string }[];
+    }, doctorEmail: string) {
+        try {
+            const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #0f766e 0%, #115e59 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">💬 Consulta Varias — Dr. Germán Capparelli</h1>
+    </div>
+    
+    <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+        <h2 style="color: #1e293b; margin-top: 0;">Datos del Paciente</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold; width: 140px;">Nombre:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${escapeHtml(data.nombre)} ${escapeHtml(data.apellido)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">DNI:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${escapeHtml(data.dni)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">Teléfono:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${escapeHtml(data.telefono)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">Email:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;"><a href="mailto:${escapeHtml(data.email)}" style="color: #0f766e;">${escapeHtml(data.email)}</a></td>
+            </tr>
+        </table>
+
+        <h2 style="color: #1e293b;">Cobertura Médica</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold; width: 140px;">Cobertura:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${escapeHtml(data.cobertura)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">N° Afiliado:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${escapeHtml(data.numeroAfiliado)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">Plan:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${escapeHtml(data.plan)}</td>
+            </tr>
+            ${data.token ? `
+            <tr>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0; font-weight: bold;">Token:</td>
+                <td style="padding: 10px; background: white; border: 1px solid #e2e8f0;">${escapeHtml(data.token)}</td>
+            </tr>
+            ` : ''}
+        </table>
+
+        <h2 style="color: #1e293b;">Consulta</h2>
+        <div style="padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <p style="margin: 0; white-space: pre-wrap;">${escapeHtml(data.consulta)}</p>
+        </div>
+        
+        <p style="margin-top: 20px; font-size: 12px; color: #64748b; text-align: center;">
+            Este mensaje fue enviado desde el sistema de consultas varias del sitio web.
+        </p>
+    </div>
+</body>
+</html>`;
+
+            await resend.emails.send({
+                from: FROM_EMAIL,
+                to: doctorEmail,
+                replyTo: data.email,
+                subject: `Consulta Varias - ${data.nombre} ${data.apellido}`,
+                html: html,
+                attachments: data.attachments
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[EmailService] General Consultation Error:', error);
             return { success: false, error };
         }
     },

@@ -1,35 +1,56 @@
 import { db } from "@/lib/firebase";
 import { Appointment } from "@/types";
-import { addDoc, collection, doc, updateDoc, query, where, getDocs, Timestamp, runTransaction } from "firebase/firestore";
-import { startOfDay, endOfDay } from "date-fns";
+import { addDoc, collection, doc, updateDoc, query, where, getDocs, getDoc, Timestamp, runTransaction } from "firebase/firestore";
+import { startOfDay, endOfDay, format, isSameDay } from "date-fns";
+import { es } from "date-fns/locale";
 
 import { auditService } from "./auditService";
 
+export type ActiveAppointmentSummary = {
+    id: string;
+    date: Date;
+    time: string;
+    doctorId: string;
+    status: string;
+};
+
+const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'confirmed', 'arrived', 'in_consultation'];
+
 export const appointmentService = {
+    // Turnos futuros no cancelados. Si hay doctorId, solo los de ese profesional.
+    async getActiveAppointments(patientId: string, doctorId?: string): Promise<ActiveAppointmentSummary[]> {
+        const now = new Date();
+        const q = query(
+            collection(db, "appointments"),
+            where("patientId", "==", patientId),
+            where("date", ">=", Timestamp.fromDate(now))
+        );
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs
+            .map((docSnap) => {
+                const data = docSnap.data();
+                return {
+                    id: docSnap.id,
+                    date: data.date?.toDate?.() ?? new Date(),
+                    time: (data.time as string) || "",
+                    doctorId: data.doctorId as string,
+                    status: data.status as string,
+                };
+            })
+            .filter((appointment) => {
+                const isActive = ACTIVE_APPOINTMENT_STATUSES.includes(appointment.status);
+                if (doctorId) return isActive && appointment.doctorId === doctorId;
+                return isActive;
+            })
+            .sort((a, b) => a.date.getTime() - b.date.getTime());
+    },
+
     // Count active (future, non-cancelled) appointments for a patient
     // If doctorId is provided, only count appointments with that specific doctor
     async countActiveAppointments(patientId: string, doctorId?: string): Promise<number> {
         try {
-            const now = new Date();
-            let q = query(
-                collection(db, "appointments"),
-                where("patientId", "==", patientId),
-                where("date", ">=", Timestamp.fromDate(now))
-            );
-
-            const querySnapshot = await getDocs(q);
-            // Filter out cancelled/absent/completed appointments client-side
-            const activeStatuses = ['pending', 'confirmed', 'arrived', 'in_consultation'];
-            const activeAppointments = querySnapshot.docs.filter(doc => {
-                const data = doc.data();
-                const isActive = activeStatuses.includes(data.status);
-                // If doctorId provided, filter by that doctor
-                if (doctorId) {
-                    return isActive && data.doctorId === doctorId;
-                }
-                return isActive;
-            });
-
+            const activeAppointments = await this.getActiveAppointments(patientId, doctorId);
             return activeAppointments.length;
         } catch (error) {
             console.error("Error counting active appointments:", error);
@@ -42,8 +63,8 @@ export const appointmentService = {
             // Check if patient already has an active appointment with THIS specific doctor
             // Skip this check for blocked slots or if patientId is 'blocked'
             if (appointmentData.patientId !== 'blocked' && !appointmentData.patientId?.startsWith('manual_')) {
-                // Check if patient is blocked from booking (late cancellation penalty)
-                // Only enforce this when the PATIENT is booking for themselves, not when a doctor creates a sobreturno
+                // El tope de 1 turno activo por profesional aplica solo cuando el paciente reserva para sí.
+                // Un médico autenticado (uid distinto del paciente) puede asignar turnos extra.
                 const { auth } = await import("@/lib/firebase");
                 const currentUserId = auth.currentUser?.uid;
                 const isPatientBookingForSelf = currentUserId === appointmentData.patientId;
@@ -62,9 +83,11 @@ export const appointmentService = {
                     }
                 }
 
-                const activeWithDoctor = await this.countActiveAppointments(appointmentData.patientId, appointmentData.doctorId);
-                if (activeWithDoctor >= 1) {
-                    throw new Error("LIMIT_EXCEEDED: Ya tienes un turno activo con este profesional. Puedes sacar turno con otro profesional.");
+                if (isPatientBookingForSelf || !currentUserId) {
+                    const activeWithDoctor = await this.countActiveAppointments(appointmentData.patientId, appointmentData.doctorId);
+                    if (activeWithDoctor >= 1) {
+                        throw new Error("LIMIT_EXCEEDED: Ya tienes un turno activo con este profesional. Puedes sacar turno con otro profesional.");
+                    }
                 }
             }
 
@@ -303,6 +326,131 @@ export const appointmentService = {
             throw error;
         }
     },
+    /**
+     * Mueve un turno existente a otra fecha/hora, o lo convierte en sobreturno, sin cancelarlo.
+     * Conserva el id, las notas, los adjuntos y el estado. El paciente sigue teniendo un solo turno,
+     * así que no dispara el límite de un turno activo ni un mail de cancelación.
+     */
+    async moveAppointment(
+        appointmentId: string,
+        target: { date: Date; time: string; asSobreturno: boolean }
+    ): Promise<{ emailSent: boolean; emailSkipped: boolean; typeOnly: boolean }> {
+        const appointmentRef = doc(db, "appointments", appointmentId);
+        const snap = await getDoc(appointmentRef);
+        if (!snap.exists()) {
+            throw new Error("NOT_FOUND");
+        }
+
+        const current = snap.data();
+        if (current.patientId === 'blocked' || !['pending', 'confirmed'].includes(current.status)) {
+            throw new Error("NOT_MOVABLE");
+        }
+
+        const time = normalizeSlotTime(target.time);
+        if (!/^\d{2}:\d{2}$/.test(time)) {
+            throw new Error("INVALID_TIME");
+        }
+
+        const [hours, minutes] = time.split(':').map(Number);
+        const newDate = new Date(target.date);
+        newDate.setHours(hours, minutes, 0, 0);
+        if (newDate.getTime() < Date.now() - 60_000) {
+            throw new Error("PAST_SLOT");
+        }
+
+        const oldDate: Date = current.date?.toDate?.() ?? new Date(current.date);
+        const oldTime: string = current.time;
+        const oldType: string = current.type || 'Consulta';
+        const wasSobreturno = oldType === 'Sobreturno';
+        const nextType = target.asSobreturno ? 'Sobreturno' : (wasSobreturno ? 'Consulta' : oldType);
+
+        const sameSlot = isSameDay(oldDate, newDate) && normalizeSlotTime(oldTime) === time;
+        if (sameSlot && nextType === oldType) {
+            throw new Error("UNCHANGED");
+        }
+        const typeOnly = sameSlot && nextType !== oldType;
+
+        if (!target.asSobreturno) {
+            const conflictQuery = query(
+                collection(db, "appointments"),
+                where("doctorId", "==", current.doctorId),
+                where("date", ">=", Timestamp.fromDate(startOfDay(newDate))),
+                where("date", "<=", Timestamp.fromDate(endOfDay(newDate)))
+            );
+            const conflictSnapshot = await getDocs(conflictQuery);
+            const taken = conflictSnapshot.docs.some(conflictDoc => {
+                if (conflictDoc.id === appointmentId) return false;
+                const data = conflictDoc.data();
+                if (data.status === 'cancelled') return false;
+                return normalizeSlotTime(data.time) === time;
+            });
+            if (taken) {
+                throw new Error("SLOT_TAKEN: Ese horario acaba de ocuparse.");
+            }
+        }
+
+        await updateDoc(appointmentRef, {
+            date: Timestamp.fromDate(newDate),
+            time,
+            type: nextType,
+            updatedAt: Timestamp.now(),
+        });
+
+        const { auth } = await import("@/lib/firebase");
+        const actorId = auth.currentUser?.uid || 'unknown';
+        await auditService.logAction('APPOINTMENT_MOVED', actorId, {
+            appointmentId,
+            patientId: current.patientId,
+            patientName: current.patientName,
+            doctorName: current.doctorName,
+            fromDate: oldDate,
+            fromTime: oldTime,
+            fromType: oldType,
+            toDate: newDate,
+            toTime: time,
+            toType: nextType,
+        });
+
+        const patientEmail = typeof current.patientEmail === 'string' ? current.patientEmail.trim() : '';
+        const emailSkipped = typeOnly || !patientEmail || !patientEmail.includes('@');
+        let emailSent = false;
+
+        if (!emailSkipped) {
+            const specialty = current.doctorId === 'secondi' || String(current.doctorName || '').toLowerCase().includes('secondi')
+                ? 'Ginecología'
+                : current.doctorId === 'capparelli' || String(current.doctorName || '').toLowerCase().includes('capparelli')
+                    ? 'Clínica Médica'
+                    : undefined;
+
+            try {
+                const response = await fetch('/api/emails', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'reschedule',
+                        data: {
+                            to: patientEmail,
+                            patientName: current.patientName,
+                            doctorName: current.doctorName || 'Dr. (Consultar en Portal)',
+                            previousDate: format(oldDate, "EEEE d 'de' MMMM yyyy", { locale: es }),
+                            previousTime: normalizeSlotTime(oldTime),
+                            date: format(newDate, "EEEE d 'de' MMMM yyyy", { locale: es }),
+                            time,
+                            specialty,
+                            isSobreturno: target.asSobreturno,
+                            showPortalLink: !String(current.patientId || '').startsWith('manual_'),
+                        }
+                    })
+                });
+                emailSent = response.ok;
+            } catch (err) {
+                console.error("Failed to send reschedule email:", err);
+            }
+        }
+
+        return { emailSent, emailSkipped, typeOnly };
+    },
+
     async cancelAppointment(appointmentId: string, reason?: string): Promise<void> {
         try {
             const docRef = doc(db, "appointments", appointmentId);
@@ -475,3 +623,12 @@ export const appointmentService = {
         }
     }
 };
+
+function normalizeSlotTime(value: string | undefined): string {
+    if (!value) return '';
+    const [rawH, rawM] = value.split(':');
+    const hours = Number(rawH);
+    const minutes = Number(rawM);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return value;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}

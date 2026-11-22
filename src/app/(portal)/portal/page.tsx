@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, PlusCircle, ArrowRight, Video, Microscope } from "lucide-react";
+import { CalendarDays, PlusCircle, ArrowRight, Video, Microscope, MessageCircle } from "lucide-react";
 
 
 import Link from "next/link";
@@ -108,6 +108,12 @@ export default function PortalDashboard() {
                             Envío de Estudios
                         </Button>
                     </Link>
+                    <Link href="/portal/consultas-varias" prefetch={false}>
+                        <Button variant="outline" size="lg" className="h-auto min-h-12 px-8 py-3 rounded-full border-teal-600 text-teal-700 hover:bg-teal-50 font-medium transition-transform hover:scale-105 whitespace-normal text-center">
+                            <MessageCircle className="mr-2 h-5 w-5 shrink-0" />
+                            Consultas Varias Dr. Capparelli
+                        </Button>
+                    </Link>
                     {/* Force hard refresh for New Appointment to avoid Next.js router loop issues */}
                     <a href="/portal/new-appointment">
                         <Button size="lg" className="h-12 px-8 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-cyan-900/10 text-white font-medium transition-transform hover:scale-105">
@@ -126,7 +132,7 @@ export default function PortalDashboard() {
                             <div key={doc.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
                                 <span className="text-2xl">🌴</span>
                                 <p className="text-amber-800 font-medium">
-                                    {getDoctorTitle(doc)} {doc.lastName} está de vacaciones hasta el {getVacationEndFormatted(doc)}. No se pueden enviar recetas, consultas virtuales ni estudios.
+                                    {getDoctorTitle(doc)} {doc.lastName} está de vacaciones hasta el {getVacationEndFormatted(doc)}. No se pueden enviar recetas, consultas virtuales, estudios ni consultas varias.
                                 </p>
                             </div>
                         ))

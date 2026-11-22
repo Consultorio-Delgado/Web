@@ -20,6 +20,9 @@ export async function POST(request: Request) {
             case 'cancellation':
                 result = await emailService.sendCancellation(data);
                 break;
+            case 'reschedule':
+                result = await emailService.sendReschedule(data);
+                break;
             case 'reminder':
                 // Usually triggered by Cron, but can be manual
                 result = await emailService.sendReminder(data);

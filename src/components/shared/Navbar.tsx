@@ -169,6 +169,9 @@ function NavItems({ mobile = false, onClick }: { mobile?: boolean; onClick?: () 
             <a href="/portal/studies" className={className} onClick={onClick}>
                 Estudios
             </a>
+            <a href="/portal/consultas-varias" className={className} onClick={onClick}>
+                Consultas Varias
+            </a>
             <a href="/portal/virtual-consultation" className={className} onClick={onClick}>
                 Consulta Virtual
             </a>

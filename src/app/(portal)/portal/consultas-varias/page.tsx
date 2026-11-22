@@ -1,0 +1,585 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { compressImage } from "@/lib/imageCompression";
+import { useAuth } from "@/context/AuthContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, FileText, Send, CheckCircle, AlertTriangle, Paperclip, XCircle, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
+import { doctorService } from "@/services/doctorService";
+import { userService } from "@/services/user";
+import type { Doctor } from "@/types";
+import { isDoctorOnVacation, getVacationEndFormatted, getDoctorTitle } from "@/lib/vacationUtils";
+
+const COBERTURAS = [
+    "PARTICULAR",
+    "OSDE",
+    "Swiss Medical",
+    "Omint",
+    "Luis Pasteur",
+    "Galeno",
+    "OSA",
+    "Otra"
+];
+
+interface ConsultationFormData {
+    nombre: string;
+    apellido: string;
+    dni: string;
+    telefono: string;
+    email: string;
+    cobertura: string;
+    numeroAfiliado: string;
+    plan: string;
+    token: string;
+    otraCobertura: string;
+    consulta: string;
+}
+
+function mapInsurance(insurance?: string): { cobertura: string; otraCobertura: string } {
+    if (!insurance) return { cobertura: "", otraCobertura: "" };
+    if (COBERTURAS.includes(insurance)) return { cobertura: insurance, otraCobertura: "" };
+    if (insurance.toLowerCase().includes("galeno")) return { cobertura: "Galeno", otraCobertura: "" };
+    return { cobertura: "Otra", otraCobertura: insurance };
+}
+
+export default function ConsultasVariasPage() {
+    const { user, profile, loading: authLoading } = useAuth();
+    const [capparelli, setCapparelli] = useState<Doctor | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const mappedInsurance = mapInsurance(profile?.insurance);
+    const [formData, setFormData] = useState<ConsultationFormData>({
+        nombre: profile?.firstName || "",
+        apellido: profile?.lastName || "",
+        dni: profile?.dni || "",
+        telefono: profile?.phone || "",
+        email: user?.email || "",
+        cobertura: mappedInsurance.cobertura,
+        numeroAfiliado: profile?.insuranceNumber || "",
+        plan: profile?.plan || "",
+        token: "",
+        otraCobertura: mappedInsurance.otraCobertura,
+        consulta: "",
+    });
+
+    const [noToken, setNoToken] = useState(false);
+    const [files, setFiles] = useState<File[]>([]);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const rawFiles = Array.from(e.target.files);
+            const totalFilesCount = files.length + rawFiles.length;
+
+            if (totalFilesCount > 3) {
+                toast.error("Máximo 3 archivos permitidos");
+                return;
+            }
+
+            const processedNewFiles = await Promise.all(
+                rawFiles.map(async (file) => {
+                    if (file.type.startsWith("image/")) {
+                        return await compressImage(file);
+                    }
+                    return file;
+                })
+            );
+
+            const totalSizeAfterCompression = [...files, ...processedNewFiles].reduce((acc, f) => acc + f.size, 0);
+
+            if (totalSizeAfterCompression > 3.2 * 1024 * 1024) {
+                toast.error("El peso total de los archivos (después de comprimir) supera el límite de 3.2MB");
+                return;
+            }
+
+            setFiles(prev => [...prev, ...processedNewFiles]);
+        }
+    };
+
+    const removeFile = (index: number) => {
+        setFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    useEffect(() => {
+        const loadDoctor = async () => {
+            const allDoctors = await doctorService.getAllDoctors();
+            const found = allDoctors.find(
+                (doc) => doc.id.toLowerCase().includes("capparelli") || doc.lastName.toLowerCase().includes("capparelli")
+            );
+            setCapparelli(found || null);
+        };
+        loadDoctor();
+    }, []);
+
+    useEffect(() => {
+        if (!profile && !user) return;
+        setFormData(prev => {
+            const updates: Partial<ConsultationFormData> = {};
+            if (profile?.firstName && profile.firstName !== prev.nombre) updates.nombre = profile.firstName;
+            if (profile?.lastName && profile.lastName !== prev.apellido) updates.apellido = profile.lastName;
+            if (profile?.phone && profile.phone !== prev.telefono) updates.telefono = profile.phone;
+            if (profile?.dni && profile.dni !== prev.dni) updates.dni = profile.dni;
+            if (user?.email && user.email !== prev.email) updates.email = user.email;
+            if (profile?.insurance && !prev.cobertura) {
+                const mapped = mapInsurance(profile.insurance);
+                updates.cobertura = mapped.cobertura;
+                if (mapped.otraCobertura) updates.otraCobertura = mapped.otraCobertura;
+            }
+            if (profile?.insuranceNumber && profile.insuranceNumber !== prev.numeroAfiliado) updates.numeroAfiliado = profile.insuranceNumber;
+            if (profile?.plan && profile.plan !== prev.plan) updates.plan = profile.plan;
+
+            if (Object.keys(updates).length > 0) {
+                return { ...prev, ...updates };
+            }
+            return prev;
+        });
+    }, [profile, user]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { id, value } = e.target;
+        if (id === "token" && value.trim() !== "") {
+            setNoToken(false);
+        }
+        setFormData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleSelectChange = (field: string, value: string) => {
+        if (field === "cobertura" && value !== "Swiss Medical") {
+            setNoToken(false);
+            setFormData(prev => ({ ...prev, [field]: value, token: "" }));
+            return;
+        }
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (capparelli && isDoctorOnVacation(capparelli)) {
+            toast.error("El Dr. Capparelli está de vacaciones. No es posible enviar consultas en este momento.");
+            return;
+        }
+
+        if (!formData.cobertura) {
+            toast.error("Por favor seleccione su cobertura social");
+            return;
+        }
+
+        if (formData.cobertura === "Otra" && !formData.otraCobertura.trim()) {
+            toast.error("Por favor especifique su cobertura social");
+            return;
+        }
+
+        const isParticular = formData.cobertura === "PARTICULAR";
+        const isTokenRequiredInsurance = formData.cobertura === "Swiss Medical";
+
+        if (!isParticular) {
+            if (!formData.numeroAfiliado.trim()) {
+                toast.error("Por favor ingrese su número de afiliado");
+                return;
+            }
+            if (!formData.plan.trim()) {
+                toast.error("Por favor ingrese su plan");
+                return;
+            }
+        }
+
+        if (isTokenRequiredInsurance && !formData.token.trim() && !noToken) {
+            toast.error("Por favor ingrese el Token o marque 'No tengo token'");
+            return;
+        }
+
+        if (!formData.consulta.trim()) {
+            toast.error("Por favor escriba su consulta");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const convertToBase64 = (file: File): Promise<string> => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = error => reject(error);
+                });
+            };
+
+            const attachments = await Promise.all(
+                files.map(async (file) => {
+                    return {
+                        filename: file.name,
+                        content: (await convertToBase64(file)).split(",")[1],
+                        encoding: "base64"
+                    };
+                })
+            );
+
+            const response = await fetch("/api/consultas-varias", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ...formData,
+                    token: noToken ? "el paciente marco no necesita token" : formData.token,
+                    cobertura: formData.cobertura === "Otra" ? `Otra: ${formData.otraCobertura}` : formData.cobertura,
+                    doctorName: "Dr. Germán Capparelli",
+                    attachments
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Error al enviar la consulta");
+            }
+
+            setSuccess(true);
+            setFiles([]);
+
+            if (formData.plan && user && formData.plan !== (profile?.plan || "")) {
+                try {
+                    await userService.updateUserProfile(user.uid, { plan: formData.plan });
+                } catch (err) {
+                    console.error("Error saving plan to profile:", err);
+                }
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                consulta: "",
+                otraCobertura: formData.cobertura === "Otra" ? prev.otraCobertura : "",
+                token: ""
+            }));
+            setNoToken(false);
+            toast.success("¡Consulta enviada! Será resuelta dentro de los 10 días hábiles.");
+        } catch (error) {
+            console.error("Error en el envío:", error);
+            toast.error("Error al enviar la consulta. Por favor verifica tu conexión e intenta nuevamente.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+            </div>
+        );
+    }
+
+    if (success) {
+        return (
+            <div className="container mx-auto px-4 py-8 max-w-2xl">
+                <Card>
+                    <CardContent className="pt-8 pb-8 text-center">
+                        <div className="h-16 w-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <CheckCircle className="h-8 w-8 text-teal-600" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Consulta enviada!</h2>
+                        <p className="text-slate-600 mb-2">Tu consulta fue enviada al Dr. Germán Capparelli.</p>
+                        <p className="text-sm text-slate-500 mb-6">
+                            Será resuelta dentro de los <strong>10 días hábiles</strong>. Si tiene una urgencia, concurra a una guardia.
+                        </p>
+                        <Button onClick={() => setSuccess(false)} className="bg-teal-600 hover:bg-teal-700">
+                            Enviar otra consulta
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    const onVacation = capparelli ? isDoctorOnVacation(capparelli) : false;
+
+    return (
+        <div className="container mx-auto px-4 py-8 max-w-2xl">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-teal-700">
+                        <MessageCircle className="h-6 w-6" />
+                        Consultas Varias Dr. Capparelli
+                    </CardTitle>
+                    <CardDescription>
+                        Escribí tu consulta para el Dr. Germán Capparelli.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <div className="text-sm text-amber-800">
+                                <p className="font-semibold">MUY IMPORTANTE:</p>
+                                <ul className="list-disc pl-4 mt-1 space-y-1">
+                                    <li>La consulta será resuelta dentro de los <strong>10 días hábiles</strong>.</li>
+                                    <li>Si tiene una urgencia, concurra a una <strong>GUARDIA</strong>.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    {onVacation && capparelli ? (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center space-y-2">
+                            <p className="text-red-700 font-semibold text-lg">
+                                🌴 {getDoctorTitle(capparelli)} {capparelli.lastName} está de vacaciones hasta el {getVacationEndFormatted(capparelli)}
+                            </p>
+                            <p className="text-red-600 text-sm">
+                                No es posible enviar consultas en este momento. Por favor intente nuevamente después de esa fecha.
+                            </p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="nombre">Nombre *</Label>
+                                    <Input
+                                        id="nombre"
+                                        required
+                                        value={formData.nombre}
+                                        onChange={handleChange}
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="apellido">Apellido *</Label>
+                                    <Input
+                                        id="apellido"
+                                        required
+                                        value={formData.apellido}
+                                        onChange={handleChange}
+                                        disabled={loading}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="dni">DNI *</Label>
+                                    <Input
+                                        id="dni"
+                                        required
+                                        value={formData.dni}
+                                        onChange={handleChange}
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="telefono">Teléfono *</Label>
+                                    <Input
+                                        id="telefono"
+                                        type="tel"
+                                        required
+                                        value={formData.telefono}
+                                        onChange={handleChange}
+                                        disabled={loading}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="email">Correo Electrónico *</Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    required
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    disabled={loading}
+                                />
+                            </div>
+
+                            <div className="border-t pt-4" />
+
+                            <div className="space-y-2">
+                                <Label>Cobertura Social *</Label>
+                                <Select onValueChange={(v) => handleSelectChange("cobertura", v)} value={formData.cobertura}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccione su cobertura" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {COBERTURAS.map((cob) => (
+                                            <SelectItem key={cob} value={cob}>{cob}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {formData.cobertura === "Otra" && (
+                                    <div className="mt-2">
+                                        <Label htmlFor="otraCobertura">Especifique Cobertura *</Label>
+                                        <Input
+                                            id="otraCobertura"
+                                            required
+                                            value={formData.otraCobertura}
+                                            onChange={handleChange}
+                                            placeholder="Nombre de la obra social / prepaga"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {formData.cobertura && formData.cobertura !== "PARTICULAR" && (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="numeroAfiliado">Número de Afiliado *</Label>
+                                            <Input
+                                                id="numeroAfiliado"
+                                                required
+                                                placeholder="Sin espacios entre los números"
+                                                value={formData.numeroAfiliado}
+                                                onChange={handleChange}
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="plan">Plan *</Label>
+                                            <Input
+                                                id="plan"
+                                                required
+                                                value={formData.plan}
+                                                onChange={handleChange}
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {formData.cobertura === "Swiss Medical" && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="token">Token (swiss)*</Label>
+                                                <Input
+                                                    id="token"
+                                                    placeholder="Si tiene credencial digital"
+                                                    value={formData.token}
+                                                    onChange={handleChange}
+                                                    disabled={loading}
+                                                    maxLength={10}
+                                                />
+                                            </div>
+                                            <div className="flex items-center h-10">
+                                                <Label
+                                                    htmlFor="noToken"
+                                                    className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 h-full cursor-pointer hover:bg-slate-100 transition-colors w-full"
+                                                >
+                                                    <Checkbox
+                                                        id="noToken"
+                                                        checked={noToken}
+                                                        onCheckedChange={(checked) => {
+                                                            const isChecked = !!checked;
+                                                            setNoToken(isChecked);
+                                                            if (isChecked) {
+                                                                setFormData(prev => ({ ...prev, token: "" }));
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span className="text-sm font-medium leading-none">
+                                                        No tengo token
+                                                    </span>
+                                                </Label>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            <div className="border-t pt-4" />
+
+                            <div className="space-y-2">
+                                <Label htmlFor="consulta">Consulta *</Label>
+                                <Textarea
+                                    id="consulta"
+                                    required
+                                    rows={5}
+                                    placeholder="Contanos qué te pasa. Por ejemplo: me duele la garganta desde hace dos días."
+                                    value={formData.consulta}
+                                    onChange={handleChange}
+                                    disabled={loading}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Adjuntar Archivos (Máx 3, imágenes o PDF)</Label>
+                                <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors">
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*,application/pdf"
+                                        className="hidden"
+                                        id="file-upload"
+                                        onChange={handleFileChange}
+                                        disabled={loading || files.length >= 3}
+                                    />
+                                    <Label htmlFor="file-upload" className="cursor-pointer block h-full w-full">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <Paperclip className="h-8 w-8 text-slate-400" />
+                                            <span className="text-sm text-slate-600 font-medium">
+                                                {files.length >= 3 ? "Límite de archivos alcanzado" : "Hacé click para subir archivos"}
+                                            </span>
+                                            <span className="text-xs text-slate-400">JPG, PNG, PDF (Máximo 3 archivos, Total 3.2MB)</span>
+                                        </div>
+                                    </Label>
+                                </div>
+
+                                {files.length > 0 && (
+                                    <div className="space-y-2 mt-2">
+                                        {files.map((file, idx) => (
+                                            <div key={idx} className="flex items-center justify-between bg-slate-50 p-2 rounded border text-sm">
+                                                <div className="flex items-center gap-2 truncate">
+                                                    <FileText className="h-4 w-4 text-slate-500" />
+                                                    <span className="truncate max-w-[200px]">{file.name}</span>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeFile(idx)}
+                                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                >
+                                                    <XCircle className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-slate-50 border rounded-lg p-4 text-sm text-slate-600">
+                                <p className="font-medium text-slate-800 mb-2">
+                                    Si tiene coseguro o diferencial:
+                                </p>
+                                <p className="mb-0">
+                                    CBU <strong>0150509201000115863100</strong> o ALIAS <strong>dr.capparelli</strong>
+                                </p>
+                            </div>
+
+                            <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 text-white" size="lg" disabled={loading}>
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Enviando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="mr-2 h-4 w-4" />
+                                        Enviar Consulta
+                                    </>
+                                )}
+                            </Button>
+                        </form>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
